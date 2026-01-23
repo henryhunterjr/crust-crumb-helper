@@ -3,7 +3,8 @@ import logo from "@/assets/logo.png";
 import { cn } from '@/lib/utils';
 
 const navItems = [
-  { href: '/', label: 'Responses' },
+  { href: '/', label: 'Dashboard' },
+  { href: '/responses', label: 'Responses' },
   { href: '/generate', label: 'Generate' },
   { href: '/calendar', label: 'Calendar' },
 ];
