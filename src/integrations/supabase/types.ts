@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      post_ideas: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          is_used: boolean | null
+          post_type: string | null
+          target_audience: string | null
+          title: string
+          topic: string | null
+          used_at: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          is_used?: boolean | null
+          post_type?: string | null
+          target_audience?: string | null
+          title: string
+          topic?: string | null
+          used_at?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          is_used?: boolean | null
+          post_type?: string | null
+          target_audience?: string | null
+          title?: string
+          topic?: string | null
+          used_at?: string | null
+        }
+        Relationships: []
+      }
       quick_responses: {
         Row: {
           category: string
@@ -47,6 +83,42 @@ export type Database = {
           trigger_phrases?: string[] | null
           updated_at?: string
           use_count?: number | null
+        }
+        Relationships: []
+      }
+      scheduled_posts: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          post_type: string | null
+          posted_at: string | null
+          scheduled_date: string
+          status: string | null
+          time_slot: string | null
+          title: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          post_type?: string | null
+          posted_at?: string | null
+          scheduled_date: string
+          status?: string | null
+          time_slot?: string | null
+          title: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          post_type?: string | null
+          posted_at?: string | null
+          scheduled_date?: string
+          status?: string | null
+          time_slot?: string | null
+          title?: string
         }
         Relationships: []
       }
