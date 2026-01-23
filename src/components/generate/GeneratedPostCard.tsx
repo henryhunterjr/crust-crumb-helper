@@ -1,4 +1,4 @@
-import { Copy, Save, Check } from 'lucide-react';
+import { Copy, Save, Check, CalendarPlus } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,10 +8,11 @@ interface GeneratedPostCardProps {
   title: string;
   content: string;
   onSave: () => void;
+  onSchedule?: () => void;
   isSaving?: boolean;
 }
 
-export function GeneratedPostCard({ title, content, onSave, isSaving }: GeneratedPostCardProps) {
+export function GeneratedPostCard({ title, content, onSave, onSchedule, isSaving }: GeneratedPostCardProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -35,35 +36,48 @@ export function GeneratedPostCard({ title, content, onSave, isSaving }: Generate
         <p className="text-sm text-muted-foreground flex-1 whitespace-pre-wrap">
           {content}
         </p>
-        <div className="flex gap-2 mt-4 pt-4 border-t">
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1"
-            onClick={handleCopy}
-          >
-            {copied ? (
-              <>
-                <Check className="h-4 w-4 mr-2" />
-                Copied!
-              </>
-            ) : (
-              <>
-                <Copy className="h-4 w-4 mr-2" />
-                Copy to Clipboard
-              </>
-            )}
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            className="flex-1"
-            onClick={onSave}
-            disabled={isSaving}
-          >
-            <Save className="h-4 w-4 mr-2" />
-            Save for Later
-          </Button>
+        <div className="flex flex-col gap-2 mt-4 pt-4 border-t">
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              onClick={handleCopy}
+            >
+              {copied ? (
+                <>
+                  <Check className="h-4 w-4 mr-2" />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy
+                </>
+              )}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="flex-1"
+              onClick={onSave}
+              disabled={isSaving}
+            >
+              <Save className="h-4 w-4 mr-2" />
+              Save
+            </Button>
+          </div>
+          {onSchedule && (
+            <Button
+              variant="default"
+              size="sm"
+              className="w-full"
+              onClick={onSchedule}
+            >
+              <CalendarPlus className="h-4 w-4 mr-2" />
+              Schedule to Calendar
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

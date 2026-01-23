@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { format } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 import { Header } from '@/components/Header';
 import { CalendarGrid } from '@/components/calendar/CalendarGrid';
+import { DayDetailPanel } from '@/components/calendar/DayDetailPanel';
 import { SchedulePostDialog } from '@/components/calendar/SchedulePostDialog';
 import { useScheduledPosts } from '@/hooks/useScheduledPosts';
 import { ScheduledPost } from '@/types/postIdea';
@@ -10,6 +11,7 @@ export default function Calendar() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedPost, setSelectedPost] = useState<ScheduledPost | null>(null);
+  const [showDayPanel, setShowDayPanel] = useState(false);
 
   const {
     scheduledPosts,
@@ -23,12 +25,12 @@ export default function Calendar() {
   const handleDayClick = (date: Date) => {
     setSelectedDate(date);
     setSelectedPost(null);
-    setDialogOpen(true);
+    setShowDayPanel(true);
   };
 
   const handlePostClick = (post: ScheduledPost) => {
     setSelectedPost(post);
-    setSelectedDate(null);
+    setSelectedDate(new Date(post.scheduled_date));
     setDialogOpen(true);
   };
 
@@ -37,6 +39,11 @@ export default function Calendar() {
       id: postId,
       scheduled_date: format(newDate, 'yyyy-MM-dd'),
     });
+  };
+
+  const handleAddPost = () => {
+    setSelectedPost(null);
+    setDialogOpen(true);
   };
 
   const handleSave = (post: {
@@ -61,6 +68,10 @@ export default function Calendar() {
     markAsPosted.mutate(id);
   };
 
+  const postsForSelectedDay = selectedDate
+    ? scheduledPosts.filter(post => isSameDay(new Date(post.scheduled_date), selectedDate))
+    : [];
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -75,12 +86,26 @@ export default function Calendar() {
           </p>
         </div>
 
-        <CalendarGrid
-          posts={scheduledPosts}
-          onDayClick={handleDayClick}
-          onPostClick={handlePostClick}
-          onPostDrop={handlePostDrop}
-        />
+        <div className="grid lg:grid-cols-[1fr_350px] gap-6">
+          <CalendarGrid
+            posts={scheduledPosts}
+            onDayClick={handleDayClick}
+            onPostClick={handlePostClick}
+            onPostDrop={handlePostDrop}
+          />
+
+          {showDayPanel && selectedDate && (
+            <DayDetailPanel
+              selectedDate={selectedDate}
+              posts={postsForSelectedDay}
+              onAddPost={handleAddPost}
+              onEditPost={handlePostClick}
+              onDeletePost={handleDelete}
+              onMarkPosted={handleMarkPosted}
+              onClose={() => setShowDayPanel(false)}
+            />
+          )}
+        </div>
 
         <SchedulePostDialog
           open={dialogOpen}
