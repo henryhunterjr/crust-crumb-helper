@@ -47,6 +47,18 @@ export function DayDetailPanel({
     }
   };
 
+  const handleCopyAndOpenSkool = async (post: ScheduledPost) => {
+    const fullPost = `${post.title}\n\n${post.content}`;
+    try {
+      await navigator.clipboard.writeText(fullPost);
+      window.open('https://www.skool.com/crust-crumb-academy-7621', '_blank');
+      toast.success('Content copied! Paste it in Skool to publish.');
+      onMarkPosted(post.id);
+    } catch {
+      toast.error('Failed to copy content');
+    }
+  };
+
   const getTimeSlotLabel = (slot: string | null) => {
     return TIME_SLOTS.find(t => t.value === slot)?.label || slot || 'Unscheduled';
   };
@@ -154,10 +166,10 @@ export function DayDetailPanel({
                       variant="outline"
                       size="sm"
                       className="h-7 text-xs"
-                      onClick={() => onMarkPosted(post.id)}
+                      onClick={() => handleCopyAndOpenSkool(post)}
                     >
                       <CheckCircle className="h-3 w-3 mr-1" />
-                      Mark Posted
+                      Copy & Open Skool
                     </Button>
                   )}
                   
