@@ -126,11 +126,17 @@ export function SchedulePostDialog({
     }
   };
 
-  const handlePostNow = () => {
-    handleCopy();
-    window.open('https://www.skool.com', '_blank');
-    if (existingPost && existingPost.id && onMarkPosted) {
-      onMarkPosted(existingPost.id);
+  const handleCopyAndOpenSkool = async () => {
+    const fullPost = `${title}\n\n${content}`;
+    try {
+      await navigator.clipboard.writeText(fullPost);
+      window.open('https://www.skool.com/crust-crumb-academy-7621', '_blank');
+      toast.success('Content copied! Paste it in Skool to publish.');
+      if (existingPost && existingPost.id && onMarkPosted) {
+        onMarkPosted(existingPost.id);
+      }
+    } catch {
+      toast.error('Failed to copy content');
     }
   };
 
@@ -264,9 +270,9 @@ export function SchedulePostDialog({
                 <Copy className="h-4 w-4 mr-2" />
                 Copy
               </Button>
-              <Button variant="secondary" size="sm" onClick={handlePostNow}>
+              <Button variant="secondary" size="sm" onClick={handleCopyAndOpenSkool}>
                 <ExternalLink className="h-4 w-4 mr-2" />
-                Post Now
+                Copy & Open Skool
               </Button>
             </>
           )}
