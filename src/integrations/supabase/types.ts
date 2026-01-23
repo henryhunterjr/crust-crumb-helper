@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      members: {
+        Row: {
+          application_answer: string | null
+          comment_count: number | null
+          created_at: string | null
+          email: string | null
+          engagement_status: string | null
+          id: string
+          join_date: string | null
+          last_active: string | null
+          notes: string | null
+          outreach_responded: boolean | null
+          outreach_sent: boolean | null
+          outreach_sent_at: string | null
+          post_count: number | null
+          skool_name: string
+          updated_at: string | null
+        }
+        Insert: {
+          application_answer?: string | null
+          comment_count?: number | null
+          created_at?: string | null
+          email?: string | null
+          engagement_status?: string | null
+          id?: string
+          join_date?: string | null
+          last_active?: string | null
+          notes?: string | null
+          outreach_responded?: boolean | null
+          outreach_sent?: boolean | null
+          outreach_sent_at?: string | null
+          post_count?: number | null
+          skool_name: string
+          updated_at?: string | null
+        }
+        Update: {
+          application_answer?: string | null
+          comment_count?: number | null
+          created_at?: string | null
+          email?: string | null
+          engagement_status?: string | null
+          id?: string
+          join_date?: string | null
+          last_active?: string | null
+          notes?: string | null
+          outreach_responded?: boolean | null
+          outreach_sent?: boolean | null
+          outreach_sent_at?: string | null
+          post_count?: number | null
+          skool_name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       post_ideas: {
         Row: {
           content: string

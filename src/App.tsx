@@ -7,6 +7,7 @@ import Dashboard from "./pages/Dashboard";
 import Responses from "./pages/Responses";
 import Generate from "./pages/Generate";
 import Calendar from "./pages/Calendar";
+import Members from "./pages/Members";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ const App = () => (
           <Route path="/responses" element={<Responses />} />
           <Route path="/generate" element={<Generate />} />
           <Route path="/calendar" element={<Calendar />} />
+          <Route path="/members" element={<Members />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
