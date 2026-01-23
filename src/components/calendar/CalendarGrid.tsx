@@ -14,15 +14,21 @@ import {
 } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ScheduledPost, POST_TYPE_COLORS } from '@/types/postIdea';
+import { ScheduledPost } from '@/types/postIdea';
 import { cn } from '@/lib/utils';
 
 interface CalendarGridProps {
   posts: ScheduledPost[];
-  onDayClick: (date: Date) => void;
+  onDayClick: (date: Date, posts: ScheduledPost[]) => void;
   onPostClick: (post: ScheduledPost) => void;
   onPostDrop: (postId: string, newDate: Date) => void;
 }
+
+const STATUS_DOT_COLORS = {
+  planned: 'bg-blue-500',
+  posted: 'bg-green-500',
+  skipped: 'bg-muted-foreground',
+};
 
 export function CalendarGrid({ posts, onDayClick, onPostClick, onPostDrop }: CalendarGridProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -98,29 +104,45 @@ export function CalendarGrid({ posts, onDayClick, onPostClick, onPostDrop }: Cal
         {days.map((day, index) => {
           const dayPosts = getPostsForDay(day);
           const isCurrentMonth = isSameMonth(day, currentMonth);
+          const hasPlannedPosts = dayPosts.some(p => p.status === 'planned');
+          const hasPostedPosts = dayPosts.some(p => p.status === 'posted');
           
           return (
             <div
               key={index}
               className={cn(
-                "min-h-[100px] border-b border-r p-1 cursor-pointer transition-colors",
+                "min-h-[100px] border-b border-r p-1.5 cursor-pointer transition-colors",
                 !isCurrentMonth && "bg-muted/30",
                 isToday(day) && "bg-primary/5",
+                dayPosts.length > 0 && "bg-accent/20",
                 "hover:bg-accent/50"
               )}
-              onClick={() => onDayClick(day)}
+              onClick={() => onDayClick(day, dayPosts)}
               onDragOver={handleDragOver}
               onDrop={(e) => handleDrop(e, day)}
             >
-              <div className={cn(
-                "text-sm font-medium mb-1 h-6 w-6 flex items-center justify-center rounded-full",
-                !isCurrentMonth && "text-muted-foreground",
-                isToday(day) && "bg-primary text-primary-foreground"
-              )}>
-                {format(day, 'd')}
+              <div className="flex items-center justify-between mb-1">
+                <div className={cn(
+                  "text-sm font-medium h-6 w-6 flex items-center justify-center rounded-full",
+                  !isCurrentMonth && "text-muted-foreground",
+                  isToday(day) && "bg-primary text-primary-foreground"
+                )}>
+                  {format(day, 'd')}
+                </div>
+                {/* Status dots indicator */}
+                {dayPosts.length > 0 && (
+                  <div className="flex gap-0.5">
+                    {hasPlannedPosts && (
+                      <div className={cn("h-2 w-2 rounded-full", STATUS_DOT_COLORS.planned)} />
+                    )}
+                    {hasPostedPosts && (
+                      <div className={cn("h-2 w-2 rounded-full", STATUS_DOT_COLORS.posted)} />
+                    )}
+                  </div>
+                )}
               </div>
-              <div className="space-y-1">
-                {dayPosts.slice(0, 3).map(post => (
+              <div className="space-y-0.5">
+                {dayPosts.slice(0, 2).map(post => (
                   <div
                     key={post.id}
                     draggable
@@ -130,18 +152,19 @@ export function CalendarGrid({ posts, onDayClick, onPostClick, onPostDrop }: Cal
                       onPostClick(post);
                     }}
                     className={cn(
-                      "text-xs p-1 rounded truncate cursor-grab active:cursor-grabbing",
-                      POST_TYPE_COLORS[post.post_type || ''] || 'bg-secondary text-secondary-foreground',
-                      post.status === 'posted' && 'opacity-50 line-through'
+                      "text-xs p-1 rounded truncate cursor-grab active:cursor-grabbing border",
+                      post.status === 'planned' && "bg-blue-50 border-blue-200 text-blue-900 dark:bg-blue-950 dark:border-blue-800 dark:text-blue-100",
+                      post.status === 'posted' && "bg-green-50 border-green-200 text-green-900 opacity-60 line-through dark:bg-green-950 dark:border-green-800 dark:text-green-100",
+                      post.status === 'skipped' && "bg-muted border-border text-muted-foreground opacity-50"
                     )}
                     title={post.title}
                   >
                     {post.title}
                   </div>
                 ))}
-                {dayPosts.length > 3 && (
-                  <div className="text-xs text-muted-foreground">
-                    +{dayPosts.length - 3} more
+                {dayPosts.length > 2 && (
+                  <div className="text-xs text-muted-foreground pl-1">
+                    +{dayPosts.length - 2} more
                   </div>
                 )}
               </div>

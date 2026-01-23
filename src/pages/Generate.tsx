@@ -12,7 +12,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { GeneratedPostCard } from '@/components/generate/GeneratedPostCard';
+import { SchedulePostDialog } from '@/components/calendar/SchedulePostDialog';
 import { usePostIdeas } from '@/hooks/usePostIdeas';
+import { useScheduledPosts } from '@/hooks/useScheduledPosts';
 import { POST_TYPES, TARGET_AUDIENCES } from '@/types/postIdea';
 import { toast } from 'sonner';
 
@@ -26,8 +28,11 @@ export default function Generate() {
   const [postType, setPostType] = useState('');
   const [targetAudience, setTargetAudience] = useState('');
   const [generatedPosts, setGeneratedPosts] = useState<GeneratedPost[]>([]);
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const [postToSchedule, setPostToSchedule] = useState<GeneratedPost | null>(null);
   
   const { generatePosts, isGenerating, savePostIdea } = usePostIdeas();
+  const { createScheduledPost } = useScheduledPosts();
 
   const handleGenerate = async () => {
     if (!topic.trim()) {
@@ -63,6 +68,23 @@ export default function Generate() {
       target_audience: targetAudience,
       topic,
     });
+  };
+
+  const handleSchedule = (post: GeneratedPost) => {
+    setPostToSchedule(post);
+    setScheduleDialogOpen(true);
+  };
+
+  const handleScheduleSave = (scheduledPost: {
+    title: string;
+    content: string;
+    scheduled_date: string;
+    time_slot?: string;
+    post_type?: string;
+  }) => {
+    createScheduledPost.mutate(scheduledPost);
+    setScheduleDialogOpen(false);
+    setPostToSchedule(null);
   };
 
   return (
@@ -160,6 +182,7 @@ export default function Generate() {
                     title={post.title}
                     content={post.content}
                     onSave={() => handleSave(post)}
+                    onSchedule={() => handleSchedule(post)}
                     isSaving={savePostIdea.isPending}
                   />
                 ))}
@@ -168,6 +191,26 @@ export default function Generate() {
           )}
         </div>
       </main>
+
+      {/* Schedule Dialog */}
+      <SchedulePostDialog
+        open={scheduleDialogOpen}
+        onOpenChange={setScheduleDialogOpen}
+        selectedDate={new Date()}
+        existingPost={postToSchedule ? {
+          id: '',
+          title: postToSchedule.title,
+          content: postToSchedule.content,
+          scheduled_date: new Date().toISOString(),
+          time_slot: null,
+          post_type: postType || null,
+          status: 'planned',
+          posted_at: null,
+          created_at: new Date().toISOString(),
+        } : null}
+        onSave={handleScheduleSave}
+        isNewFromIdea
+      />
     </div>
   );
 }

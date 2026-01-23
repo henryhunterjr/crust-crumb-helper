@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Calendar, Clock, Copy, ExternalLink, Trash2 } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, Copy, ExternalLink, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
 import {
   Dialog,
   DialogContent,
@@ -10,6 +11,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -22,6 +28,7 @@ import {
 } from '@/components/ui/select';
 import { POST_TYPES, TIME_SLOTS, ScheduledPost } from '@/types/postIdea';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface SchedulePostDialogProps {
   open: boolean;
@@ -38,6 +45,7 @@ interface SchedulePostDialogProps {
   onUpdate?: (id: string, updates: Partial<ScheduledPost>) => void;
   onDelete?: (id: string) => void;
   onMarkPosted?: (id: string) => void;
+  isNewFromIdea?: boolean;
 }
 
 export function SchedulePostDialog({
@@ -49,11 +57,13 @@ export function SchedulePostDialog({
   onUpdate,
   onDelete,
   onMarkPosted,
+  isNewFromIdea = false,
 }: SchedulePostDialogProps) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [timeSlot, setTimeSlot] = useState<string>('');
   const [postType, setPostType] = useState<string>('');
+  const [scheduleDate, setScheduleDate] = useState<Date | undefined>(selectedDate || undefined);
 
   useEffect(() => {
     if (existingPost) {
@@ -61,32 +71,44 @@ export function SchedulePostDialog({
       setContent(existingPost.content);
       setTimeSlot(existingPost.time_slot || '');
       setPostType(existingPost.post_type || '');
+      if (!isNewFromIdea) {
+        setScheduleDate(new Date(existingPost.scheduled_date));
+      }
     } else {
       setTitle('');
       setContent('');
       setTimeSlot('');
       setPostType('');
     }
-  }, [existingPost, open]);
+    if (selectedDate && !isNewFromIdea) {
+      setScheduleDate(selectedDate);
+    }
+  }, [existingPost, selectedDate, open, isNewFromIdea]);
 
   const handleSave = () => {
     if (!title.trim() || !content.trim()) {
       toast.error('Title and content are required');
       return;
     }
+    
+    if (!scheduleDate) {
+      toast.error('Please select a date');
+      return;
+    }
 
-    if (existingPost && onUpdate) {
+    // If editing an existing post (not from idea)
+    if (existingPost && existingPost.id && onUpdate && !isNewFromIdea) {
       onUpdate(existingPost.id, {
         title,
         content,
         time_slot: timeSlot || null,
         post_type: postType || null,
       });
-    } else if (selectedDate) {
+    } else {
       onSave({
         title,
         content,
-        scheduled_date: format(selectedDate, 'yyyy-MM-dd'),
+        scheduled_date: format(scheduleDate, 'yyyy-MM-dd'),
         time_slot: timeSlot || undefined,
         post_type: postType || undefined,
       });
@@ -107,34 +129,32 @@ export function SchedulePostDialog({
   const handlePostNow = () => {
     handleCopy();
     window.open('https://www.skool.com', '_blank');
-    if (existingPost && onMarkPosted) {
+    if (existingPost && existingPost.id && onMarkPosted) {
       onMarkPosted(existingPost.id);
     }
   };
 
   const handleDelete = () => {
-    if (existingPost && onDelete) {
+    if (existingPost && existingPost.id && onDelete) {
       onDelete(existingPost.id);
       onOpenChange(false);
     }
   };
 
-  const isEditing = !!existingPost;
-  const displayDate = existingPost 
-    ? new Date(existingPost.scheduled_date) 
-    : selectedDate;
+  const isEditing = existingPost && existingPost.id && !isNewFromIdea;
+  const showDatePicker = isNewFromIdea || !selectedDate;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
+            <CalendarIcon className="h-5 w-5" />
             {isEditing ? 'Edit Scheduled Post' : 'Schedule New Post'}
           </DialogTitle>
-          {displayDate && (
+          {scheduleDate && !showDatePicker && (
             <DialogDescription>
-              {format(displayDate, 'EEEE, MMMM d, yyyy')}
+              {format(scheduleDate, 'EEEE, MMMM d, yyyy')}
             </DialogDescription>
           )}
         </DialogHeader>
@@ -161,7 +181,36 @@ export function SchedulePostDialog({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className={cn("grid gap-4", showDatePicker ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-2")}>
+            {showDatePicker && (
+              <div className="grid gap-2">
+                <Label>Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "justify-start text-left font-normal",
+                        !scheduleDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {scheduleDate ? format(scheduleDate, 'MMM d, yyyy') : 'Pick a date'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={scheduleDate}
+                      onSelect={setScheduleDate}
+                      initialFocus
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
+            
             <div className="grid gap-2">
               <Label>Time Slot</Label>
               <Select value={timeSlot} onValueChange={setTimeSlot}>
