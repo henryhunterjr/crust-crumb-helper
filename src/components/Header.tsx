@@ -7,6 +7,7 @@ const navItems = [
   { href: '/responses', label: 'Responses' },
   { href: '/generate', label: 'Generate' },
   { href: '/calendar', label: 'Calendar' },
+  { href: '/members', label: 'Members' },
 ];
 
 export function Header() {

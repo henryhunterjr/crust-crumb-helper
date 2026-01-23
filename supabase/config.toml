@@ -2,3 +2,6 @@ project_id = "anponqqhjugwflakydsf"
 
 [functions.generate-post]
 verify_jwt = false
+
+[functions.generate-dm]
+verify_jwt = false
