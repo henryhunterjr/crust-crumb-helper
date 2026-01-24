@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Copy, ExternalLink, RefreshCw, CheckCircle, Loader2, BookOpen, ChefHat, MessageCircle, Sparkles, Pencil } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Copy, ExternalLink, RefreshCw, CheckCircle, Loader2, BookOpen, ChefHat, MessageCircle, Sparkles, Pencil, FileText, Save, ChevronDown } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,17 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from '@/components/ui/dropdown-menu';
 import { Member, OutreachType } from '@/types/member';
+import { DMTemplate } from '@/types/dmTemplate';
+import { useDMTemplates } from '@/hooks/useDMTemplates';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -74,6 +84,14 @@ export function GeneratedDMDialog({
 }: GeneratedDMDialogProps) {
   const [copied, setCopied] = useState(false);
   const [localCustomTopic, setLocalCustomTopic] = useState(customTopic);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+  
+  const { templates, createTemplate, incrementUseCount } = useDMTemplates();
+
+  useEffect(() => {
+    setLocalCustomTopic(customTopic);
+  }, [customTopic]);
 
   const handleCopyAndOpen = async () => {
     try {
@@ -116,6 +134,45 @@ export function GeneratedDMDialog({
     }
   };
 
+  const handleUseTemplate = (template: DMTemplate) => {
+    if (!member) return;
+    
+    // Replace {name} placeholder with member's first name
+    const firstName = member.skool_name.split(' ')[0];
+    const personalizedMessage = template.content.replace(/\{name\}/gi, firstName);
+    
+    // Copy to clipboard immediately
+    navigator.clipboard.writeText(personalizedMessage).then(() => {
+      toast.success('Template copied to clipboard!');
+      incrementUseCount.mutate(template.id);
+    }).catch(() => {
+      toast.error('Failed to copy template');
+    });
+  };
+
+  const handleSaveAsTemplate = async () => {
+    if (!templateName.trim() || !message) return;
+    
+    try {
+      // Replace the member's name back with placeholder
+      const firstName = member?.skool_name.split(' ')[0] || '';
+      const templateContent = message.replace(new RegExp(firstName, 'g'), '{name}');
+      
+      await createTemplate.mutateAsync({
+        name: templateName.trim(),
+        content: templateContent,
+        outreach_type: outreachType,
+      });
+      
+      toast.success('Template saved!');
+      setShowSaveDialog(false);
+      setTemplateName('');
+    } catch (error) {
+      console.error('Save template error:', error);
+      toast.error('Failed to save template');
+    }
+  };
+
   if (!member) return null;
 
   const hasResources = matchedResources.length > 0 || matchedRecipes.length > 0;
@@ -123,9 +180,47 @@ export function GeneratedDMDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>DM for {member.skool_name}</DialogTitle>
+          <DialogTitle className="flex items-center justify-between">
+            <span>DM for {member.skool_name}</span>
+            {templates.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <FileText className="h-4 w-4 mr-2" />
+                    Templates
+                    <ChevronDown className="h-3 w-3 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64">
+                  <DropdownMenuLabel>Use a saved template</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {templates.slice(0, 5).map((template) => (
+                    <DropdownMenuItem
+                      key={template.id}
+                      onClick={() => handleUseTemplate(template)}
+                    >
+                      <div className="flex flex-col">
+                        <span className="font-medium">{template.name}</span>
+                        <span className="text-xs text-muted-foreground line-clamp-1">
+                          {template.content.slice(0, 50)}...
+                        </span>
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                  {templates.length > 5 && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem className="text-muted-foreground text-xs">
+                        +{templates.length - 5} more in Settings
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </DialogTitle>
         </DialogHeader>
 
         {/* Outreach Type Selection */}
@@ -293,41 +388,88 @@ export function GeneratedDMDialog({
         </div>
 
         {message && (
-          <div className="flex flex-wrap gap-2 mt-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRegenerate}
-              disabled={isGenerating}
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${isGenerating ? 'animate-spin' : ''}`} />
-              Regenerate
-            </Button>
-            
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleCopyAndOpen}
-              disabled={isGenerating || !message}
-            >
-              {copied ? (
-                <CheckCircle className="h-4 w-4 mr-2" />
-              ) : (
-                <Copy className="h-4 w-4 mr-2" />
-              )}
-              Copy & Open Skool DMs
-              <ExternalLink className="h-3 w-3 ml-1" />
-            </Button>
+          <>
+            {/* Save as template section */}
+            {showSaveDialog ? (
+              <div className="flex gap-2 items-center p-3 bg-muted/50 rounded-lg">
+                <Input
+                  value={templateName}
+                  onChange={(e) => setTemplateName(e.target.value)}
+                  placeholder="Template name..."
+                  className="flex-1"
+                  onKeyDown={(e) => e.key === 'Enter' && handleSaveAsTemplate()}
+                />
+                <Button
+                  size="sm"
+                  onClick={handleSaveAsTemplate}
+                  disabled={!templateName.trim() || createTemplate.isPending}
+                >
+                  {createTemplate.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    'Save'
+                  )}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setShowSaveDialog(false);
+                    setTemplateName('');
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            ) : null}
 
-            <Button
-              size="sm"
-              onClick={handleMarkSent}
-              disabled={isGenerating || !message}
-            >
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Mark as Sent
-            </Button>
-          </div>
+            <div className="flex flex-wrap gap-2 mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRegenerate}
+                disabled={isGenerating}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isGenerating ? 'animate-spin' : ''}`} />
+                Regenerate
+              </Button>
+
+              {!showSaveDialog && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowSaveDialog(true)}
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  Save as Template
+                </Button>
+              )}
+              
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleCopyAndOpen}
+                disabled={isGenerating || !message}
+              >
+                {copied ? (
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                ) : (
+                  <Copy className="h-4 w-4 mr-2" />
+                )}
+                Copy & Open Skool DMs
+                <ExternalLink className="h-3 w-3 ml-1" />
+              </Button>
+
+              <Button
+                size="sm"
+                onClick={handleMarkSent}
+                disabled={isGenerating || !message}
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Mark as Sent
+              </Button>
+            </div>
+          </>
         )}
       </DialogContent>
     </Dialog>
