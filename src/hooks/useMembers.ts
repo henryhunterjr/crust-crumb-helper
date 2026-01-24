@@ -50,6 +50,7 @@ export function useMembers() {
         
         return {
           skool_name: row.name,
+          skool_username: row.skoolUsername || null,
           email: row.email || null,
           join_date: row.joinDate || null,
           application_answer: row.applicationAnswer || null,
@@ -144,6 +145,7 @@ export function useMembers() {
   const addMember = useMutation({
     mutationFn: async (memberData: {
       skool_name: string;
+      skool_username?: string;
       application_answer?: string;
       join_date?: string;
       email?: string;
@@ -159,6 +161,7 @@ export function useMembers() {
         .from('members')
         .insert({
           skool_name: memberData.skool_name,
+          skool_username: memberData.skool_username || null,
           application_answer: memberData.application_answer || null,
           join_date: memberData.join_date || null,
           email: memberData.email || null,

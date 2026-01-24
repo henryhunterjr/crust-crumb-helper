@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format, parseISO, differenceInDays } from 'date-fns';
-import { Calendar, Clock, FileText, MessageSquare, Send, CheckCircle, Save } from 'lucide-react';
+import { Calendar, Clock, FileText, MessageSquare, Send, CheckCircle, Save, Link2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -48,6 +49,7 @@ export function MemberDetailDialog({
 }: MemberDetailDialogProps) {
   const [notes, setNotes] = useState(member?.notes || '');
   const [status, setStatus] = useState<EngagementStatus>(member?.engagement_status || 'unknown');
+  const [skoolUsername, setSkoolUsername] = useState(member?.skool_username || '');
   const [hasChanges, setHasChanges] = useState(false);
 
   if (!member) return null;
@@ -61,9 +63,14 @@ export function MemberDetailDialog({
     : null;
 
   const handleSave = () => {
-    onUpdate({ notes, engagement_status: status });
+    onUpdate({ notes, engagement_status: status, skool_username: skoolUsername || null });
     setHasChanges(false);
     toast.success('Member updated');
+  };
+
+  const handleSkoolUsernameChange = (value: string) => {
+    setSkoolUsername(value);
+    setHasChanges(true);
   };
 
   const handleNotesChange = (value: string) => {
@@ -132,6 +139,24 @@ export function MemberDetailDialog({
               <p className="mt-1 text-sm">{member.email}</p>
             </div>
           )}
+
+          {/* Skool Username */}
+          <div>
+            <Label htmlFor="skoolUsername" className="flex items-center gap-1">
+              <Link2 className="h-3 w-3" />
+              Skool Username
+            </Label>
+            <Input
+              id="skoolUsername"
+              value={skoolUsername}
+              onChange={(e) => handleSkoolUsernameChange(e.target.value)}
+              placeholder="e.g. josh-malcom-8453"
+              className="mt-1"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Used for direct profile links. Find in their profile URL: skool.com/@<strong>username</strong>
+            </p>
+          </div>
 
           {/* Outreach status */}
           <div className="flex items-center justify-between p-3 bg-muted/50 rounded-md">

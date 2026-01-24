@@ -5,6 +5,7 @@ export type OutreachType = 'welcome_message' | 'resource_recommendation' | 'feed
 export interface Member {
   id: string;
   skool_name: string;
+  skool_username: string | null;
   email: string | null;
   join_date: string | null;
   application_answer: string | null;
@@ -22,6 +23,7 @@ export interface Member {
 
 export interface MemberImportRow {
   name: string;
+  skoolUsername?: string;
   email?: string;
   joinDate?: string;
   applicationAnswer?: string;

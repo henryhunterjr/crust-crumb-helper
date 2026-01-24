@@ -97,8 +97,20 @@ export function GeneratedDMDialog({
     try {
       await navigator.clipboard.writeText(message);
       setCopied(true);
-      window.open('https://www.skool.com/crust-crumb-academy-7621/members', '_blank');
-      toast.success('Message copied! Find the member in Skool to send.');
+      
+      // Build the Skool URL based on whether we have a username
+      if (member?.skool_username) {
+        // Direct profile link
+        window.open(`https://www.skool.com/@${member.skool_username}?g=crust-crumb-academy-7621`, '_blank');
+        toast.success('Message copied! Opening profile...');
+      } else {
+        // Fallback: search by name
+        const nameParts = member?.skool_name.split(' ') || [];
+        const searchQuery = nameParts.join('+');
+        window.open(`https://www.skool.com/crust-crumb-academy-7621/members?q=${encodeURIComponent(searchQuery)}`, '_blank');
+        toast.success(`Searching for ${member?.skool_name} in Skool members...`);
+      }
+      
       setTimeout(() => setCopied(false), 2000);
     } catch {
       toast.error('Failed to copy message');
