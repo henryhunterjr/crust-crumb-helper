@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      classroom_resources: {
+        Row: {
+          category: string
+          created_at: string | null
+          description: string | null
+          id: string
+          keywords: string[] | null
+          skill_level: string | null
+          title: string
+          url: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          keywords?: string[] | null
+          skill_level?: string | null
+          title: string
+          url?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          keywords?: string[] | null
+          skill_level?: string | null
+          title?: string
+          url?: string | null
+        }
+        Relationships: []
+      }
       members: {
         Row: {
           application_answer: string | null

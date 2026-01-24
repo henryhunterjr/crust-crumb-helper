@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format, parseISO, differenceInDays } from 'date-fns';
-import { MessageSquare, FileText, Calendar, Clock, Send, CheckCircle, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { MessageSquare, FileText, Calendar, Clock, Send, CheckCircle, ChevronDown, ChevronUp, Loader2, AlertCircle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -116,7 +116,7 @@ export function MemberCard({
           </div>
 
           {/* Application answer */}
-          {applicationAnswer && (
+          {applicationAnswer ? (
             <div className="mt-2">
               <p className="text-sm italic text-muted-foreground">
                 "{displayAnswer}"
@@ -133,6 +133,11 @@ export function MemberCard({
                   )}
                 </button>
               )}
+            </div>
+          ) : (
+            <div className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
+              <AlertCircle className="h-3.5 w-3.5" />
+              <span className="italic">No application answer</span>
             </div>
           )}
 

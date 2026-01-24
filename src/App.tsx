@@ -8,6 +8,7 @@ import Responses from "./pages/Responses";
 import Generate from "./pages/Generate";
 import Calendar from "./pages/Calendar";
 import Members from "./pages/Members";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/generate" element={<Generate />} />
           <Route path="/calendar" element={<Calendar />} />
           <Route path="/members" element={<Members />} />
+          <Route path="/settings" element={<Settings />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
