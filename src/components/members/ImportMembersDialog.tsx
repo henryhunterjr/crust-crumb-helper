@@ -44,6 +44,9 @@ export function ImportMembersDialog({
       'skool_name': 'name',
       'skool name': 'name',
       'member': 'name',
+      'skool_username': 'skoolUsername',
+      'skool username': 'skoolUsername',
+      'username': 'skoolUsername',
       'email': 'email',
       'join date': 'joinDate',
       'join_date': 'joinDate',
@@ -104,6 +107,9 @@ export function ImportMembersDialog({
         name: values[columnIndices.name!] || '',
       };
 
+      if (columnIndices.skoolUsername !== undefined) {
+        row.skoolUsername = values[columnIndices.skoolUsername] || undefined;
+      }
       if (columnIndices.email !== undefined) {
         row.email = values[columnIndices.email] || undefined;
       }

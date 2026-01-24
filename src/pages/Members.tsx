@@ -169,6 +169,7 @@ export default function Members() {
 
   const handleAddMember = async (memberData: {
     skool_name: string;
+    skool_username?: string;
     application_answer?: string;
     join_date?: string;
     email?: string;
@@ -382,6 +383,10 @@ export default function Members() {
                 onGenerateDM={() => generateDM(member)}
                 isGenerating={isGeneratingDM && selectedMember?.id === member.id}
                 onClick={() => handleOpenDetail(member)}
+                onUpdateUsername={async (username) => {
+                  await updateMember.mutateAsync({ id: member.id, updates: { skool_username: username } });
+                  toast.success('Skool username saved');
+                }}
               />
             ))}
           </div>

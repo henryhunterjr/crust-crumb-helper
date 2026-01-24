@@ -18,6 +18,7 @@ interface AddMemberDialogProps {
   onOpenChange: (open: boolean) => void;
   onAdd: (member: {
     skool_name: string;
+    skool_username?: string;
     application_answer?: string;
     join_date?: string;
     email?: string;
@@ -32,6 +33,7 @@ export function AddMemberDialog({
   isAdding,
 }: AddMemberDialogProps) {
   const [name, setName] = useState('');
+  const [skoolUsername, setSkoolUsername] = useState('');
   const [applicationAnswer, setApplicationAnswer] = useState('');
   const [joinDate, setJoinDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [email, setEmail] = useState('');
@@ -43,6 +45,7 @@ export function AddMemberDialog({
 
     await onAdd({
       skool_name: name.trim(),
+      skool_username: skoolUsername.trim() || undefined,
       application_answer: applicationAnswer.trim() || undefined,
       join_date: joinDate || undefined,
       email: email.trim() || undefined,
@@ -50,6 +53,7 @@ export function AddMemberDialog({
 
     // Reset form
     setName('');
+    setSkoolUsername('');
     setApplicationAnswer('');
     setJoinDate(format(new Date(), 'yyyy-MM-dd'));
     setEmail('');
@@ -78,6 +82,19 @@ export function AddMemberDialog({
               placeholder="Member's name"
               required
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="skoolUsername">Skool Username (optional)</Label>
+            <Input
+              id="skoolUsername"
+              value={skoolUsername}
+              onChange={(e) => setSkoolUsername(e.target.value)}
+              placeholder="e.g. josh-malcom-8453"
+            />
+            <p className="text-xs text-muted-foreground">
+              Find this in their Skool profile URL: skool.com/@<strong>username</strong>
+            </p>
           </div>
 
           <div className="space-y-2">

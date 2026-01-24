@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Member, EngagementStatus } from '@/types/member';
+import { SkoolUsernameInput } from './SkoolUsernameInput';
 import { cn } from '@/lib/utils';
 
 interface MemberCardProps {
@@ -14,6 +15,7 @@ interface MemberCardProps {
   onGenerateDM: () => void;
   isGenerating: boolean;
   onClick: () => void;
+  onUpdateUsername: (username: string) => Promise<void>;
 }
 
 const statusConfig: Record<EngagementStatus, { label: string; className: string }> = {
@@ -30,7 +32,8 @@ export function MemberCard({
   onSelect, 
   onGenerateDM, 
   isGenerating,
-  onClick 
+  onClick,
+  onUpdateUsername,
 }: MemberCardProps) {
   const status = statusConfig[member.engagement_status] || statusConfig.unknown;
   
@@ -127,8 +130,8 @@ export function MemberCard({
             )}
           </div>
 
-          {/* Activity stats and outreach status */}
-          <div className="flex flex-wrap gap-4 mt-3 text-sm">
+          {/* Activity stats, outreach status, and Skool username */}
+          <div className="flex flex-wrap items-center gap-4 mt-3 text-sm">
             <span className="flex items-center gap-1">
               <FileText className="h-3.5 w-3.5 text-muted-foreground" />
               {member.post_count} posts, {member.comment_count} comments
@@ -147,6 +150,11 @@ export function MemberCard({
               )}
               {outreachStatus}
             </span>
+            <SkoolUsernameInput
+              username={member.skool_username}
+              onSave={onUpdateUsername}
+              compact
+            />
           </div>
         </div>
       </div>
