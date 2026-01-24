@@ -16,6 +16,16 @@ interface ClassroomResource {
   url: string | null;
 }
 
+interface Recipe {
+  id: string;
+  title: string;
+  description: string | null;
+  category: string;
+  skill_level: string;
+  keywords: string[] | null;
+  url: string | null;
+}
+
 // Extract keywords from text
 function extractKeywords(text: string): string[] {
   if (!text) return [];
@@ -50,7 +60,6 @@ function findMatchingResources(
   resources: ClassroomResource[]
 ): ClassroomResource[] {
   if (!applicationAnswer || resources.length === 0) {
-    // Return beginner resources as fallback
     return resources
       .filter(r => r.skill_level === 'beginner')
       .slice(0, 5);
@@ -58,17 +67,14 @@ function findMatchingResources(
   
   const memberKeywords = extractKeywords(applicationAnswer);
   
-  // Score each resource based on keyword matches
   const scoredResources = resources.map(resource => {
     let score = 0;
     
-    // Check keyword overlap
     if (resource.keywords) {
       for (const keyword of resource.keywords) {
         if (memberKeywords.includes(keyword.toLowerCase())) {
           score += 3;
         }
-        // Partial match
         for (const memberKeyword of memberKeywords) {
           if (keyword.toLowerCase().includes(memberKeyword) || 
               memberKeyword.includes(keyword.toLowerCase())) {
@@ -78,7 +84,6 @@ function findMatchingResources(
       }
     }
     
-    // Check if title/description contains member keywords
     const titleWords = extractKeywords(resource.title);
     const descWords = resource.description ? extractKeywords(resource.description) : [];
     
@@ -87,24 +92,98 @@ function findMatchingResources(
       if (descWords.includes(memberKeyword)) score += 1;
     }
     
-    // Boost beginner resources slightly for new members
     if (resource.skill_level === 'beginner') score += 0.5;
     
     return { resource, score };
   });
   
-  // Sort by score and return top matches
   const matches = scoredResources
     .filter(r => r.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, 5)
     .map(r => r.resource);
   
-  // If no matches, return beginner resources
   if (matches.length === 0) {
     return resources
       .filter(r => r.skill_level === 'beginner')
       .slice(0, 5);
+  }
+  
+  return matches;
+}
+
+// Find matching recipes based on member's application answer
+function findMatchingRecipes(
+  applicationAnswer: string | null,
+  recipes: Recipe[]
+): Recipe[] {
+  if (!applicationAnswer || recipes.length === 0) {
+    return recipes
+      .filter(r => r.skill_level === 'beginner')
+      .slice(0, 3);
+  }
+  
+  const memberKeywords = extractKeywords(applicationAnswer);
+  const lowerAnswer = applicationAnswer.toLowerCase();
+  
+  // Check for specific bread type mentions
+  const breadTypes = [
+    'bagel', 'focaccia', 'baguette', 'challah', 'ciabatta', 'brioche', 'pizza',
+    'pita', 'cinnamon roll', 'english muffin', 'bread bowl', 'cracker', 'pancake',
+    'babka', 'danish', 'scone', 'doughnut', 'donut', 'muffin', 'roll', 'bun',
+    'rye', 'sourdough', 'yeasted', 'gluten-free', 'gluten free', 'whole wheat',
+    'milk bread', 'shokupan', 'king cake', 'banana bread', 'pumpkin', 'blueberry',
+    'cranberry', 'walnut', 'chocolate', 'cheddar', 'jalapeño', 'jalapeno'
+  ];
+  
+  const mentionedTypes = breadTypes.filter(type => lowerAnswer.includes(type));
+  
+  const scoredRecipes = recipes.map(recipe => {
+    let score = 0;
+    
+    // High score for direct bread type mention
+    for (const type of mentionedTypes) {
+      if (recipe.title.toLowerCase().includes(type)) score += 5;
+      if (recipe.keywords?.some(k => k.toLowerCase().includes(type))) score += 4;
+    }
+    
+    if (recipe.keywords) {
+      for (const keyword of recipe.keywords) {
+        if (memberKeywords.includes(keyword.toLowerCase())) {
+          score += 3;
+        }
+        for (const memberKeyword of memberKeywords) {
+          if (keyword.toLowerCase().includes(memberKeyword) || 
+              memberKeyword.includes(keyword.toLowerCase())) {
+            score += 1;
+          }
+        }
+      }
+    }
+    
+    const titleWords = extractKeywords(recipe.title);
+    const descWords = recipe.description ? extractKeywords(recipe.description) : [];
+    
+    for (const memberKeyword of memberKeywords) {
+      if (titleWords.includes(memberKeyword)) score += 2;
+      if (descWords.includes(memberKeyword)) score += 1;
+    }
+    
+    if (recipe.skill_level === 'beginner') score += 0.5;
+    
+    return { recipe, score };
+  });
+  
+  const matches = scoredRecipes
+    .filter(r => r.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5)
+    .map(r => r.recipe);
+  
+  if (matches.length === 0) {
+    return recipes
+      .filter(r => r.skill_level === 'beginner')
+      .slice(0, 3);
   }
   
   return matches;
@@ -117,7 +196,18 @@ function formatResourcesForPrompt(resources: ClassroomResource[]): string {
   }
   
   return resources.map(r => 
-    `- "${r.title}" (${r.category}, ${r.skill_level}): ${r.description || 'No description'}`
+    `- "${r.title}" (${r.category}, ${r.skill_level}): ${r.description || 'No description'}${r.url ? ` - ${r.url}` : ''}`
+  ).join('\n');
+}
+
+// Format recipes for the prompt
+function formatRecipesForPrompt(recipes: Recipe[]): string {
+  if (recipes.length === 0) {
+    return 'No specific recipes available.';
+  }
+  
+  return recipes.map(r => 
+    `- "${r.title}" (${r.category}, ${r.skill_level}): ${r.description || 'No description'}${r.url ? ` - ${r.url}` : ''}`
   ).join('\n');
 }
 
@@ -147,16 +237,24 @@ serve(async (req) => {
       );
     }
 
-    // Fetch classroom resources
+    // Fetch classroom resources and recipes
     let matchedResources: ClassroomResource[] = [];
+    let matchedRecipes: Recipe[] = [];
+    
     if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
       const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-      const { data: resources } = await supabase
-        .from('classroom_resources')
-        .select('*');
       
-      if (resources && resources.length > 0) {
-        matchedResources = findMatchingResources(member.application_answer, resources);
+      const [resourcesResult, recipesResult] = await Promise.all([
+        supabase.from('classroom_resources').select('*'),
+        supabase.from('recipes').select('*')
+      ]);
+      
+      if (resourcesResult.data && resourcesResult.data.length > 0) {
+        matchedResources = findMatchingResources(member.application_answer, resourcesResult.data);
+      }
+      
+      if (recipesResult.data && recipesResult.data.length > 0) {
+        matchedRecipes = findMatchingRecipes(member.application_answer, recipesResult.data);
       }
     }
 
@@ -174,25 +272,33 @@ serve(async (req) => {
 
     const hasApplicationAnswer = member.application_answer && member.application_answer.trim().length > 0;
     const resourcesForPrompt = formatResourcesForPrompt(matchedResources);
+    const recipesForPrompt = formatRecipesForPrompt(matchedRecipes);
 
     const systemPrompt = `Generate a warm, personal DM to re-engage a bread baking community member.
 
 Community: Crust & Crumb Academy (bread baking)
 Tone: Henry's voice - warm, encouraging, personal, like a friend checking in. Not salesy or corporate.
 
-Available Classroom Resources (recommend 1-2 that match their goal):
+Available Classroom Resources (recommend if they want to LEARN something):
 ${resourcesForPrompt}
 
+Available Recipes (recommend if they mention wanting to MAKE a specific bread):
+${recipesForPrompt}
+
 Instructions:
+- Analyze what the member said they want to learn or make
+- If they mention a specific bread type (bagels, focaccia, sourdough, etc.), check if we have that recipe and recommend it
+- If they want to learn technique or troubleshoot, recommend a classroom resource
+- You can recommend BOTH a recipe AND a classroom resource if relevant
 ${hasApplicationAnswer 
-  ? '- Analyze what the member said they want to learn\n- Match them to 1-2 SPECIFIC classroom lessons from the list above\n- Reference what they said they wanted to learn'
+  ? '- Reference what they said they wanted to learn or make\n- Match them to specific resources and/or recipes from the lists above'
   : '- Since their application answer is empty/vague, recommend beginner sourdough resources\n- Use a warm, welcoming tone for someone just getting started'}
 - Write the DM with:
   - Personal greeting using their first name
-  - ${hasApplicationAnswer ? 'Reference what they said they wanted to learn' : 'Welcome them warmly and acknowledge they are new'}
-  - Recommend 1-2 SPECIFIC classroom lessons by name with brief reason why
+  - ${hasApplicationAnswer ? 'Reference what they said they wanted to learn or make' : 'Welcome them warmly and acknowledge they are new'}
+  - Recommend specific resources/recipes by name with the actual URL
   - Invitation to ask questions or share their progress
-- Keep it under 120 words
+- Keep it under 130 words
 - Sign off as Henry
 
 Do not use: 'dive deep', 'journey', 'excited to have you', 'don't hesitate', em dashes, 'embark', 'game changer'`;
@@ -219,7 +325,7 @@ Write a personalized re-engagement DM for this member.`;
           { role: 'user', content: userPrompt }
         ],
         temperature: 0.8,
-        max_tokens: 400,
+        max_tokens: 500,
       }),
     });
 
@@ -258,6 +364,7 @@ Write a personalized re-engagement DM for this member.`;
       JSON.stringify({ 
         message: message.trim(),
         matched_resources: matchedResources.map(r => r.title),
+        matched_recipes: matchedRecipes.map(r => r.title),
         has_application_answer: hasApplicationAnswer
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
