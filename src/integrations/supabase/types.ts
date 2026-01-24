@@ -47,6 +47,42 @@ export type Database = {
         }
         Relationships: []
       }
+      dm_templates: {
+        Row: {
+          content: string
+          created_at: string
+          description: string | null
+          id: string
+          last_used_at: string | null
+          name: string
+          outreach_type: string
+          updated_at: string
+          use_count: number | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          last_used_at?: string | null
+          name: string
+          outreach_type?: string
+          updated_at?: string
+          use_count?: number | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          last_used_at?: string | null
+          name?: string
+          outreach_type?: string
+          updated_at?: string
+          use_count?: number | null
+        }
+        Relationships: []
+      }
       members: {
         Row: {
           application_answer: string | null
