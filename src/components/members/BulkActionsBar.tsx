@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { X, MessageSquare, BookOpen, MessageCircle, ChevronDown } from 'lucide-react';
+import { X, MessageSquare, BookOpen, MessageCircle, ChevronDown, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -39,6 +38,10 @@ export function BulkActionsBar({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="center">
+          <DropdownMenuItem onClick={() => onBulkGenerateDMs('welcome_message')}>
+            <Sparkles className="h-4 w-4 mr-2" />
+            Welcome Messages
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={() => onBulkGenerateDMs('resource_recommendation')}>
             <BookOpen className="h-4 w-4 mr-2" />
             Resource Recommendations

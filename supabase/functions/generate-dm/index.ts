@@ -211,13 +211,43 @@ function formatRecipesForPrompt(recipes: Recipe[]): string {
   ).join('\n');
 }
 
+// Generate welcome message prompt
+function getWelcomeMessagePrompt(
+  hasApplicationAnswer: boolean,
+  resourcesForPrompt: string,
+  recipesForPrompt: string
+): string {
+  return `Generate a warm welcome DM for a new bread baking community member.
+
+Community: Crust & Crumb Academy (bread baking)
+Tone: Henry's voice - warm, welcoming, like greeting a new friend joining your kitchen.
+
+Available Classroom Resources (recommend beginner-friendly ones):
+${resourcesForPrompt}
+
+Available Recipes (recommend easy starter recipes):
+${recipesForPrompt}
+
+Instructions:
+- Warmly welcome them by first name
+${hasApplicationAnswer 
+  ? '- Acknowledge what they said they wanted to learn or make\n- Point them to 1-2 specific resources/recipes that match their goals'
+  : '- Since no specific goals mentioned, suggest our most popular beginner resources'}
+- Invite them to introduce themselves in the community
+- Encourage them to ask questions anytime
+- Keep it under 100 words
+- Sign off as Henry
+
+Do not use: 'dive deep', 'journey', 'excited to have you', 'don't hesitate', em dashes, 'embark', 'game changer'`;
+}
+
 // Generate resource recommendation prompt
 function getResourceRecommendationPrompt(
   hasApplicationAnswer: boolean,
   resourcesForPrompt: string,
   recipesForPrompt: string
 ): string {
-  return `Generate a warm, personal DM to re-engage a bread baking community member.
+  return `Generate a warm, personal DM to a bread baking community member recommending resources.
 
 Community: Crust & Crumb Academy (bread baking)
 Tone: Henry's voice - warm, encouraging, personal, like a friend checking in. Not salesy or corporate.
@@ -249,7 +279,7 @@ Do not use: 'dive deep', 'journey', 'excited to have you', 'don't hesitate', em 
 
 // Generate feedback request prompt
 function getFeedbackRequestPrompt(hasApplicationAnswer: boolean): string {
-  return `Generate a warm, personal check-in DM to an inactive bread baking community member asking for their feedback.
+  return `Generate a warm, personal check-in DM to a bread baking community member asking for their feedback.
 
 Community: Crust & Crumb Academy (bread baking)
 Tone: Genuine care, not marketing. Like a community leader who actually wants to know how to help.
@@ -257,10 +287,10 @@ Tone: Genuine care, not marketing. Like a community leader who actually wants to
 Instructions:
 Write a DM that:
 - Greets them warmly by first name
-- Acknowledges they've been quiet lately (without guilt-tripping)
+- Acknowledges you're just checking in (without guilt-tripping about activity)
 ${hasApplicationAnswer 
   ? '- Briefly references what they originally said they wanted to learn (if available)'
-  : '- Welcomes them warmly as a newer member'}
+  : '- Welcomes them warmly as a member'}
 - Asks 1-2 simple questions from these options:
   - Is the academy meeting your expectations?
   - What would you like to see more of?
@@ -272,13 +302,35 @@ ${hasApplicationAnswer
 Do not use: 'we miss you', 'dive deep', 'journey', 'excited', 'don't hesitate', em dashes, any guilt-tripping language`;
 }
 
+// Generate custom topic prompt
+function getCustomTopicPrompt(customTopic: string, hasApplicationAnswer: boolean): string {
+  return `Generate a personal DM for a bread baking community member.
+
+Community: Crust & Crumb Academy (bread baking)
+Tone: Personal, warm, like a friend reaching out. Not automated or corporate.
+
+Purpose of this DM: ${customTopic}
+
+Instructions:
+Write a DM that:
+- Greets them by first name
+- Addresses the specific purpose naturally
+${hasApplicationAnswer 
+  ? '- References their learning goals if relevant to the topic'
+  : ''}
+- Keep it under 100 words
+- Sign off as Henry
+
+Do not use: 'dive deep', 'journey', 'don't hesitate', em dashes, corporate language`;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { member, outreach_type = 'resource_recommendation' } = await req.json();
+    const { member, outreach_type = 'resource_recommendation', custom_topic = '' } = await req.json();
 
     if (!member) {
       return new Response(
@@ -316,31 +368,50 @@ serve(async (req) => {
     let matchedResources: ClassroomResource[] = [];
     let matchedRecipes: Recipe[] = [];
 
-    if (outreach_type === 'feedback_request') {
-      // Feedback request doesn't need resources/recipes
-      systemPrompt = getFeedbackRequestPrompt(hasApplicationAnswer);
-    } else {
-      // Resource recommendation - fetch and match resources
-      if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
-        const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-        
-        const [resourcesResult, recipesResult] = await Promise.all([
-          supabase.from('classroom_resources').select('*'),
-          supabase.from('recipes').select('*')
-        ]);
-        
-        if (resourcesResult.data && resourcesResult.data.length > 0) {
-          matchedResources = findMatchingResources(member.application_answer, resourcesResult.data);
-        }
-        
-        if (recipesResult.data && recipesResult.data.length > 0) {
-          matchedRecipes = findMatchingRecipes(member.application_answer, recipesResult.data);
-        }
-      }
+    // Determine if we need to fetch resources (for welcome and resource_recommendation)
+    const needsResources = outreach_type === 'welcome_message' || outreach_type === 'resource_recommendation';
 
-      const resourcesForPrompt = formatResourcesForPrompt(matchedResources);
-      const recipesForPrompt = formatRecipesForPrompt(matchedRecipes);
-      systemPrompt = getResourceRecommendationPrompt(hasApplicationAnswer, resourcesForPrompt, recipesForPrompt);
+    if (needsResources && SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+      const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      
+      const [resourcesResult, recipesResult] = await Promise.all([
+        supabase.from('classroom_resources').select('*'),
+        supabase.from('recipes').select('*')
+      ]);
+      
+      if (resourcesResult.data && resourcesResult.data.length > 0) {
+        matchedResources = findMatchingResources(member.application_answer, resourcesResult.data);
+      }
+      
+      if (recipesResult.data && recipesResult.data.length > 0) {
+        matchedRecipes = findMatchingRecipes(member.application_answer, recipesResult.data);
+      }
+    }
+
+    const resourcesForPrompt = formatResourcesForPrompt(matchedResources);
+    const recipesForPrompt = formatRecipesForPrompt(matchedRecipes);
+
+    // Select the appropriate prompt based on outreach type
+    switch (outreach_type) {
+      case 'welcome_message':
+        systemPrompt = getWelcomeMessagePrompt(hasApplicationAnswer, resourcesForPrompt, recipesForPrompt);
+        break;
+      case 'feedback_request':
+        systemPrompt = getFeedbackRequestPrompt(hasApplicationAnswer);
+        break;
+      case 'custom':
+        if (!custom_topic.trim()) {
+          return new Response(
+            JSON.stringify({ error: 'Custom topic is required for custom outreach type' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        systemPrompt = getCustomTopicPrompt(custom_topic, hasApplicationAnswer);
+        break;
+      case 'resource_recommendation':
+      default:
+        systemPrompt = getResourceRecommendationPrompt(hasApplicationAnswer, resourcesForPrompt, recipesForPrompt);
+        break;
     }
 
     const userPrompt = `Member Info:
@@ -350,7 +421,7 @@ serve(async (req) => {
 - Days since last activity: ${daysSinceActive}
 - Posts: ${member.post_count || 0}, Comments: ${member.comment_count || 0}
 
-Write a personalized ${outreach_type === 'feedback_request' ? 'feedback request' : 're-engagement'} DM for this member.`;
+Write a personalized DM for this member.`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',

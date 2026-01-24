@@ -141,6 +141,42 @@ export function useMembers() {
     },
   });
 
+  const addMember = useMutation({
+    mutationFn: async (memberData: {
+      skool_name: string;
+      application_answer?: string;
+      join_date?: string;
+      email?: string;
+    }) => {
+      const today = new Date();
+      const joinDate = memberData.join_date ? parseISO(memberData.join_date) : today;
+      const daysSinceJoin = differenceInDays(today, joinDate);
+      
+      // New members with no activity are 'never_engaged' after 7 days
+      const engagementStatus: EngagementStatus = daysSinceJoin > 7 ? 'never_engaged' : 'unknown';
+
+      const { data, error } = await supabase
+        .from('members')
+        .insert({
+          skool_name: memberData.skool_name,
+          application_answer: memberData.application_answer || null,
+          join_date: memberData.join_date || null,
+          email: memberData.email || null,
+          post_count: 0,
+          comment_count: 0,
+          engagement_status: engagementStatus,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as Member;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['members'] });
+    },
+  });
+
   // Stats calculations
   const stats = {
     total: members.length,
@@ -174,5 +210,6 @@ export function useMembers() {
     markOutreachSent,
     markOutreachResponded,
     deleteMember,
+    addMember,
   };
 }

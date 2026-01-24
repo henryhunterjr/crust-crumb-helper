@@ -1,6 +1,6 @@
 export type EngagementStatus = 'never_engaged' | 'at_risk' | 'inactive' | 'active' | 'unknown';
 
-export type OutreachType = 'resource_recommendation' | 'feedback_request';
+export type OutreachType = 'welcome_message' | 'resource_recommendation' | 'feedback_request' | 'custom';
 
 export interface Member {
   id: string;
