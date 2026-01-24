@@ -211,70 +211,13 @@ function formatRecipesForPrompt(recipes: Recipe[]): string {
   ).join('\n');
 }
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  try {
-    const { member } = await req.json();
-
-    if (!member) {
-      return new Response(
-        JSON.stringify({ error: 'Member data is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    
-    if (!LOVABLE_API_KEY) {
-      return new Response(
-        JSON.stringify({ error: 'API key not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Fetch classroom resources and recipes
-    let matchedResources: ClassroomResource[] = [];
-    let matchedRecipes: Recipe[] = [];
-    
-    if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
-      const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-      
-      const [resourcesResult, recipesResult] = await Promise.all([
-        supabase.from('classroom_resources').select('*'),
-        supabase.from('recipes').select('*')
-      ]);
-      
-      if (resourcesResult.data && resourcesResult.data.length > 0) {
-        matchedResources = findMatchingResources(member.application_answer, resourcesResult.data);
-      }
-      
-      if (recipesResult.data && recipesResult.data.length > 0) {
-        matchedRecipes = findMatchingRecipes(member.application_answer, recipesResult.data);
-      }
-    }
-
-    // Calculate days since last activity
-    let daysSinceActive = 'Unknown';
-    if (member.last_active) {
-      const lastActive = new Date(member.last_active);
-      const today = new Date();
-      const diffTime = Math.abs(today.getTime() - lastActive.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      daysSinceActive = diffDays.toString();
-    } else if (member.post_count === 0 && member.comment_count === 0) {
-      daysSinceActive = 'Never active';
-    }
-
-    const hasApplicationAnswer = member.application_answer && member.application_answer.trim().length > 0;
-    const resourcesForPrompt = formatResourcesForPrompt(matchedResources);
-    const recipesForPrompt = formatRecipesForPrompt(matchedRecipes);
-
-    const systemPrompt = `Generate a warm, personal DM to re-engage a bread baking community member.
+// Generate resource recommendation prompt
+function getResourceRecommendationPrompt(
+  hasApplicationAnswer: boolean,
+  resourcesForPrompt: string,
+  recipesForPrompt: string
+): string {
+  return `Generate a warm, personal DM to re-engage a bread baking community member.
 
 Community: Crust & Crumb Academy (bread baking)
 Tone: Henry's voice - warm, encouraging, personal, like a friend checking in. Not salesy or corporate.
@@ -302,15 +245,112 @@ ${hasApplicationAnswer
 - Sign off as Henry
 
 Do not use: 'dive deep', 'journey', 'excited to have you', 'don't hesitate', em dashes, 'embark', 'game changer'`;
+}
+
+// Generate feedback request prompt
+function getFeedbackRequestPrompt(hasApplicationAnswer: boolean): string {
+  return `Generate a warm, personal check-in DM to an inactive bread baking community member asking for their feedback.
+
+Community: Crust & Crumb Academy (bread baking)
+Tone: Genuine care, not marketing. Like a community leader who actually wants to know how to help.
+
+Instructions:
+Write a DM that:
+- Greets them warmly by first name
+- Acknowledges they've been quiet lately (without guilt-tripping)
+${hasApplicationAnswer 
+  ? '- Briefly references what they originally said they wanted to learn (if available)'
+  : '- Welcomes them warmly as a newer member'}
+- Asks 1-2 simple questions from these options:
+  - Is the academy meeting your expectations?
+  - What would you like to see more of?
+  - Is there something specific you're struggling with?
+- Makes it easy to reply (no pressure, genuine curiosity)
+- Keep it under 100 words
+- Sign off as Henry
+
+Do not use: 'we miss you', 'dive deep', 'journey', 'excited', 'don't hesitate', em dashes, any guilt-tripping language`;
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { member, outreach_type = 'resource_recommendation' } = await req.json();
+
+    if (!member) {
+      return new Response(
+        JSON.stringify({ error: 'Member data is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!LOVABLE_API_KEY) {
+      return new Response(
+        JSON.stringify({ error: 'API key not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Calculate days since last activity
+    let daysSinceActive = 'Unknown';
+    if (member.last_active) {
+      const lastActive = new Date(member.last_active);
+      const today = new Date();
+      const diffTime = Math.abs(today.getTime() - lastActive.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      daysSinceActive = diffDays.toString();
+    } else if (member.post_count === 0 && member.comment_count === 0) {
+      daysSinceActive = 'Never active';
+    }
+
+    const hasApplicationAnswer = member.application_answer && member.application_answer.trim().length > 0;
+
+    let systemPrompt: string;
+    let matchedResources: ClassroomResource[] = [];
+    let matchedRecipes: Recipe[] = [];
+
+    if (outreach_type === 'feedback_request') {
+      // Feedback request doesn't need resources/recipes
+      systemPrompt = getFeedbackRequestPrompt(hasApplicationAnswer);
+    } else {
+      // Resource recommendation - fetch and match resources
+      if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+        const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+        
+        const [resourcesResult, recipesResult] = await Promise.all([
+          supabase.from('classroom_resources').select('*'),
+          supabase.from('recipes').select('*')
+        ]);
+        
+        if (resourcesResult.data && resourcesResult.data.length > 0) {
+          matchedResources = findMatchingResources(member.application_answer, resourcesResult.data);
+        }
+        
+        if (recipesResult.data && recipesResult.data.length > 0) {
+          matchedRecipes = findMatchingRecipes(member.application_answer, recipesResult.data);
+        }
+      }
+
+      const resourcesForPrompt = formatResourcesForPrompt(matchedResources);
+      const recipesForPrompt = formatRecipesForPrompt(matchedRecipes);
+      systemPrompt = getResourceRecommendationPrompt(hasApplicationAnswer, resourcesForPrompt, recipesForPrompt);
+    }
 
     const userPrompt = `Member Info:
 - Name: ${member.skool_name}
 - Joined: ${member.join_date || 'Unknown'}
-- Their goal when joining: "${member.application_answer || 'Not provided'}"
+- What they wanted to learn when joining: "${member.application_answer || 'Not provided'}"
 - Days since last activity: ${daysSinceActive}
 - Posts: ${member.post_count || 0}, Comments: ${member.comment_count || 0}
 
-Write a personalized re-engagement DM for this member.`;
+Write a personalized ${outreach_type === 'feedback_request' ? 'feedback request' : 're-engagement'} DM for this member.`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -363,6 +403,7 @@ Write a personalized re-engagement DM for this member.`;
     return new Response(
       JSON.stringify({ 
         message: message.trim(),
+        outreach_type,
         matched_resources: matchedResources.map(r => r.title),
         matched_recipes: matchedRecipes.map(r => r.title),
         has_application_answer: hasApplicationAnswer

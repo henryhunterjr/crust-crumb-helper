@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Member } from '@/types/member';
+import { Member, OutreachType } from '@/types/member';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -18,6 +18,7 @@ interface BulkDMQueueDialogProps {
   onOpenChange: (open: boolean) => void;
   members: Member[];
   onMarkSent: (memberId: string) => void;
+  outreachType: OutreachType;
 }
 
 interface QueueItem {
@@ -32,6 +33,7 @@ export function BulkDMQueueDialog({
   onOpenChange,
   members,
   onMarkSent,
+  outreachType,
 }: BulkDMQueueDialogProps) {
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -61,7 +63,10 @@ export function BulkDMQueueDialog({
 
       try {
         const { data, error } = await supabase.functions.invoke('generate-dm', {
-          body: { member: queue[pendingIndex].member }
+          body: { 
+            member: queue[pendingIndex].member,
+            outreach_type: outreachType
+          }
         });
 
         if (error) throw error;
@@ -79,7 +84,7 @@ export function BulkDMQueueDialog({
 
     const timer = setTimeout(generateNext, 500);
     return () => clearTimeout(timer);
-  }, [queue, open]);
+  }, [queue, open, outreachType]);
 
   const handleCopy = async (index: number) => {
     const item = queue[index];
@@ -111,13 +116,14 @@ export function BulkDMQueueDialog({
 
   const completedCount = queue.filter(q => q.status === 'done').length;
   const isAllDone = completedCount === queue.length;
+  const isFeedback = outreachType === 'feedback_request';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[80vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            Bulk DM Generation
+            Bulk {isFeedback ? 'Feedback Request' : 'DM'} Generation
             <Badge variant="outline">
               {completedCount}/{queue.length} complete
             </Badge>

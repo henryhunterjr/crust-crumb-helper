@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { Upload, FileText, Loader2 } from 'lucide-react';
+import { useState, useRef, useMemo } from 'react';
+import { Upload, FileText, Loader2, AlertTriangle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { MemberImportRow } from '@/types/member';
 
 interface ImportMembersDialogProps {
@@ -51,6 +52,9 @@ export function ImportMembersDialog({
       'application_answer': 'applicationAnswer',
       'answer': 'applicationAnswer',
       'goal': 'applicationAnswer',
+      'goals': 'applicationAnswer',
+      'learning goals': 'applicationAnswer',
+      'learning_goals': 'applicationAnswer',
       'posts': 'posts',
       'post_count': 'posts',
       'post count': 'posts',
@@ -139,6 +143,42 @@ export function ImportMembersDialog({
 
     return rows;
   };
+
+  // Check if CSV has application answer column
+  const csvAnalysis = useMemo(() => {
+    if (!csvText.trim()) return null;
+    
+    try {
+      const lines = csvText.trim().split('\n');
+      if (lines.length < 1) return null;
+      
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+      const applicationAnswerHeaders = [
+        'application answer', 'application_answer', 'answer', 'goal', 'goals', 
+        'learning goals', 'learning_goals'
+      ];
+      
+      const hasApplicationAnswerColumn = headers.some(h => applicationAnswerHeaders.includes(h));
+      
+      // Try to parse and count rows with answers
+      let totalRows = 0;
+      let rowsWithAnswer = 0;
+      
+      if (hasApplicationAnswerColumn) {
+        try {
+          const parsed = parseCSV(csvText);
+          totalRows = parsed.length;
+          rowsWithAnswer = parsed.filter(r => r.applicationAnswer && r.applicationAnswer.trim().length > 0).length;
+        } catch {
+          // Parsing failed, just return column info
+        }
+      }
+      
+      return { hasApplicationAnswerColumn, totalRows, rowsWithAnswer };
+    } catch {
+      return null;
+    }
+  }, [csvText]);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -243,9 +283,37 @@ Jane Smith,jane@email.com,2024-01-10,Interested in bread baking,5,12,2024-01-20"
 
         <div className="mt-4 p-3 bg-muted/50 rounded-md">
           <p className="text-xs text-muted-foreground">
-            <strong>Expected columns:</strong> Name (required), Email, Join Date, Application Answer, Posts, Comments, Last Active
+            <strong>Expected columns:</strong> Name (required), Email, Join Date, <strong>Application Answer</strong> (important for personalization), Posts, Comments, Last Active
           </p>
         </div>
+
+        {/* Warning if no application answer column found */}
+        {csvAnalysis && !csvAnalysis.hasApplicationAnswerColumn && (
+          <Alert variant="destructive" className="mt-2">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              <strong>No application answers found in CSV.</strong> Personalized outreach will be limited. 
+              Add a column named "Application Answer", "Goal", or "Learning Goals" for best results.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Info about rows with/without answers */}
+        {csvAnalysis && csvAnalysis.hasApplicationAnswerColumn && csvAnalysis.totalRows > 0 && (
+          <div className="mt-2 p-3 bg-accent/30 rounded-md text-sm">
+            {csvAnalysis.rowsWithAnswer === csvAnalysis.totalRows ? (
+              <span className="text-foreground">
+                ✓ All {csvAnalysis.totalRows} members have learning goals
+              </span>
+            ) : (
+              <span className="text-muted-foreground">
+                {csvAnalysis.rowsWithAnswer} of {csvAnalysis.totalRows} members have learning goals. 
+                {csvAnalysis.totalRows - csvAnalysis.rowsWithAnswer > 0 && 
+                  ` ${csvAnalysis.totalRows - csvAnalysis.rowsWithAnswer} will receive generic outreach.`}
+              </span>
+            )}
+          </div>
+        )}
 
         {error && (
           <div className="mt-2 p-3 bg-destructive/10 text-destructive text-sm rounded-md">

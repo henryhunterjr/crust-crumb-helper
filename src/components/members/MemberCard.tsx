@@ -1,6 +1,5 @@
-import { useState } from 'react';
 import { format, parseISO, differenceInDays } from 'date-fns';
-import { MessageSquare, FileText, Calendar, Clock, Send, CheckCircle, ChevronDown, ChevronUp, Loader2, AlertCircle } from 'lucide-react';
+import { MessageSquare, FileText, Calendar, Clock, Send, CheckCircle, Loader2, AlertCircle, Target } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -33,8 +32,6 @@ export function MemberCard({
   isGenerating,
   onClick 
 }: MemberCardProps) {
-  const [showFullAnswer, setShowFullAnswer] = useState(false);
-  
   const status = statusConfig[member.engagement_status] || statusConfig.unknown;
   
   const joinDaysAgo = member.join_date 
@@ -52,10 +49,7 @@ export function MemberCard({
     : 'Not contacted';
 
   const applicationAnswer = member.application_answer || '';
-  const shouldTruncate = applicationAnswer.length > 120;
-  const displayAnswer = showFullAnswer 
-    ? applicationAnswer 
-    : applicationAnswer.slice(0, 120) + (shouldTruncate ? '...' : '');
+  const hasLearningGoals = applicationAnswer.trim().length > 0;
 
   return (
     <Card className="p-4 hover:shadow-md transition-shadow">
@@ -115,31 +109,23 @@ export function MemberCard({
             </span>
           </div>
 
-          {/* Application answer */}
-          {applicationAnswer ? (
-            <div className="mt-2">
-              <p className="text-sm italic text-muted-foreground">
-                "{displayAnswer}"
+          {/* Learning Goals Section - Prominently displayed */}
+          <div className="mt-3 p-3 rounded-lg bg-accent/40 border border-border/50">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <Target className="h-3.5 w-3.5 text-primary" />
+              <span className="text-xs font-medium text-foreground">When they joined, they wanted to learn:</span>
+            </div>
+            {hasLearningGoals ? (
+              <p className="text-sm italic text-foreground/80 leading-relaxed">
+                "{applicationAnswer}"
               </p>
-              {shouldTruncate && (
-                <button
-                  onClick={() => setShowFullAnswer(!showFullAnswer)}
-                  className="text-xs text-primary hover:underline flex items-center gap-1 mt-1"
-                >
-                  {showFullAnswer ? (
-                    <>Show less <ChevronUp className="h-3 w-3" /></>
-                  ) : (
-                    <>Show more <ChevronDown className="h-3 w-3" /></>
-                  )}
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
-              <AlertCircle className="h-3.5 w-3.5" />
-              <span className="italic">No application answer</span>
-            </div>
-          )}
+            ) : (
+              <p className="text-sm italic text-muted-foreground flex items-center gap-1.5">
+                <AlertCircle className="h-3.5 w-3.5" />
+                No application answer provided
+              </p>
+            )}
+          </div>
 
           {/* Activity stats and outreach status */}
           <div className="flex flex-wrap gap-4 mt-3 text-sm">
