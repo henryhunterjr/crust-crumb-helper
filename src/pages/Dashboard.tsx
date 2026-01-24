@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { Header } from '@/components/Header';
+import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -77,10 +78,10 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <Header />
       
-      <main className="container py-8 px-4">
+      <main className="container py-8 px-4 flex-1">
         {/* Welcome Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-serif font-bold text-foreground mb-2">
@@ -352,6 +353,8 @@ export default function Dashboard() {
           </Card>
         )}
       </main>
+
+      <Footer />
     </div>
   );
 }

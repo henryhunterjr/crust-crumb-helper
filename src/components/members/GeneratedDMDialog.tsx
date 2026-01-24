@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Copy, ExternalLink, RefreshCw, CheckCircle, Loader2 } from 'lucide-react';
+import { Copy, ExternalLink, RefreshCw, CheckCircle, Loader2, BookOpen, ChefHat } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -7,6 +7,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Member } from '@/types/member';
 import { toast } from 'sonner';
 
@@ -18,6 +19,8 @@ interface GeneratedDMDialogProps {
   isGenerating: boolean;
   onRegenerate: () => void;
   onMarkSent: () => void;
+  matchedResources?: string[];
+  matchedRecipes?: string[];
 }
 
 export function GeneratedDMDialog({
@@ -28,6 +31,8 @@ export function GeneratedDMDialog({
   isGenerating,
   onRegenerate,
   onMarkSent,
+  matchedResources = [],
+  matchedRecipes = [],
 }: GeneratedDMDialogProps) {
   const [copied, setCopied] = useState(false);
 
@@ -50,6 +55,8 @@ export function GeneratedDMDialog({
 
   if (!member) return null;
 
+  const hasResources = matchedResources.length > 0 || matchedRecipes.length > 0;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
@@ -64,11 +71,62 @@ export function GeneratedDMDialog({
               <span className="ml-3 text-muted-foreground">Generating personalized message...</span>
             </div>
           ) : (
-            <div className="bg-muted/50 rounded-lg p-4">
-              <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                {message}
-              </p>
-            </div>
+            <>
+              <div className="bg-muted/50 rounded-lg p-4">
+                <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                  {message}
+                </p>
+              </div>
+
+              {/* Resources Used Indicator */}
+              {hasResources && (
+                <div className="mt-4 p-3 bg-accent/30 rounded-lg border border-border/50">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Resources matched for this member:</p>
+                  
+                  {matchedResources.length > 0 && (
+                    <div className="mb-2">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <BookOpen className="h-3 w-3 text-primary" />
+                        <span className="text-xs font-medium text-foreground">Classroom Resources</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {matchedResources.slice(0, 3).map((resource, idx) => (
+                          <Badge key={idx} variant="secondary" className="text-xs">
+                            {resource}
+                          </Badge>
+                        ))}
+                        {matchedResources.length > 3 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{matchedResources.length - 3} more
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {matchedRecipes.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <ChefHat className="h-3 w-3 text-primary" />
+                        <span className="text-xs font-medium text-foreground">Recipes</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {matchedRecipes.slice(0, 3).map((recipe, idx) => (
+                          <Badge key={idx} variant="secondary" className="text-xs">
+                            {recipe}
+                          </Badge>
+                        ))}
+                        {matchedRecipes.length > 3 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{matchedRecipes.length - 3} more
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
 
