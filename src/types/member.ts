@@ -1,5 +1,7 @@
 export type EngagementStatus = 'never_engaged' | 'at_risk' | 'inactive' | 'active' | 'unknown';
 
+export type OutreachType = 'resource_recommendation' | 'feedback_request';
+
 export interface Member {
   id: string;
   skool_name: string;
@@ -28,6 +30,6 @@ export interface MemberImportRow {
   lastActive?: string;
 }
 
-export type MemberFilter = 'all' | 'never_engaged' | 'at_risk' | 'inactive' | 'needs_outreach';
+export type MemberFilter = 'all' | 'never_engaged' | 'at_risk' | 'inactive' | 'needs_outreach' | 'has_goals' | 'no_goals';
 
 export type MemberSortField = 'join_date' | 'last_active' | 'engagement_status';

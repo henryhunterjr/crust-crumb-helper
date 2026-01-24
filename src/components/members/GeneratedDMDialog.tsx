@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Copy, ExternalLink, RefreshCw, CheckCircle, Loader2, BookOpen, ChefHat } from 'lucide-react';
+import { Copy, ExternalLink, RefreshCw, CheckCircle, Loader2, BookOpen, ChefHat, MessageCircle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -8,7 +8,8 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Member } from '@/types/member';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Member, OutreachType } from '@/types/member';
 import { toast } from 'sonner';
 
 interface GeneratedDMDialogProps {
@@ -17,10 +18,12 @@ interface GeneratedDMDialogProps {
   member: Member | null;
   message: string;
   isGenerating: boolean;
-  onRegenerate: () => void;
+  onRegenerate: (outreachType: OutreachType) => void;
   onMarkSent: () => void;
   matchedResources?: string[];
   matchedRecipes?: string[];
+  outreachType: OutreachType;
+  onOutreachTypeChange: (type: OutreachType) => void;
 }
 
 export function GeneratedDMDialog({
@@ -33,6 +36,8 @@ export function GeneratedDMDialog({
   onMarkSent,
   matchedResources = [],
   matchedRecipes = [],
+  outreachType,
+  onOutreachTypeChange,
 }: GeneratedDMDialogProps) {
   const [copied, setCopied] = useState(false);
 
@@ -53,9 +58,16 @@ export function GeneratedDMDialog({
     onOpenChange(false);
   };
 
+  const handleTypeChange = (type: string) => {
+    const newType = type as OutreachType;
+    onOutreachTypeChange(newType);
+    onRegenerate(newType);
+  };
+
   if (!member) return null;
 
   const hasResources = matchedResources.length > 0 || matchedRecipes.length > 0;
+  const isFeedbackRequest = outreachType === 'feedback_request';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -64,11 +76,27 @@ export function GeneratedDMDialog({
           <DialogTitle>DM for {member.skool_name}</DialogTitle>
         </DialogHeader>
 
-        <div className="mt-4">
+        {/* Outreach Type Toggle */}
+        <Tabs value={outreachType} onValueChange={handleTypeChange} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="resource_recommendation" className="text-xs">
+              <BookOpen className="h-3.5 w-3.5 mr-1.5" />
+              Resource Recommendation
+            </TabsTrigger>
+            <TabsTrigger value="feedback_request" className="text-xs">
+              <MessageCircle className="h-3.5 w-3.5 mr-1.5" />
+              Feedback Request
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        <div className="mt-2">
           {isGenerating ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <span className="ml-3 text-muted-foreground">Generating personalized message...</span>
+              <span className="ml-3 text-muted-foreground">
+                Generating {isFeedbackRequest ? 'feedback request' : 'personalized message'}...
+              </span>
             </div>
           ) : (
             <>
@@ -78,8 +106,8 @@ export function GeneratedDMDialog({
                 </p>
               </div>
 
-              {/* Resources Used Indicator */}
-              {hasResources && (
+              {/* Resources Used Indicator - only for resource recommendations */}
+              {!isFeedbackRequest && hasResources && (
                 <div className="mt-4 p-3 bg-accent/30 rounded-lg border border-border/50">
                   <p className="text-xs font-medium text-muted-foreground mb-2">Resources matched for this member:</p>
                   
@@ -126,6 +154,19 @@ export function GeneratedDMDialog({
                   )}
                 </div>
               )}
+
+              {/* Feedback request indicator */}
+              {isFeedbackRequest && (
+                <div className="mt-4 p-3 bg-accent/30 rounded-lg border border-border/50">
+                  <div className="flex items-center gap-1.5">
+                    <MessageCircle className="h-3.5 w-3.5 text-primary" />
+                    <span className="text-xs font-medium text-foreground">Feedback Request</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    This message asks for feedback rather than recommending resources.
+                  </p>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -134,7 +175,7 @@ export function GeneratedDMDialog({
           <Button
             variant="outline"
             size="sm"
-            onClick={onRegenerate}
+            onClick={() => onRegenerate(outreachType)}
             disabled={isGenerating}
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${isGenerating ? 'animate-spin' : ''}`} />

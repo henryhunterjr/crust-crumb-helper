@@ -11,6 +11,8 @@ interface MemberFilterTabsProps {
     at_risk: number;
     inactive: number;
     needs_outreach: number;
+    has_goals: number;
+    no_goals: number;
   };
 }
 
@@ -21,6 +23,8 @@ export function MemberFilterTabs({ activeFilter, onFilterChange, counts }: Membe
     { id: 'at_risk', label: 'At Risk', count: counts.at_risk },
     { id: 'inactive', label: 'Inactive 30+', count: counts.inactive },
     { id: 'needs_outreach', label: 'Needs Outreach', count: counts.needs_outreach },
+    { id: 'has_goals', label: 'Has Learning Goals', count: counts.has_goals },
+    { id: 'no_goals', label: 'No Goals', count: counts.no_goals },
   ];
 
   return (

@@ -21,7 +21,7 @@ import { MemberDetailDialog } from '@/components/members/MemberDetailDialog';
 import { BulkActionsBar } from '@/components/members/BulkActionsBar';
 import { BulkDMQueueDialog } from '@/components/members/BulkDMQueueDialog';
 import { useMembers } from '@/hooks/useMembers';
-import { Member, MemberFilter, MemberSortField, MemberImportRow } from '@/types/member';
+import { Member, MemberFilter, MemberSortField, MemberImportRow, OutreachType } from '@/types/member';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -50,6 +50,7 @@ export default function Members() {
   const [isGeneratingDM, setIsGeneratingDM] = useState(false);
   const [matchedResources, setMatchedResources] = useState<string[]>([]);
   const [matchedRecipes, setMatchedRecipes] = useState<string[]>([]);
+  const [outreachType, setOutreachType] = useState<OutreachType>('resource_recommendation');
 
   // Member detail state
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
@@ -57,6 +58,7 @@ export default function Members() {
 
   // Bulk DM state
   const [bulkDMDialogOpen, setBulkDMDialogOpen] = useState(false);
+  const [bulkOutreachType, setBulkOutreachType] = useState<OutreachType>('resource_recommendation');
 
   // Filter and sort members
   const filteredMembers = useMemo(() => {
@@ -79,6 +81,12 @@ export default function Members() {
           !m.outreach_sent
         );
         break;
+      case 'has_goals':
+        result = result.filter(m => m.application_answer && m.application_answer.trim().length > 0);
+        break;
+      case 'no_goals':
+        result = result.filter(m => !m.application_answer || m.application_answer.trim().length === 0);
+        break;
     }
 
     // Apply search
@@ -86,7 +94,8 @@ export default function Members() {
       const query = searchQuery.toLowerCase();
       result = result.filter(m => 
         m.skool_name.toLowerCase().includes(query) ||
-        m.email?.toLowerCase().includes(query)
+        m.email?.toLowerCase().includes(query) ||
+        m.application_answer?.toLowerCase().includes(query)
       );
     }
 
@@ -117,6 +126,8 @@ export default function Members() {
       ['never_engaged', 'at_risk', 'inactive'].includes(m.engagement_status) && 
       !m.outreach_sent
     ).length,
+    has_goals: members.filter(m => m.application_answer && m.application_answer.trim().length > 0).length,
+    no_goals: members.filter(m => !m.application_answer || m.application_answer.trim().length === 0).length,
   }), [members]);
 
   const handleImport = async (rows: MemberImportRow[]) => {
@@ -134,9 +145,17 @@ export default function Members() {
       if (summary.at_risk) summaryParts.push(`${summary.at_risk} at risk`);
       if (summary.inactive) summaryParts.push(`${summary.inactive} inactive`);
 
+      // Check for missing application answers
+      const withoutGoals = imported.filter(m => !m.application_answer || m.application_answer.trim().length === 0).length;
+      
       toast.success(
         `Imported ${imported.length} members. ${summaryParts.join(', ')}.`
       );
+      
+      if (withoutGoals > 0) {
+        toast.warning(`${withoutGoals} members have no learning goals. Personalized outreach will be limited.`);
+      }
+      
       setImportDialogOpen(false);
     } catch (error) {
       console.error('Import error:', error);
@@ -144,7 +163,7 @@ export default function Members() {
     }
   };
 
-  const generateDM = async (member: Member) => {
+  const generateDM = async (member: Member, type: OutreachType = outreachType) => {
     setSelectedMember(member);
     setDmDialogOpen(true);
     setIsGeneratingDM(true);
@@ -154,7 +173,7 @@ export default function Members() {
 
     try {
       const { data, error } = await supabase.functions.invoke('generate-dm', {
-        body: { member }
+        body: { member, outreach_type: type }
       });
 
       if (error) throw error;
@@ -169,9 +188,10 @@ export default function Members() {
     }
   };
 
-  const handleRegenerateDM = () => {
+  const handleRegenerateDM = (type: OutreachType) => {
     if (selectedMember) {
-      generateDM(selectedMember);
+      setOutreachType(type);
+      generateDM(selectedMember, type);
     }
   };
 
@@ -215,6 +235,11 @@ export default function Members() {
     if (detailMember) {
       markOutreachResponded.mutate(detailMember.id);
     }
+  };
+
+  const handleBulkGenerateDMs = (type: OutreachType) => {
+    setBulkOutreachType(type);
+    setBulkDMDialogOpen(true);
   };
 
   const selectedMembers = members.filter(m => selectedIds.has(m.id));
@@ -327,7 +352,7 @@ export default function Members() {
         <BulkActionsBar
           selectedCount={selectedIds.size}
           onClearSelection={() => setSelectedIds(new Set())}
-          onBulkGenerateDMs={() => setBulkDMDialogOpen(true)}
+          onBulkGenerateDMs={handleBulkGenerateDMs}
           isGenerating={false}
         />
 
@@ -349,6 +374,8 @@ export default function Members() {
           onMarkSent={() => selectedMember && handleMarkSent(selectedMember.id)}
           matchedResources={matchedResources}
           matchedRecipes={matchedRecipes}
+          outreachType={outreachType}
+          onOutreachTypeChange={setOutreachType}
         />
 
         <MemberDetailDialog
@@ -364,6 +391,7 @@ export default function Members() {
           onOpenChange={setBulkDMDialogOpen}
           members={selectedMembers}
           onMarkSent={handleMarkSent}
+          outreachType={bulkOutreachType}
         />
       </main>
 
