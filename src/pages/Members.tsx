@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Upload, Search, ArrowUpDown } from 'lucide-react';
+import { Upload, Search, ArrowUpDown, UserPlus } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,7 @@ import { GeneratedDMDialog } from '@/components/members/GeneratedDMDialog';
 import { MemberDetailDialog } from '@/components/members/MemberDetailDialog';
 import { BulkActionsBar } from '@/components/members/BulkActionsBar';
 import { BulkDMQueueDialog } from '@/components/members/BulkDMQueueDialog';
+import { AddMemberDialog } from '@/components/members/AddMemberDialog';
 import { useMembers } from '@/hooks/useMembers';
 import { Member, MemberFilter, MemberSortField, MemberImportRow, OutreachType } from '@/types/member';
 import { supabase } from '@/integrations/supabase/client';
@@ -33,11 +34,13 @@ export default function Members() {
     importMembers, 
     updateMember, 
     markOutreachSent,
-    markOutreachResponded 
+    markOutreachResponded,
+    addMember
   } = useMembers();
 
   // UI state
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [addMemberDialogOpen, setAddMemberDialogOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<MemberFilter>('all');
   const [sortField, setSortField] = useState<MemberSortField>('join_date');
   const [searchQuery, setSearchQuery] = useState('');
@@ -51,6 +54,7 @@ export default function Members() {
   const [matchedResources, setMatchedResources] = useState<string[]>([]);
   const [matchedRecipes, setMatchedRecipes] = useState<string[]>([]);
   const [outreachType, setOutreachType] = useState<OutreachType>('resource_recommendation');
+  const [customTopic, setCustomTopic] = useState('');
 
   // Member detail state
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
@@ -163,7 +167,23 @@ export default function Members() {
     }
   };
 
-  const generateDM = async (member: Member, type: OutreachType = outreachType) => {
+  const handleAddMember = async (memberData: {
+    skool_name: string;
+    application_answer?: string;
+    join_date?: string;
+    email?: string;
+  }) => {
+    try {
+      await addMember.mutateAsync(memberData);
+      toast.success(`Added ${memberData.skool_name} to members`);
+      setAddMemberDialogOpen(false);
+    } catch (error) {
+      console.error('Add member error:', error);
+      toast.error('Failed to add member');
+    }
+  };
+
+  const generateDM = async (member: Member, type: OutreachType = outreachType, topic?: string) => {
     setSelectedMember(member);
     setDmDialogOpen(true);
     setIsGeneratingDM(true);
@@ -173,7 +193,11 @@ export default function Members() {
 
     try {
       const { data, error } = await supabase.functions.invoke('generate-dm', {
-        body: { member, outreach_type: type }
+        body: { 
+          member, 
+          outreach_type: type,
+          custom_topic: topic || customTopic
+        }
       });
 
       if (error) throw error;
@@ -188,10 +212,13 @@ export default function Members() {
     }
   };
 
-  const handleRegenerateDM = (type: OutreachType) => {
+  const handleRegenerateDM = (type: OutreachType, topic?: string) => {
     if (selectedMember) {
       setOutreachType(type);
-      generateDM(selectedMember, type);
+      if (topic !== undefined) {
+        setCustomTopic(topic);
+      }
+      generateDM(selectedMember, type, topic);
     }
   };
 
@@ -258,10 +285,16 @@ export default function Members() {
               Track and re-engage your community members
             </p>
           </div>
-          <Button onClick={() => setImportDialogOpen(true)}>
-            <Upload className="h-4 w-4 mr-2" />
-            Import Members
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setAddMemberDialogOpen(true)}>
+              <UserPlus className="h-4 w-4 mr-2" />
+              Add Member
+            </Button>
+            <Button onClick={() => setImportDialogOpen(true)}>
+              <Upload className="h-4 w-4 mr-2" />
+              Import Members
+            </Button>
+          </div>
         </div>
 
         {/* Stats bar */}
@@ -322,14 +355,20 @@ export default function Members() {
           <div className="text-center py-12">
             <p className="text-muted-foreground mb-4">
               {members.length === 0 
-                ? 'No members imported yet. Import a CSV to get started.'
+                ? 'No members imported yet. Import a CSV or add a member to get started.'
                 : 'No members match the current filters.'}
             </p>
             {members.length === 0 && (
-              <Button onClick={() => setImportDialogOpen(true)}>
-                <Upload className="h-4 w-4 mr-2" />
-                Import Members
-              </Button>
+              <div className="flex gap-2 justify-center">
+                <Button variant="outline" onClick={() => setAddMemberDialogOpen(true)}>
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Add Member
+                </Button>
+                <Button onClick={() => setImportDialogOpen(true)}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Import Members
+                </Button>
+              </div>
             )}
           </div>
         ) : (
@@ -364,6 +403,13 @@ export default function Members() {
           isImporting={importMembers.isPending}
         />
 
+        <AddMemberDialog
+          open={addMemberDialogOpen}
+          onOpenChange={setAddMemberDialogOpen}
+          onAdd={handleAddMember}
+          isAdding={addMember.isPending}
+        />
+
         <GeneratedDMDialog
           open={dmDialogOpen}
           onOpenChange={setDmDialogOpen}
@@ -376,6 +422,8 @@ export default function Members() {
           matchedRecipes={matchedRecipes}
           outreachType={outreachType}
           onOutreachTypeChange={setOutreachType}
+          customTopic={customTopic}
+          onCustomTopicChange={setCustomTopic}
         />
 
         <MemberDetailDialog
