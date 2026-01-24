@@ -1,25 +1,125 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const systemPrompt = `Generate a warm, personal DM to re-engage a bread baking community member.
+interface ClassroomResource {
+  id: string;
+  title: string;
+  description: string | null;
+  category: string;
+  skill_level: string;
+  keywords: string[] | null;
+  url: string | null;
+}
 
-Community: Crust & Crumb Academy (bread baking)
-Tone: Henry's voice - warm, encouraging, personal, not salesy
+// Extract keywords from text
+function extractKeywords(text: string): string[] {
+  if (!text) return [];
+  
+  const stopWords = new Set([
+    'i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', 'your',
+    'yours', 'yourself', 'yourselves', 'he', 'him', 'his', 'himself', 'she',
+    'her', 'hers', 'herself', 'it', 'its', 'itself', 'they', 'them', 'their',
+    'theirs', 'themselves', 'what', 'which', 'who', 'whom', 'this', 'that',
+    'these', 'those', 'am', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+    'have', 'has', 'had', 'having', 'do', 'does', 'did', 'doing', 'a', 'an',
+    'the', 'and', 'but', 'if', 'or', 'because', 'as', 'until', 'while', 'of',
+    'at', 'by', 'for', 'with', 'about', 'against', 'between', 'into', 'through',
+    'during', 'before', 'after', 'above', 'below', 'to', 'from', 'up', 'down',
+    'in', 'out', 'on', 'off', 'over', 'under', 'again', 'further', 'then',
+    'once', 'here', 'there', 'when', 'where', 'why', 'how', 'all', 'each',
+    'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not', 'only',
+    'own', 'same', 'so', 'than', 'too', 'very', 's', 't', 'can', 'will', 'just',
+    'don', 'should', 'now', 'want', 'would', 'like', 'get', 'make', 'learn',
+    'try', 'know', 'think', 'really', 'also', 'even', 'well', 'much', 'way'
+  ]);
+  
+  return text.toLowerCase()
+    .replace(/[^a-z\s]/g, ' ')
+    .split(/\s+/)
+    .filter(word => word.length > 2 && !stopWords.has(word));
+}
 
-Include:
-- Personal greeting using their first name
-- Reference what they said they wanted to learn (from application)
-- One specific suggestion to get started (mention the classroom or a beginner resource)
-- Invitation to share their first bake or ask questions
+// Find matching resources based on member's application answer
+function findMatchingResources(
+  applicationAnswer: string | null,
+  resources: ClassroomResource[]
+): ClassroomResource[] {
+  if (!applicationAnswer || resources.length === 0) {
+    // Return beginner resources as fallback
+    return resources
+      .filter(r => r.skill_level === 'beginner')
+      .slice(0, 5);
+  }
+  
+  const memberKeywords = extractKeywords(applicationAnswer);
+  
+  // Score each resource based on keyword matches
+  const scoredResources = resources.map(resource => {
+    let score = 0;
+    
+    // Check keyword overlap
+    if (resource.keywords) {
+      for (const keyword of resource.keywords) {
+        if (memberKeywords.includes(keyword.toLowerCase())) {
+          score += 3;
+        }
+        // Partial match
+        for (const memberKeyword of memberKeywords) {
+          if (keyword.toLowerCase().includes(memberKeyword) || 
+              memberKeyword.includes(keyword.toLowerCase())) {
+            score += 1;
+          }
+        }
+      }
+    }
+    
+    // Check if title/description contains member keywords
+    const titleWords = extractKeywords(resource.title);
+    const descWords = resource.description ? extractKeywords(resource.description) : [];
+    
+    for (const memberKeyword of memberKeywords) {
+      if (titleWords.includes(memberKeyword)) score += 2;
+      if (descWords.includes(memberKeyword)) score += 1;
+    }
+    
+    // Boost beginner resources slightly for new members
+    if (resource.skill_level === 'beginner') score += 0.5;
+    
+    return { resource, score };
+  });
+  
+  // Sort by score and return top matches
+  const matches = scoredResources
+    .filter(r => r.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5)
+    .map(r => r.resource);
+  
+  // If no matches, return beginner resources
+  if (matches.length === 0) {
+    return resources
+      .filter(r => r.skill_level === 'beginner')
+      .slice(0, 5);
+  }
+  
+  return matches;
+}
 
-Keep it under 100 words
-Sign off as Henry
-
-Do not use: 'dive deep', 'journey', 'excited to have you', em dashes, 'embark', 'game changer'`;
+// Format resources for the prompt
+function formatResourcesForPrompt(resources: ClassroomResource[]): string {
+  if (resources.length === 0) {
+    return 'No specific classroom resources available.';
+  }
+  
+  return resources.map(r => 
+    `- "${r.title}" (${r.category}, ${r.skill_level}): ${r.description || 'No description'}`
+  ).join('\n');
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -37,11 +137,27 @@ serve(async (req) => {
     }
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
     if (!LOVABLE_API_KEY) {
       return new Response(
         JSON.stringify({ error: 'API key not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Fetch classroom resources
+    let matchedResources: ClassroomResource[] = [];
+    if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+      const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      const { data: resources } = await supabase
+        .from('classroom_resources')
+        .select('*');
+      
+      if (resources && resources.length > 0) {
+        matchedResources = findMatchingResources(member.application_answer, resources);
+      }
     }
 
     // Calculate days since last activity
@@ -55,6 +171,31 @@ serve(async (req) => {
     } else if (member.post_count === 0 && member.comment_count === 0) {
       daysSinceActive = 'Never active';
     }
+
+    const hasApplicationAnswer = member.application_answer && member.application_answer.trim().length > 0;
+    const resourcesForPrompt = formatResourcesForPrompt(matchedResources);
+
+    const systemPrompt = `Generate a warm, personal DM to re-engage a bread baking community member.
+
+Community: Crust & Crumb Academy (bread baking)
+Tone: Henry's voice - warm, encouraging, personal, like a friend checking in. Not salesy or corporate.
+
+Available Classroom Resources (recommend 1-2 that match their goal):
+${resourcesForPrompt}
+
+Instructions:
+${hasApplicationAnswer 
+  ? '- Analyze what the member said they want to learn\n- Match them to 1-2 SPECIFIC classroom lessons from the list above\n- Reference what they said they wanted to learn'
+  : '- Since their application answer is empty/vague, recommend beginner sourdough resources\n- Use a warm, welcoming tone for someone just getting started'}
+- Write the DM with:
+  - Personal greeting using their first name
+  - ${hasApplicationAnswer ? 'Reference what they said they wanted to learn' : 'Welcome them warmly and acknowledge they are new'}
+  - Recommend 1-2 SPECIFIC classroom lessons by name with brief reason why
+  - Invitation to ask questions or share their progress
+- Keep it under 120 words
+- Sign off as Henry
+
+Do not use: 'dive deep', 'journey', 'excited to have you', 'don't hesitate', em dashes, 'embark', 'game changer'`;
 
     const userPrompt = `Member Info:
 - Name: ${member.skool_name}
@@ -78,7 +219,7 @@ Write a personalized re-engagement DM for this member.`;
           { role: 'user', content: userPrompt }
         ],
         temperature: 0.8,
-        max_tokens: 300,
+        max_tokens: 400,
       }),
     });
 
@@ -114,7 +255,11 @@ Write a personalized re-engagement DM for this member.`;
     }
 
     return new Response(
-      JSON.stringify({ message: message.trim() }),
+      JSON.stringify({ 
+        message: message.trim(),
+        matched_resources: matchedResources.map(r => r.title),
+        has_application_answer: hasApplicationAnswer
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

@@ -1,6 +1,9 @@
 import { Link, useLocation } from 'react-router-dom';
 import logo from "@/assets/logo.png";
 import { cn } from '@/lib/utils';
+import { Settings } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 const navItems = [
   { href: '/', label: 'Dashboard' },
@@ -47,6 +50,26 @@ export function Header() {
               {item.label}
             </Link>
           ))}
+          
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link to="/settings">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn(
+                    "ml-2",
+                    location.pathname === '/settings'
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent>Settings</TooltipContent>
+          </Tooltip>
         </nav>
       </div>
     </header>
