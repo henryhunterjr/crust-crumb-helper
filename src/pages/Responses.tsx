@@ -3,6 +3,7 @@ import { Search, Plus, MessageSquare } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
 import { ResponseCard } from "@/components/responses/ResponseCard";
 import { CategorySidebar } from "@/components/responses/CategorySidebar";
 import { ResponseForm } from "@/components/responses/ResponseForm";
@@ -92,10 +93,10 @@ export default function Index() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <Header />
       
-      <div className="container px-4 py-6">
+      <div className="container px-4 py-6 flex-1">
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Sidebar */}
           <aside className="lg:w-64 shrink-0">
@@ -209,6 +210,8 @@ export default function Index() {
         onEdit={handleEdit}
         onCopy={handleCopy}
       />
+
+      <Footer />
     </div>
   );
 }

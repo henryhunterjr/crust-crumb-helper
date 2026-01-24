@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { format, isSameDay } from 'date-fns';
 import { Header } from '@/components/Header';
+import { Footer } from '@/components/Footer';
 import { CalendarGrid } from '@/components/calendar/CalendarGrid';
 import { DayDetailPanel } from '@/components/calendar/DayDetailPanel';
 import { SchedulePostDialog } from '@/components/calendar/SchedulePostDialog';
@@ -73,10 +74,10 @@ export default function Calendar() {
     : [];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <Header />
       
-      <main className="container py-8 px-4">
+      <main className="container py-8 px-4 flex-1">
         <div className="mb-8">
           <h1 className="text-3xl font-serif font-bold text-foreground mb-2">
             Content Calendar
@@ -118,6 +119,8 @@ export default function Calendar() {
           onMarkPosted={handleMarkPosted}
         />
       </main>
+
+      <Footer />
     </div>
   );
 }

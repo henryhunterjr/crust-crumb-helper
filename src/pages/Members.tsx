@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Upload, Search, ArrowUpDown } from 'lucide-react';
 import { Header } from '@/components/Header';
+import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -47,6 +48,8 @@ export default function Members() {
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [generatedDM, setGeneratedDM] = useState('');
   const [isGeneratingDM, setIsGeneratingDM] = useState(false);
+  const [matchedResources, setMatchedResources] = useState<string[]>([]);
+  const [matchedRecipes, setMatchedRecipes] = useState<string[]>([]);
 
   // Member detail state
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
@@ -146,6 +149,8 @@ export default function Members() {
     setDmDialogOpen(true);
     setIsGeneratingDM(true);
     setGeneratedDM('');
+    setMatchedResources([]);
+    setMatchedRecipes([]);
 
     try {
       const { data, error } = await supabase.functions.invoke('generate-dm', {
@@ -154,6 +159,8 @@ export default function Members() {
 
       if (error) throw error;
       setGeneratedDM(data.message);
+      setMatchedResources(data.matched_resources || []);
+      setMatchedRecipes(data.matched_recipes || []);
     } catch (error) {
       console.error('Error generating DM:', error);
       toast.error('Failed to generate DM');
@@ -215,10 +222,10 @@ export default function Members() {
     filteredMembers.every(m => selectedIds.has(m.id));
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <Header />
       
-      <main className="container py-6 px-4">
+      <main className="container py-6 px-4 flex-1">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold">Member Engagement</h1>
@@ -340,6 +347,8 @@ export default function Members() {
           isGenerating={isGeneratingDM}
           onRegenerate={handleRegenerateDM}
           onMarkSent={() => selectedMember && handleMarkSent(selectedMember.id)}
+          matchedResources={matchedResources}
+          matchedRecipes={matchedRecipes}
         />
 
         <MemberDetailDialog
@@ -357,6 +366,8 @@ export default function Members() {
           onMarkSent={handleMarkSent}
         />
       </main>
+
+      <Footer />
     </div>
   );
 }

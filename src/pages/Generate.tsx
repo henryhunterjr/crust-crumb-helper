@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Sparkles, Loader2 } from 'lucide-react';
 import { Header } from '@/components/Header';
+import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -88,10 +89,10 @@ export default function Generate() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <Header />
       
-      <main className="container py-8 px-4">
+      <main className="container py-8 px-4 flex-1">
         <div className="max-w-4xl mx-auto">
           <div className="mb-8">
             <h1 className="text-3xl font-serif font-bold text-foreground mb-2">
@@ -211,6 +212,8 @@ export default function Generate() {
         onSave={handleScheduleSave}
         isNewFromIdea
       />
+
+      <Footer />
     </div>
   );
 }
