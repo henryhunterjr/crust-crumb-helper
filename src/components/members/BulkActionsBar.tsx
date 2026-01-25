@@ -1,27 +1,45 @@
-import { X, MessageSquare, BookOpen, MessageCircle, ChevronDown, Sparkles } from 'lucide-react';
+import { X, MessageSquare, BookOpen, MessageCircle, ChevronDown, Sparkles, FileText } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { OutreachType } from '@/types/member';
+import { OutreachType, Member } from '@/types/member';
 
 interface BulkActionsBarProps {
   selectedCount: number;
   onClearSelection: () => void;
   onBulkGenerateDMs: (outreachType: OutreachType) => void;
   isGenerating: boolean;
+  selectedMembers?: Member[];
 }
 
 export function BulkActionsBar({ 
   selectedCount, 
   onClearSelection, 
   onBulkGenerateDMs,
-  isGenerating 
+  isGenerating,
+  selectedMembers = []
 }: BulkActionsBarProps) {
+  const navigate = useNavigate();
+
   if (selectedCount === 0) return null;
+
+  const handleGenerateWelcomePost = () => {
+    const names = selectedMembers.map(m => m.skool_name).join(', ');
+    navigate('/generate', {
+      state: {
+        topic: `Welcome post for our new members: ${names}`,
+        postType: 'new-member-welcome',
+        targetAudience: 'new-members',
+        memberNames: selectedMembers.map(m => m.skool_name),
+      }
+    });
+  };
 
   return (
     <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-card border shadow-lg rounded-full px-4 py-2 flex items-center gap-3 z-50">
@@ -29,15 +47,25 @@ export function BulkActionsBar({
         {selectedCount} member{selectedCount !== 1 ? 's' : ''} selected
       </span>
       
+      {/* Generate Welcome Post button */}
+      <Button 
+        size="sm" 
+        variant="outline"
+        onClick={handleGenerateWelcomePost}
+      >
+        <FileText className="h-4 w-4 mr-2" />
+        Welcome Post
+      </Button>
+      
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button size="sm" disabled={isGenerating}>
             <MessageSquare className="h-4 w-4 mr-2" />
-            Generate DMs for {selectedCount}
+            Generate DMs
             <ChevronDown className="h-3 w-3 ml-1" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="center">
+        <DropdownMenuContent align="center" className="bg-popover">
           <DropdownMenuItem onClick={() => onBulkGenerateDMs('welcome_message')}>
             <Sparkles className="h-4 w-4 mr-2" />
             Welcome Messages
