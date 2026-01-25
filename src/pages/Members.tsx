@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Upload, Search, ArrowUpDown, UserPlus, RefreshCw } from 'lucide-react';
+import { differenceInDays, parseISO } from 'date-fns';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
@@ -72,7 +73,15 @@ export default function Members() {
     let result = [...members];
 
     // Apply filter
+    const today = new Date();
     switch (activeFilter) {
+      case 'joined_this_week':
+        result = result.filter(m => {
+          if (!m.join_date) return false;
+          const joinDate = parseISO(m.join_date);
+          return differenceInDays(today, joinDate) <= 7;
+        });
+        break;
       case 'never_engaged':
         result = result.filter(m => m.engagement_status === 'never_engaged');
         break;
@@ -124,18 +133,26 @@ export default function Members() {
     return result;
   }, [members, activeFilter, searchQuery, sortField]);
 
-  const filterCounts = useMemo(() => ({
-    all: members.length,
-    never_engaged: members.filter(m => m.engagement_status === 'never_engaged').length,
-    at_risk: members.filter(m => m.engagement_status === 'at_risk').length,
-    inactive: members.filter(m => m.engagement_status === 'inactive').length,
-    needs_outreach: members.filter(m => 
-      ['never_engaged', 'at_risk', 'inactive'].includes(m.engagement_status) && 
-      !m.outreach_sent
-    ).length,
-    has_goals: members.filter(m => m.application_answer && m.application_answer.trim().length > 0).length,
-    no_goals: members.filter(m => !m.application_answer || m.application_answer.trim().length === 0).length,
-  }), [members]);
+  const filterCounts = useMemo(() => {
+    const today = new Date();
+    return {
+      all: members.length,
+      joined_this_week: members.filter(m => {
+        if (!m.join_date) return false;
+        const joinDate = parseISO(m.join_date);
+        return differenceInDays(today, joinDate) <= 7;
+      }).length,
+      never_engaged: members.filter(m => m.engagement_status === 'never_engaged').length,
+      at_risk: members.filter(m => m.engagement_status === 'at_risk').length,
+      inactive: members.filter(m => m.engagement_status === 'inactive').length,
+      needs_outreach: members.filter(m => 
+        ['never_engaged', 'at_risk', 'inactive'].includes(m.engagement_status) && 
+        !m.outreach_sent
+      ).length,
+      has_goals: members.filter(m => m.application_answer && m.application_answer.trim().length > 0).length,
+      no_goals: members.filter(m => !m.application_answer || m.application_answer.trim().length === 0).length,
+    };
+  }, [members]);
 
   const handleImport = async (rows: MemberImportRow[]) => {
     try {
