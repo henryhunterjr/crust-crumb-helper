@@ -23,6 +23,7 @@ export interface ScheduledPost {
 }
 
 export const POST_TYPES = [
+  { value: 'new-member-welcome', label: 'New Member Welcome' },
   { value: 'quick-discussion', label: 'Quick Discussion (yes/no, this or that)' },
   { value: 'fill-in-blank', label: 'Fill in the Blank' },
   { value: 'tip-of-day', label: 'Tip of the Day' },
@@ -33,6 +34,7 @@ export const POST_TYPES = [
 ] as const;
 
 export const TARGET_AUDIENCES = [
+  { value: 'new-members', label: 'New Members (welcome, orientation)' },
   { value: 'new', label: 'New bakers (simple, encouraging)' },
   { value: 'intermediate', label: 'Intermediate (technique-focused)' },
   { value: 'advanced', label: 'Advanced (science, troubleshooting)' },
@@ -46,6 +48,7 @@ export const TIME_SLOTS = [
 ] as const;
 
 export const POST_TYPE_COLORS: Record<string, string> = {
+  'new-member-welcome': 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
   'quick-discussion': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
   'fill-in-blank': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
   'tip-of-day': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
