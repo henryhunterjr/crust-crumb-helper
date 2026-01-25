@@ -21,6 +21,7 @@ import { MemberDetailDialog } from '@/components/members/MemberDetailDialog';
 import { BulkActionsBar } from '@/components/members/BulkActionsBar';
 import { BulkDMQueueDialog } from '@/components/members/BulkDMQueueDialog';
 import { AddMemberDialog } from '@/components/members/AddMemberDialog';
+import { NewMemberDigest } from '@/components/members/NewMemberDigest';
 import { useMembers } from '@/hooks/useMembers';
 import { Member, MemberFilter, MemberSortField, MemberImportRow, OutreachType } from '@/types/member';
 import { supabase } from '@/integrations/supabase/client';
@@ -316,6 +317,9 @@ export default function Members() {
           </div>
         </div>
 
+        {/* Weekly digest for new members */}
+        <NewMemberDigest members={members} />
+
         {/* Stats bar */}
         <MemberStatsBar stats={stats} />
 
@@ -416,6 +420,7 @@ export default function Members() {
           onClearSelection={() => setSelectedIds(new Set())}
           onBulkGenerateDMs={handleBulkGenerateDMs}
           isGenerating={false}
+          selectedMembers={selectedMembers}
         />
 
         {/* Dialogs */}

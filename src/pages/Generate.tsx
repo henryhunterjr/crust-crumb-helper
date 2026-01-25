@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Sparkles, Loader2 } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -18,22 +19,47 @@ import { usePostIdeas } from '@/hooks/usePostIdeas';
 import { useScheduledPosts } from '@/hooks/useScheduledPosts';
 import { POST_TYPES, TARGET_AUDIENCES } from '@/types/postIdea';
 import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
 
 interface GeneratedPost {
   title: string;
   content: string;
 }
 
+interface LocationState {
+  topic?: string;
+  postType?: string;
+  targetAudience?: string;
+  memberNames?: string[];
+}
+
 export default function Generate() {
+  const location = useLocation();
+  const locationState = location.state as LocationState | null;
+
   const [topic, setTopic] = useState('');
   const [postType, setPostType] = useState('');
   const [targetAudience, setTargetAudience] = useState('');
   const [generatedPosts, setGeneratedPosts] = useState<GeneratedPost[]>([]);
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [postToSchedule, setPostToSchedule] = useState<GeneratedPost | null>(null);
+  const [prefilledMembers, setPrefilledMembers] = useState<string[]>([]);
   
   const { generatePosts, isGenerating, savePostIdea } = usePostIdeas();
   const { createScheduledPost } = useScheduledPosts();
+
+  // Pre-fill form from navigation state (quick-select from Members page)
+  useEffect(() => {
+    if (locationState) {
+      if (locationState.topic) setTopic(locationState.topic);
+      if (locationState.postType) setPostType(locationState.postType);
+      if (locationState.targetAudience) setTargetAudience(locationState.targetAudience);
+      if (locationState.memberNames) setPrefilledMembers(locationState.memberNames);
+      
+      // Clear the location state to prevent re-filling on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [locationState]);
 
   const handleGenerate = async () => {
     if (!topic.trim()) {
@@ -106,6 +132,25 @@ export default function Generate() {
           {/* Form */}
           <div className="bg-card rounded-lg border p-6 mb-8">
             <div className="space-y-6">
+              {/* Pre-filled members indicator */}
+              {prefilledMembers.length > 0 && (
+                <div className="p-3 rounded-md bg-primary/10 border border-primary/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">
+                      Generating welcome post for {prefilledMembers.length} member{prefilledMembers.length !== 1 ? 's' : ''}:
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {prefilledMembers.map((name, i) => (
+                      <Badge key={i} variant="secondary" className="text-xs">
+                        {name}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label htmlFor="topic">What topic do you want to post about?</Label>
                 <Textarea
