@@ -36,57 +36,8 @@ export function ImportMembersDialog({
       throw new Error('CSV must have a header row and at least one data row');
     }
 
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-    
-    // Map common header variations
-    const headerMap: Record<string, keyof MemberImportRow> = {
-      'name': 'name',
-      'skool_name': 'name',
-      'skool name': 'name',
-      'member': 'name',
-      'skool_username': 'skoolUsername',
-      'skool username': 'skoolUsername',
-      'username': 'skoolUsername',
-      'email': 'email',
-      'join date': 'joinDate',
-      'join_date': 'joinDate',
-      'joined': 'joinDate',
-      'application answer': 'applicationAnswer',
-      'application_answer': 'applicationAnswer',
-      'answer': 'applicationAnswer',
-      'goal': 'applicationAnswer',
-      'goals': 'applicationAnswer',
-      'learning goals': 'applicationAnswer',
-      'learning_goals': 'applicationAnswer',
-      'posts': 'posts',
-      'post_count': 'posts',
-      'post count': 'posts',
-      'comments': 'comments',
-      'comment_count': 'comments',
-      'comment count': 'comments',
-      'last active': 'lastActive',
-      'last_active': 'lastActive',
-      'lastactive': 'lastActive',
-    };
-
-    const columnIndices: Partial<Record<keyof MemberImportRow, number>> = {};
-    headers.forEach((header, index) => {
-      const mappedKey = headerMap[header];
-      if (mappedKey) {
-        columnIndices[mappedKey] = index;
-      }
-    });
-
-    if (columnIndices.name === undefined) {
-      throw new Error('CSV must have a "Name" column');
-    }
-
-    const rows: MemberImportRow[] = [];
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line) continue;
-
-      // Handle quoted fields with commas
+    // Parse header row handling quoted fields
+    const parseRow = (line: string): string[] => {
       const values: string[] = [];
       let current = '';
       let inQuotes = false;
@@ -102,10 +53,93 @@ export function ImportMembersDialog({
         }
       }
       values.push(current.trim());
+      return values;
+    };
 
-      const row: MemberImportRow = {
-        name: values[columnIndices.name!] || '',
-      };
+    const headers = parseRow(lines[0]).map(h => h.toLowerCase());
+    
+    // Map common header variations - including Skool's export format
+    const headerMap: Record<string, string> = {
+      // Name fields
+      'name': 'name',
+      'skool_name': 'name',
+      'skool name': 'name',
+      'member': 'name',
+      'firstname': 'firstName',
+      'first name': 'firstName',
+      'first_name': 'firstName',
+      'lastname': 'lastName',
+      'last name': 'lastName',
+      'last_name': 'lastName',
+      // Username
+      'skool_username': 'skoolUsername',
+      'skool username': 'skoolUsername',
+      'username': 'skoolUsername',
+      // Email
+      'email': 'email',
+      // Join date
+      'join date': 'joinDate',
+      'join_date': 'joinDate',
+      'joined': 'joinDate',
+      'joineddate': 'joinDate',
+      'joined date': 'joinDate',
+      // Application answer - Skool uses Answer1 for the first question response
+      'application answer': 'applicationAnswer',
+      'application_answer': 'applicationAnswer',
+      'answer': 'applicationAnswer',
+      'answer1': 'applicationAnswer',
+      'goal': 'applicationAnswer',
+      'goals': 'applicationAnswer',
+      'learning goals': 'applicationAnswer',
+      'learning_goals': 'applicationAnswer',
+      // Activity stats
+      'posts': 'posts',
+      'post_count': 'posts',
+      'post count': 'posts',
+      'comments': 'comments',
+      'comment_count': 'comments',
+      'comment count': 'comments',
+      'last active': 'lastActive',
+      'last_active': 'lastActive',
+      'lastactive': 'lastActive',
+    };
+
+    const columnIndices: Record<string, number> = {};
+    headers.forEach((header, index) => {
+      const mappedKey = headerMap[header];
+      if (mappedKey) {
+        columnIndices[mappedKey] = index;
+      }
+    });
+
+    // Check for either combined name or separate first/last name
+    const hasName = columnIndices.name !== undefined;
+    const hasFirstLastName = columnIndices.firstName !== undefined && columnIndices.lastName !== undefined;
+    
+    if (!hasName && !hasFirstLastName) {
+      throw new Error('CSV must have a "Name" column or both "FirstName" and "LastName" columns');
+    }
+
+    const rows: MemberImportRow[] = [];
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      const values = parseRow(line);
+
+      // Build name from either single column or first+last
+      let name = '';
+      if (hasName) {
+        name = values[columnIndices.name] || '';
+      } else if (hasFirstLastName) {
+        const firstName = values[columnIndices.firstName] || '';
+        const lastName = values[columnIndices.lastName] || '';
+        name = `${firstName} ${lastName}`.trim();
+      }
+
+      if (!name) continue;
+
+      const row: MemberImportRow = { name };
 
       if (columnIndices.skoolUsername !== undefined) {
         row.skoolUsername = values[columnIndices.skoolUsername] || undefined;
@@ -116,7 +150,7 @@ export function ImportMembersDialog({
       if (columnIndices.joinDate !== undefined) {
         const dateValue = values[columnIndices.joinDate];
         if (dateValue) {
-          // Try to parse various date formats
+          // Handle Skool's datetime format (2026-01-24 20:39:21)
           const parsed = new Date(dateValue);
           if (!isNaN(parsed.getTime())) {
             row.joinDate = parsed.toISOString().split('T')[0];
@@ -142,9 +176,7 @@ export function ImportMembersDialog({
         }
       }
 
-      if (row.name) {
-        rows.push(row);
-      }
+      rows.push(row);
     }
 
     return rows;
