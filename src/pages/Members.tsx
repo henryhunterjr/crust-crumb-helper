@@ -138,10 +138,13 @@ export default function Members() {
 
   const handleImport = async (rows: MemberImportRow[]) => {
     try {
-      const imported = await importMembers.mutateAsync(rows);
+      const result = await importMembers.mutateAsync(rows);
       
-      // Calculate import summary
-      const summary = imported.reduce((acc, m) => {
+      const { inserted, updated } = result;
+      
+      // Calculate import summary from results
+      const allMembers = result.results;
+      const summary = allMembers.reduce((acc, m) => {
         acc[m.engagement_status] = (acc[m.engagement_status] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
@@ -152,10 +155,14 @@ export default function Members() {
       if (summary.inactive) summaryParts.push(`${summary.inactive} inactive`);
 
       // Check for missing application answers
-      const withoutGoals = imported.filter(m => !m.application_answer || m.application_answer.trim().length === 0).length;
+      const withoutGoals = allMembers.filter(m => !m.application_answer || m.application_answer.trim().length === 0).length;
+      
+      const actionParts = [];
+      if (inserted > 0) actionParts.push(`${inserted} new`);
+      if (updated > 0) actionParts.push(`${updated} updated`);
       
       toast.success(
-        `Imported ${imported.length} members. ${summaryParts.join(', ')}.`
+        `Import complete: ${actionParts.join(', ')} members. ${summaryParts.join(', ')}.`
       );
       
       if (withoutGoals > 0) {

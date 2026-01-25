@@ -23,7 +23,19 @@ export function useMembers() {
     mutationFn: async (rows: MemberImportRow[]) => {
       const today = new Date();
       
-      const membersToInsert = rows.map(row => {
+      // Fetch existing members to check for duplicates (match by name)
+      const { data: existingMembers } = await supabase
+        .from('members')
+        .select('id, skool_name');
+      
+      const existingByName = new Map(
+        (existingMembers || []).map(m => [m.skool_name.toLowerCase().trim(), m.id])
+      );
+      
+      const toInsert: any[] = [];
+      const toUpdate: { id: string; updates: any }[] = [];
+      
+      for (const row of rows) {
         const joinDate = row.joinDate ? parseISO(row.joinDate) : null;
         const lastActive = row.lastActive ? parseISO(row.lastActive) : null;
         const postCount = row.posts || 0;
@@ -48,7 +60,7 @@ export function useMembers() {
           }
         }
         
-        return {
+        const memberData = {
           skool_name: row.name,
           skool_username: row.skoolUsername || null,
           email: row.email || null,
@@ -59,15 +71,49 @@ export function useMembers() {
           last_active: row.lastActive || null,
           engagement_status: engagementStatus,
         };
-      });
-
-      const { data, error } = await supabase
-        .from('members')
-        .insert(membersToInsert)
-        .select();
-
-      if (error) throw error;
-      return data as Member[];
+        
+        const existingId = existingByName.get(row.name.toLowerCase().trim());
+        
+        if (existingId) {
+          // Update existing member
+          toUpdate.push({ id: existingId, updates: memberData });
+        } else {
+          // Insert new member
+          toInsert.push(memberData);
+        }
+      }
+      
+      const results: Member[] = [];
+      
+      // Insert new members
+      if (toInsert.length > 0) {
+        const { data: inserted, error: insertError } = await supabase
+          .from('members')
+          .insert(toInsert)
+          .select();
+        
+        if (insertError) throw insertError;
+        results.push(...(inserted as Member[]));
+      }
+      
+      // Update existing members
+      for (const { id, updates } of toUpdate) {
+        const { data: updated, error: updateError } = await supabase
+          .from('members')
+          .update(updates)
+          .eq('id', id)
+          .select()
+          .single();
+        
+        if (updateError) throw updateError;
+        results.push(updated as Member);
+      }
+      
+      return { 
+        results, 
+        inserted: toInsert.length, 
+        updated: toUpdate.length 
+      };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['members'] });
