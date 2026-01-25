@@ -192,8 +192,8 @@ export function ImportMembersDialog({
       
       const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
       const applicationAnswerHeaders = [
-        'application answer', 'application_answer', 'answer', 'goal', 'goals', 
-        'learning goals', 'learning_goals'
+        'application answer', 'application_answer', 'answer', 'answer1', 'answer2',
+        'goal', 'goals', 'learning goals', 'learning_goals'
       ];
       
       const hasApplicationAnswerColumn = headers.some(h => applicationAnswerHeaders.includes(h));
