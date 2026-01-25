@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Upload, Search, ArrowUpDown, UserPlus } from 'lucide-react';
+import { Upload, Search, ArrowUpDown, UserPlus, RefreshCw } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
@@ -29,7 +29,9 @@ import { toast } from 'sonner';
 export default function Members() {
   const { 
     members, 
-    isLoading, 
+    isLoading,
+    isFetching,
+    refetch,
     stats, 
     importMembers, 
     updateMember, 
@@ -287,6 +289,15 @@ export default function Members() {
             </p>
           </div>
           <div className="flex gap-2">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => refetch()}
+              disabled={isFetching}
+              title="Refresh member data"
+            >
+              <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+            </Button>
             <Button variant="outline" onClick={() => setAddMemberDialogOpen(true)}>
               <UserPlus className="h-4 w-4 mr-2" />
               Add Member

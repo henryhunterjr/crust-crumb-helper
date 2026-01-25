@@ -6,7 +6,7 @@ import { differenceInDays, parseISO } from 'date-fns';
 export function useMembers() {
   const queryClient = useQueryClient();
 
-  const { data: members = [], isLoading, error } = useQuery({
+  const { data: members = [], isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ['members'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -206,6 +206,8 @@ export function useMembers() {
   return {
     members,
     isLoading,
+    isFetching,
+    refetch,
     error,
     stats,
     importMembers,
