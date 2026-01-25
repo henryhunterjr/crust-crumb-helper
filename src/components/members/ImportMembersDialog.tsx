@@ -251,7 +251,10 @@ export function ImportMembersDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Import Members from CSV</DialogTitle>
+          <DialogTitle>Import & Sync Members from CSV</DialogTitle>
+          <p className="text-sm text-muted-foreground">
+            Upload your latest Skool export to add new members and update existing ones.
+          </p>
         </DialogHeader>
 
         <Tabs defaultValue="paste" className="mt-4">
@@ -321,7 +324,10 @@ Jane Smith,jane@email.com,2024-01-10,Interested in bread baking,5,12,2024-01-20"
 
         <div className="mt-4 p-3 bg-muted/50 rounded-md">
           <p className="text-xs text-muted-foreground">
-            <strong>Expected columns:</strong> Name (required), Email, Join Date, <strong>Application Answer</strong> (important for personalization), Posts, Comments, Last Active
+            <strong>Smart Merge:</strong> Existing members (matched by name) will be updated with new data. New members will be added.
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            <strong>Columns:</strong> Name (required), Email, Join Date, <strong>Application Answer</strong> (for personalization), Posts, Comments, Last Active
           </p>
         </div>
 
