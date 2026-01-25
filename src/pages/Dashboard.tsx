@@ -1,5 +1,5 @@
-import { Link } from 'react-router-dom';
-import { format, startOfWeek, endOfWeek, isToday, isSameDay, addDays } from 'date-fns';
+import { Link, useNavigate } from 'react-router-dom';
+import { format, startOfWeek, endOfWeek, isToday, isSameDay, addDays, differenceInDays, parseISO } from 'date-fns';
 import { 
   Sparkles, 
   MessageSquare, 
@@ -9,8 +9,9 @@ import {
   Clock,
   ChevronRight,
   TrendingUp,
+  UserPlus,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
@@ -18,18 +19,30 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { useScheduledPosts } from '@/hooks/useScheduledPosts';
 import { useQuickResponses } from '@/hooks/useQuickResponses';
+import { useMembers } from '@/hooks/useMembers';
 import { ScheduledPost, POST_TYPES, TIME_SLOTS } from '@/types/postIdea';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const { scheduledPosts } = useScheduledPosts();
   const { data: recentResponses } = useQuickResponses('', null);
+  const { members } = useMembers();
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const today = new Date();
   const weekStart = startOfWeek(today);
   const weekEnd = endOfWeek(today);
+
+  // New members this week
+  const newMembersThisWeek = useMemo(() => {
+    return members.filter(m => {
+      if (!m.join_date) return false;
+      const joinDate = parseISO(m.join_date);
+      return differenceInDays(today, joinDate) <= 7;
+    });
+  }, [members, today]);
 
   // Today's posts
   const todaysPosts = scheduledPosts.filter(
@@ -55,6 +68,18 @@ export default function Dashboard() {
   const plannedThisWeek = thisWeeksPosts.filter(p => p.status === 'planned').length;
   const postedThisWeek = thisWeeksPosts.filter(p => p.status === 'posted').length;
   const totalResponses = recentResponses?.length || 0;
+
+  const handleGenerateWelcomePost = () => {
+    const names = newMembersThisWeek.map(m => m.skool_name).join(', ');
+    navigate('/generate', {
+      state: {
+        topic: `Welcome post for our new members: ${names}`,
+        postType: 'new-member-welcome',
+        targetAudience: 'new-members',
+        memberNames: newMembersThisWeek.map(m => m.skool_name),
+      }
+    });
+  };
 
   const handleCopyPost = async (post: ScheduledPost) => {
     const fullPost = `${post.title}\n\n${post.content}`;
@@ -93,7 +118,7 @@ export default function Dashboard() {
         </div>
 
         {/* Quick Stats */}
-        <div className="grid gap-4 md:grid-cols-3 mb-8">
+        <div className="grid gap-4 md:grid-cols-4 mb-8">
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Planned This Week</CardDescription>
@@ -116,6 +141,34 @@ export default function Dashboard() {
               <div className="text-xs text-muted-foreground">
                 {todaysPosts.length > 0 ? 'Ready to share!' : 'No posts planned for today'}
               </div>
+            </CardContent>
+          </Card>
+
+          {/* New Members This Week */}
+          <Card className={newMembersThisWeek.length > 0 ? 'border-primary/30 bg-primary/5' : ''}>
+            <CardHeader className="pb-2">
+              <CardDescription className="flex items-center gap-1">
+                <UserPlus className="h-3 w-3" />
+                New Members This Week
+              </CardDescription>
+              <CardTitle className="text-3xl">{newMembersThisWeek.length}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {newMembersThisWeek.length > 0 ? (
+                <Button 
+                  variant="link" 
+                  size="sm" 
+                  className="h-auto p-0 text-xs"
+                  onClick={handleGenerateWelcomePost}
+                >
+                  <Sparkles className="h-3 w-3 mr-1" />
+                  Generate welcome post
+                </Button>
+              ) : (
+                <div className="text-xs text-muted-foreground">
+                  No new members yet
+                </div>
+              )}
             </CardContent>
           </Card>
           

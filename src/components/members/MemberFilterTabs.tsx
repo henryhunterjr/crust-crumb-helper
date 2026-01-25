@@ -13,12 +13,14 @@ interface MemberFilterTabsProps {
     needs_outreach: number;
     has_goals: number;
     no_goals: number;
+    joined_this_week: number;
   };
 }
 
 export function MemberFilterTabs({ activeFilter, onFilterChange, counts }: MemberFilterTabsProps) {
   const filters: { id: MemberFilter; label: string; count: number }[] = [
     { id: 'all', label: 'All', count: counts.all },
+    { id: 'joined_this_week', label: 'Joined This Week', count: counts.joined_this_week },
     { id: 'never_engaged', label: 'Never Engaged', count: counts.never_engaged },
     { id: 'at_risk', label: 'At Risk', count: counts.at_risk },
     { id: 'inactive', label: 'Inactive 30+', count: counts.inactive },
