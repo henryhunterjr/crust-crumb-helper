@@ -48,15 +48,31 @@ serve(async (req) => {
     }
 
     const audienceGuidance = {
+      'new-members': 'Write specifically for new community members - welcome them warmly, make them feel at home, and guide them on getting started. If member names are mentioned in the topic, personalize the post by @mentioning them.',
       'new': 'Write for new bakers - keep it simple, encouraging, and avoid jargon.',
       'intermediate': 'Write for intermediate bakers - focus on technique refinement and troubleshooting.',
       'advanced': 'Write for advanced bakers - include science, detailed troubleshooting, and nuance.',
       'everyone': 'Write for all skill levels - be inclusive and welcoming.'
     };
 
+    const postTypeGuidance = {
+      'new-member-welcome': 'Create a warm welcome post for new members joining the community. If specific names are provided in the topic, @mention them directly (e.g., @JohnDoe). Include encouragement to introduce themselves, explore resources, and ask questions. Make them feel valued and part of the family.',
+      'quick-discussion': 'Create a quick discussion post that encourages yes/no or this-or-that responses.',
+      'fill-in-blank': 'Create a fill-in-the-blank style post that encourages community participation.',
+      'tip-of-day': 'Share a practical baking tip that members can use immediately.',
+      'unpopular-opinion': 'Share a slightly controversial baking opinion that sparks friendly debate.',
+      'question': 'Ask a thoughtful question that encourages community discussion.',
+      'challenge': 'Issue a baking challenge or call to action that motivates members.',
+      'bake-along': 'Promote the Saturday bake-along session with excitement and details.'
+    };
+
     const userPrompt = `Create a "${postType}" post about: ${topic}
 
+Post type guidance: ${postTypeGuidance[postType as keyof typeof postTypeGuidance] || ''}
+
 Target audience: ${audienceGuidance[targetAudience as keyof typeof audienceGuidance] || audienceGuidance['everyone']}
+
+IMPORTANT: If the topic mentions specific member names (like "Welcome Sarah and Mike"), make sure to @mention them in the post content (e.g., @Sarah @Mike).
 
 Remember to match Henry's warm, encouraging voice and end each post with a clear call to action or question.`;
 
