@@ -10,7 +10,9 @@ import {
   ChevronRight,
   TrendingUp,
   UserPlus,
+  AlertTriangle,
 } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useState, useMemo } from 'react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -41,6 +43,16 @@ export default function Dashboard() {
       if (!m.join_date) return false;
       const joinDate = parseISO(m.join_date);
       return differenceInDays(today, joinDate) <= 7;
+    });
+  }, [members, today]);
+
+  // Members needing welcome (joined 3+ days ago, no outreach sent)
+  const membersNeedingWelcome = useMemo(() => {
+    return members.filter(m => {
+      if (!m.join_date) return false;
+      if (m.outreach_sent) return false;
+      const joinDate = parseISO(m.join_date);
+      return differenceInDays(today, joinDate) >= 3;
     });
   }, [members, today]);
 
@@ -107,6 +119,27 @@ export default function Dashboard() {
       <Header />
       
       <main className="container py-8 px-4 flex-1">
+        {/* Overdue Welcome Alert */}
+        {membersNeedingWelcome.length > 0 && (
+          <Alert variant="destructive" className="mb-6 border-destructive/50 bg-destructive/10">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Members Awaiting Welcome</AlertTitle>
+            <AlertDescription className="flex items-center justify-between">
+              <span>
+                {membersNeedingWelcome.length} member{membersNeedingWelcome.length !== 1 ? 's' : ''} joined 3+ days ago and haven't been welcomed yet.
+              </span>
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="ml-4 shrink-0"
+                onClick={() => navigate('/members?filter=needs_welcome')}
+              >
+                View Members
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Welcome Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-serif font-bold text-foreground mb-2">

@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Upload, Search, ArrowUpDown, UserPlus, RefreshCw } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
 import { Header } from '@/components/Header';
@@ -42,6 +43,9 @@ export default function Members() {
     addMember
   } = useMembers();
 
+  // URL params for filter
+  const [searchParams, setSearchParams] = useSearchParams();
+
   // UI state
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [addMemberDialogOpen, setAddMemberDialogOpen] = useState(false);
@@ -49,6 +53,16 @@ export default function Members() {
   const [sortField, setSortField] = useState<MemberSortField>('join_date');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Handle filter from URL params
+  useEffect(() => {
+    const filterParam = searchParams.get('filter');
+    if (filterParam && ['all', 'never_engaged', 'at_risk', 'inactive', 'needs_outreach', 'has_goals', 'no_goals', 'joined_this_week', 'needs_welcome'].includes(filterParam)) {
+      setActiveFilter(filterParam as MemberFilter);
+      // Clear the URL param after applying
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   // DM generation state
   const [dmDialogOpen, setDmDialogOpen] = useState(false);
@@ -80,6 +94,14 @@ export default function Members() {
           if (!m.join_date) return false;
           const joinDate = parseISO(m.join_date);
           return differenceInDays(today, joinDate) <= 7;
+        });
+        break;
+      case 'needs_welcome':
+        result = result.filter(m => {
+          if (!m.join_date) return false;
+          if (m.outreach_sent) return false;
+          const joinDate = parseISO(m.join_date);
+          return differenceInDays(today, joinDate) >= 3;
         });
         break;
       case 'never_engaged':
@@ -141,6 +163,12 @@ export default function Members() {
         if (!m.join_date) return false;
         const joinDate = parseISO(m.join_date);
         return differenceInDays(today, joinDate) <= 7;
+      }).length,
+      needs_welcome: members.filter(m => {
+        if (!m.join_date) return false;
+        if (m.outreach_sent) return false;
+        const joinDate = parseISO(m.join_date);
+        return differenceInDays(today, joinDate) >= 3;
       }).length,
       never_engaged: members.filter(m => m.engagement_status === 'never_engaged').length,
       at_risk: members.filter(m => m.engagement_status === 'at_risk').length,
