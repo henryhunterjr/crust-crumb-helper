@@ -32,6 +32,6 @@ export interface MemberImportRow {
   lastActive?: string;
 }
 
-export type MemberFilter = 'all' | 'never_engaged' | 'at_risk' | 'inactive' | 'needs_outreach' | 'has_goals' | 'no_goals' | 'joined_this_week';
+export type MemberFilter = 'all' | 'never_engaged' | 'at_risk' | 'inactive' | 'needs_outreach' | 'has_goals' | 'no_goals' | 'joined_this_week' | 'needs_welcome';
 
 export type MemberSortField = 'join_date' | 'last_active' | 'engagement_status';
