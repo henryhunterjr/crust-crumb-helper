@@ -61,24 +61,53 @@ export function BulkDMQueueDialog({
         i === pendingIndex ? { ...q, status: 'generating' } : q
       ));
 
-      try {
-        const { data, error } = await supabase.functions.invoke('generate-dm', {
-          body: { 
-            member: queue[pendingIndex].member,
-            outreach_type: outreachType
+      const member = queue[pendingIndex].member;
+      
+      // Retry logic for transient failures
+      let attempts = 0;
+      const maxAttempts = 3;
+      
+      while (attempts < maxAttempts) {
+        try {
+          const { data, error } = await supabase.functions.invoke('generate-dm', {
+            body: { 
+              member: {
+                id: member.id,
+                skool_name: member.skool_name,
+                skool_username: member.skool_username,
+                application_answer: member.application_answer,
+                join_date: member.join_date,
+                last_active: member.last_active,
+                post_count: member.post_count || 0,
+                comment_count: member.comment_count || 0,
+              },
+              outreach_type: outreachType
+            }
+          });
+
+          if (error) throw error;
+          
+          if (!data?.message) {
+            throw new Error('No message returned from AI');
           }
-        });
 
-        if (error) throw error;
-
-        setQueue(prev => prev.map((q, i) => 
-          i === pendingIndex ? { ...q, status: 'done', message: data.message } : q
-        ));
-      } catch (err) {
-        console.error('Error generating DM:', err);
-        setQueue(prev => prev.map((q, i) => 
-          i === pendingIndex ? { ...q, status: 'error', message: 'Failed to generate' } : q
-        ));
+          setQueue(prev => prev.map((q, i) => 
+            i === pendingIndex ? { ...q, status: 'done', message: data.message } : q
+          ));
+          return; // Success, exit the retry loop
+        } catch (err) {
+          attempts++;
+          console.error(`Error generating DM (attempt ${attempts}/${maxAttempts}):`, err);
+          
+          if (attempts >= maxAttempts) {
+            setQueue(prev => prev.map((q, i) => 
+              i === pendingIndex ? { ...q, status: 'error', message: 'Failed to generate after retries' } : q
+            ));
+          } else {
+            // Wait before retrying (exponential backoff)
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
+          }
+        }
       }
     };
 
