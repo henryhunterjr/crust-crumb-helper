@@ -211,12 +211,54 @@ function formatRecipesForPrompt(recipes: Recipe[]): string {
   ).join('\n');
 }
 
+// Detect interest type for link recommendations
+function detectInterestType(applicationAnswer: string | null): { starterInterest: boolean; recipeInterest: boolean } {
+  if (!applicationAnswer) return { starterInterest: false, recipeInterest: false };
+  
+  const lowerAnswer = applicationAnswer.toLowerCase();
+  
+  // Starter-related keywords
+  const starterKeywords = [
+    'starter', 'sourdough starter', 'getting started', 'begin', 'new to sourdough',
+    'starting', 'start sourdough', 'levain', 'mother dough', 'wild yeast',
+    'feeding', 'maintain', 'troubleshoot starter', 'starter help', 'build a starter'
+  ];
+  
+  // Recipe/baking-related keywords
+  const recipeKeywords = [
+    'recipe', 'bake', 'make', 'bread', 'loaf', 'bagel', 'focaccia', 'baguette',
+    'challah', 'ciabatta', 'brioche', 'pizza', 'rolls', 'croissant', 'pastry',
+    'cinnamon roll', 'sourdough bread', 'artisan', 'rustic', 'boule', 'batard'
+  ];
+  
+  const starterInterest = starterKeywords.some(kw => lowerAnswer.includes(kw));
+  const recipeInterest = recipeKeywords.some(kw => lowerAnswer.includes(kw));
+  
+  return { starterInterest, recipeInterest };
+}
+
 // Generate welcome message prompt
 function getWelcomeMessagePrompt(
   hasApplicationAnswer: boolean,
   resourcesForPrompt: string,
-  recipesForPrompt: string
+  recipesForPrompt: string,
+  starterInterest: boolean,
+  recipeInterest: boolean
 ): string {
+  let linkInstructions = '';
+  
+  if (starterInterest) {
+    linkInstructions += `\n- IMPORTANT: Include this link to our Starter Sorcerer companion app: https://starter-sorcerer.vercel.app/ - mention it helps track and care for their sourdough starter`;
+  }
+  if (recipeInterest) {
+    linkInstructions += `\n- IMPORTANT: Include this link to our Recipe Pantry: https://pantry.bakinggreatbread.com/ - mention it has all our tested recipes`;
+  }
+  if (!starterInterest && !recipeInterest && !hasApplicationAnswer) {
+    // Default for new members without clear goals
+    linkInstructions = `\n- Include our Starter Sorcerer companion app (https://starter-sorcerer.vercel.app/) for starter help
+- Include our Recipe Pantry (https://pantry.bakinggreatbread.com/) for recipes`;
+  }
+
   return `Generate a warm welcome DM for a new bread baking community member.
 
 Community: Crust & Crumb Academy (bread baking)
@@ -232,10 +274,10 @@ Instructions:
 - Warmly welcome them by first name
 ${hasApplicationAnswer 
   ? '- Acknowledge what they said they wanted to learn or make\n- Point them to 1-2 specific resources/recipes that match their goals'
-  : '- Since no specific goals mentioned, suggest our most popular beginner resources'}
+  : '- Since no specific goals mentioned, suggest our most popular beginner resources'}${linkInstructions}
 - Invite them to introduce themselves in the community
 - Encourage them to ask questions anytime
-- Keep it under 100 words
+- Keep it under 120 words
 - Sign off as Henry
 
 Do not use: 'dive deep', 'journey', 'excited to have you', 'don't hesitate', em dashes, 'embark', 'game changer'`;
@@ -245,8 +287,19 @@ Do not use: 'dive deep', 'journey', 'excited to have you', 'don't hesitate', em 
 function getResourceRecommendationPrompt(
   hasApplicationAnswer: boolean,
   resourcesForPrompt: string,
-  recipesForPrompt: string
+  recipesForPrompt: string,
+  starterInterest: boolean,
+  recipeInterest: boolean
 ): string {
+  let linkInstructions = '';
+  
+  if (starterInterest) {
+    linkInstructions += `\n- IMPORTANT: Include this link to our Starter Sorcerer companion app: https://starter-sorcerer.vercel.app/ - it helps track feedings, diagnose issues, and care for their starter`;
+  }
+  if (recipeInterest) {
+    linkInstructions += `\n- IMPORTANT: Include this link to our Recipe Pantry: https://pantry.bakinggreatbread.com/ - it has all our tested recipes organized by skill level`;
+  }
+
   return `Generate a warm, personal DM to a bread baking community member recommending resources.
 
 Community: Crust & Crumb Academy (bread baking)
@@ -265,7 +318,7 @@ Instructions:
 - You can recommend BOTH a recipe AND a classroom resource if relevant
 ${hasApplicationAnswer 
   ? '- Reference what they said they wanted to learn or make\n- Match them to specific resources and/or recipes from the lists above'
-  : '- Since their application answer is empty/vague, recommend beginner sourdough resources\n- Use a warm, welcoming tone for someone just getting started'}
+  : '- Since their application answer is empty/vague, recommend beginner sourdough resources\n- Use a warm, welcoming tone for someone just getting started'}${linkInstructions}
 - Write the DM with:
   - Personal greeting using their first name
   - ${hasApplicationAnswer ? 'Reference what they said they wanted to learn or make' : 'Welcome them warmly and acknowledge they are new'}
@@ -391,10 +444,13 @@ serve(async (req) => {
     const resourcesForPrompt = formatResourcesForPrompt(matchedResources);
     const recipesForPrompt = formatRecipesForPrompt(matchedRecipes);
 
+    // Detect interest type for link recommendations
+    const { starterInterest, recipeInterest } = detectInterestType(member.application_answer);
+
     // Select the appropriate prompt based on outreach type
     switch (outreach_type) {
       case 'welcome_message':
-        systemPrompt = getWelcomeMessagePrompt(hasApplicationAnswer, resourcesForPrompt, recipesForPrompt);
+        systemPrompt = getWelcomeMessagePrompt(hasApplicationAnswer, resourcesForPrompt, recipesForPrompt, starterInterest, recipeInterest);
         break;
       case 'feedback_request':
         systemPrompt = getFeedbackRequestPrompt(hasApplicationAnswer);
@@ -410,7 +466,7 @@ serve(async (req) => {
         break;
       case 'resource_recommendation':
       default:
-        systemPrompt = getResourceRecommendationPrompt(hasApplicationAnswer, resourcesForPrompt, recipesForPrompt);
+        systemPrompt = getResourceRecommendationPrompt(hasApplicationAnswer, resourcesForPrompt, recipesForPrompt, starterInterest, recipeInterest);
         break;
     }
 
