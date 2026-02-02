@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import { Upload, FileText, Loader2, AlertTriangle } from 'lucide-react';
 import {
   Dialog,
@@ -182,40 +182,56 @@ export function ImportMembersDialog({
     return rows;
   };
 
-  // Check if CSV has application answer column
-  const csvAnalysis = useMemo(() => {
-    if (!csvText.trim()) return null;
-    
-    try {
-      const lines = csvText.trim().split('\n');
-      if (lines.length < 1) return null;
-      
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-      const applicationAnswerHeaders = [
-        'application answer', 'application_answer', 'answer', 'answer1', 'answer2',
-        'goal', 'goals', 'learning goals', 'learning_goals'
-      ];
-      
-      const hasApplicationAnswerColumn = headers.some(h => applicationAnswerHeaders.includes(h));
-      
-      // Try to parse and count rows with answers
-      let totalRows = 0;
-      let rowsWithAnswer = 0;
-      
-      if (hasApplicationAnswerColumn) {
-        try {
-          const parsed = parseCSV(csvText);
-          totalRows = parsed.length;
-          rowsWithAnswer = parsed.filter(r => r.applicationAnswer && r.applicationAnswer.trim().length > 0).length;
-        } catch {
-          // Parsing failed, just return column info
-        }
-      }
-      
-      return { hasApplicationAnswerColumn, totalRows, rowsWithAnswer };
-    } catch {
-      return null;
+  // Check if CSV has application answer column - debounced to avoid blocking UI
+  const [csvAnalysis, setCsvAnalysis] = useState<{
+    hasApplicationAnswerColumn: boolean;
+    totalRows: number;
+    rowsWithAnswer: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!csvText.trim()) {
+      setCsvAnalysis(null);
+      return;
     }
+
+    // Debounce the analysis to avoid blocking UI on every keystroke
+    const timeoutId = setTimeout(() => {
+      try {
+        const lines = csvText.trim().split('\n');
+        if (lines.length < 1) {
+          setCsvAnalysis(null);
+          return;
+        }
+        
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+        const applicationAnswerHeaders = [
+          'application answer', 'application_answer', 'answer', 'answer1', 'answer2',
+          'goal', 'goals', 'learning goals', 'learning_goals'
+        ];
+        
+        const hasApplicationAnswerColumn = headers.some(h => applicationAnswerHeaders.includes(h));
+        
+        let totalRows = 0;
+        let rowsWithAnswer = 0;
+        
+        if (hasApplicationAnswerColumn) {
+          try {
+            const parsed = parseCSV(csvText);
+            totalRows = parsed.length;
+            rowsWithAnswer = parsed.filter(r => r.applicationAnswer && r.applicationAnswer.trim().length > 0).length;
+          } catch {
+            // Parsing failed, just return column info
+          }
+        }
+        
+        setCsvAnalysis({ hasApplicationAnswerColumn, totalRows, rowsWithAnswer });
+      } catch {
+        setCsvAnalysis(null);
+      }
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timeoutId);
   }, [csvText]);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
