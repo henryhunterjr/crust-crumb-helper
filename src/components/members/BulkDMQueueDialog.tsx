@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Copy, CheckCircle, ExternalLink, Loader2 } from 'lucide-react';
+import { Copy, CheckCircle, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -130,26 +130,6 @@ export function BulkDMQueueDialog({
     }
   };
 
-  const handleCopyAndOpen = async (index: number) => {
-    const member = queue[index].member;
-
-    // Open first (sync) to avoid popup blockers, then do async clipboard write.
-    const skoolUrl = member.skool_username
-      ? `https://www.skool.com/@${member.skool_username}?g=crust-crumb-academy-7621`
-      : `https://www.skool.com/crust-crumb-academy-7621/members?q=${encodeURIComponent(member.skool_name)}`;
-
-    const tab = window.open(skoolUrl, '_blank');
-    if (!tab) {
-      toast.error('Popup blocked — please allow popups to open Skool.');
-    }
-
-    await handleCopy(index);
-
-    if (!member.skool_username) {
-      toast.success(`Searching for ${member.skool_name} in Skool members...`);
-    }
-  };
-
   const handleMarkSent = (index: number) => {
     const item = queue[index];
     onMarkSent(item.member.id);
@@ -216,14 +196,6 @@ export function BulkDMQueueDialog({
                         <Copy className="h-4 w-4 mr-1" />
                       )}
                       Copy
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => handleCopyAndOpen(index)}
-                    >
-                      Copy & Open Skool
-                      <ExternalLink className="h-3 w-3 ml-1" />
                     </Button>
                     <Button
                       size="sm"
