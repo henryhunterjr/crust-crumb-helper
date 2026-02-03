@@ -102,7 +102,20 @@ export function ClassroomResourcesSection() {
                 <CardTitle>Classroom Resources</CardTitle>
                 <CardDescription>
                   Resources the AI uses to make personalized recommendations in member outreach.
-                  {resources.length > 0 && ` ${resources.length} resource${resources.length !== 1 ? 's' : ''} total.`}
+                  {resources.length > 0 && (
+                    <>
+                      {' '}{resources.length} resource{resources.length !== 1 ? 's' : ''} total
+                      {(() => {
+                        const withUrl = resources.filter(r => r.url && r.url.trim()).length;
+                        const missing = resources.length - withUrl;
+                        return missing > 0 ? (
+                          <span className="text-destructive"> • {missing} missing URL{missing !== 1 ? 's' : ''}</span>
+                        ) : (
+                          <span className="text-primary"> • All have URLs ✓</span>
+                        );
+                      })()}
+                    </>
+                  )}
                 </CardDescription>
               </div>
             </div>
