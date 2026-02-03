@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Copy, ExternalLink, RefreshCw, CheckCircle, Loader2, BookOpen, ChefHat, MessageCircle, Sparkles, Pencil, FileText, Save, ChevronDown } from 'lucide-react';
+import { Copy, RefreshCw, CheckCircle, Loader2, BookOpen, ChefHat, MessageCircle, Sparkles, Pencil, FileText, Save, ChevronDown } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -93,22 +93,11 @@ export function GeneratedDMDialog({
     setLocalCustomTopic(customTopic);
   }, [customTopic]);
 
-  const handleCopyAndOpen = async () => {
-    // Open first (sync) to avoid popup blockers, then do async clipboard write.
-    const searchQuery = member?.skool_name || '';
-    const skoolUrl = `https://www.skool.com/crust-crumb-academy-7621/members?q=${encodeURIComponent(searchQuery)}`;
-    const tab = window.open(skoolUrl, '_blank');
-
+  const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(message);
       setCopied(true);
-
-      if (!tab) {
-        toast.success('Message copied! (Popup blocked — please allow popups to open Skool.)');
-      } else {
-        toast.success(`Message copied! Searching for ${member?.skool_name} in Skool...`);
-      }
-
+      toast.success('Message copied!');
       setTimeout(() => setCopied(false), 2000);
     } catch {
       toast.error('Failed to copy message');
@@ -458,7 +447,7 @@ export function GeneratedDMDialog({
               <Button
                 variant="secondary"
                 size="sm"
-                onClick={handleCopyAndOpen}
+                onClick={handleCopy}
                 disabled={isGenerating || !message}
               >
                 {copied ? (
@@ -466,8 +455,7 @@ export function GeneratedDMDialog({
                 ) : (
                   <Copy className="h-4 w-4 mr-2" />
                 )}
-                Copy & Open Skool DMs
-                <ExternalLink className="h-3 w-3 ml-1" />
+                Copy DM
               </Button>
 
               <Button
