@@ -189,15 +189,30 @@ function findMatchingRecipes(
   return matches;
 }
 
+function getSafeUrl(url: string | null): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  if (!/^https?:\/\//i.test(trimmed)) return null;
+
+  // Skool classroom lesson links often require additional query params.
+  // If it's a bare /classroom/<slug> link, it's frequently a 404.
+  const isSkoolClassroom = trimmed.includes('skool.com/crust-crumb-academy-7621/classroom/');
+  if (isSkoolClassroom && !trimmed.includes('?')) return null;
+
+  return trimmed;
+}
+
 // Format resources for the prompt
 function formatResourcesForPrompt(resources: ClassroomResource[]): string {
   if (resources.length === 0) {
     return 'No specific classroom resources available.';
   }
   
-  return resources.map(r => 
-    `- "${r.title}" (${r.category}, ${r.skill_level}): ${r.description || 'No description'}${r.url ? ` - ${r.url}` : ''}`
-  ).join('\n');
+  return resources.map(r => {
+    const safeUrl = getSafeUrl(r.url);
+    return `- "${r.title}" (${r.category}, ${r.skill_level}): ${r.description || 'No description'} | URL: ${safeUrl || '(none)'}`;
+  }).join('\n');
 }
 
 // Format recipes for the prompt
@@ -206,9 +221,10 @@ function formatRecipesForPrompt(recipes: Recipe[]): string {
     return 'No specific recipes available.';
   }
   
-  return recipes.map(r => 
-    `- "${r.title}" (${r.category}, ${r.skill_level}): ${r.description || 'No description'}${r.url ? ` - ${r.url}` : ''}`
-  ).join('\n');
+  return recipes.map(r => {
+    const safeUrl = getSafeUrl(r.url);
+    return `- "${r.title}" (${r.category}, ${r.skill_level}): ${r.description || 'No description'} | URL: ${safeUrl || '(none)'}`;
+  }).join('\n');
 }
 
 // Detect interest type for link recommendations
@@ -275,6 +291,8 @@ Instructions:
 ${hasApplicationAnswer 
   ? '- Acknowledge what they said they wanted to learn or make\n- Point them to 1-2 specific resources/recipes that match their goals'
   : '- Since no specific goals mentioned, suggest our most popular beginner resources'}${linkInstructions}
+ - Only include a URL if it is explicitly shown next to an item in the lists above (e.g. "URL: https://...").
+ - If an item shows "URL: (none)", do NOT invent a link—just mention the exact title so they can find it in the Classroom/Recipe Pantry.
 - Invite them to introduce themselves in the community
 - Encourage them to ask questions anytime
 - Keep it under 120 words
@@ -322,7 +340,8 @@ ${hasApplicationAnswer
 - Write the DM with:
   - Personal greeting using their first name
   - ${hasApplicationAnswer ? 'Reference what they said they wanted to learn or make' : 'Welcome them warmly and acknowledge they are new'}
-  - Recommend specific resources/recipes by name with the actual URL
+   - Recommend specific resources/recipes by name. Only include URLs that are explicitly provided in the lists above.
+   - If an item shows "URL: (none)", do NOT invent a link—just mention the exact title so they can find it in the Classroom/Recipe Pantry.
   - Invitation to ask questions or share their progress
 - Keep it under 130 words
 - Sign off as Henry
