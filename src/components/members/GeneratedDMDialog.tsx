@@ -94,16 +94,21 @@ export function GeneratedDMDialog({
   }, [customTopic]);
 
   const handleCopyAndOpen = async () => {
+    // Open first (sync) to avoid popup blockers, then do async clipboard write.
+    const searchQuery = member?.skool_name || '';
+    const skoolUrl = `https://www.skool.com/crust-crumb-academy-7621/members?q=${encodeURIComponent(searchQuery)}`;
+    const tab = window.open(skoolUrl, '_blank');
+
     try {
       await navigator.clipboard.writeText(message);
       setCopied(true);
-      
-      // Build the Skool URL - always open the members directory with search
-      // Using the correct URL format for Skool community members page
-      const searchQuery = member?.skool_name || '';
-      window.open(`https://www.skool.com/crust-crumb-academy-7621/members?q=${encodeURIComponent(searchQuery)}`, '_blank');
-      toast.success(`Message copied! Searching for ${member?.skool_name} in Skool...`);
-      
+
+      if (!tab) {
+        toast.success('Message copied! (Popup blocked — please allow popups to open Skool.)');
+      } else {
+        toast.success(`Message copied! Searching for ${member?.skool_name} in Skool...`);
+      }
+
       setTimeout(() => setCopied(false), 2000);
     } catch {
       toast.error('Failed to copy message');

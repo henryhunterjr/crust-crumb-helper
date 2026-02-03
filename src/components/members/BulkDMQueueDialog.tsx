@@ -131,16 +131,21 @@ export function BulkDMQueueDialog({
   };
 
   const handleCopyAndOpen = async (index: number) => {
-    await handleCopy(index);
     const member = queue[index].member;
-    
-    // Build the Skool URL based on whether we have a username
-    if (member.skool_username) {
-      window.open(`https://www.skool.com/@${member.skool_username}?g=crust-crumb-academy-7621`, '_blank');
-    } else {
-      const nameParts = member.skool_name.split(' ');
-      const searchQuery = nameParts.join('+');
-      window.open(`https://www.skool.com/crust-crumb-academy-7621/members?q=${encodeURIComponent(searchQuery)}`, '_blank');
+
+    // Open first (sync) to avoid popup blockers, then do async clipboard write.
+    const skoolUrl = member.skool_username
+      ? `https://www.skool.com/@${member.skool_username}?g=crust-crumb-academy-7621`
+      : `https://www.skool.com/crust-crumb-academy-7621/members?q=${encodeURIComponent(member.skool_name)}`;
+
+    const tab = window.open(skoolUrl, '_blank');
+    if (!tab) {
+      toast.error('Popup blocked — please allow popups to open Skool.');
+    }
+
+    await handleCopy(index);
+
+    if (!member.skool_username) {
       toast.success(`Searching for ${member.skool_name} in Skool members...`);
     }
   };
