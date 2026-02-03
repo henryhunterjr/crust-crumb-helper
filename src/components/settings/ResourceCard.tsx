@@ -2,7 +2,8 @@ import { ClassroomResource } from '@/types/classroomResource';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Pencil, Trash2, ExternalLink } from 'lucide-react';
+import { Pencil, Trash2, ExternalLink, Link, Link2Off } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface ResourceCardProps {
   resource: ClassroomResource;
@@ -17,6 +18,8 @@ const skillLevelColors: Record<string, string> = {
 };
 
 export function ResourceCard({ resource, onEdit, onDelete }: ResourceCardProps) {
+  const hasUrl = Boolean(resource.url && resource.url.trim());
+
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardContent className="p-4">
@@ -24,16 +27,31 @@ export function ResourceCard({ resource, onEdit, onDelete }: ResourceCardProps) 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-1">
               <h3 className="font-medium text-foreground truncate">{resource.title}</h3>
-              {resource.url && (
-                <a
-                  href={resource.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-muted-foreground hover:text-primary transition-colors"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                </a>
-              )}
+              
+              {/* URL Status Indicator */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    {hasUrl ? (
+                      <a
+                        href={resource.url!}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:text-primary/80 transition-colors"
+                      >
+                        <Link className="h-3.5 w-3.5" />
+                      </a>
+                    ) : (
+                      <span className="text-destructive/70">
+                        <Link2Off className="h-3.5 w-3.5" />
+                      </span>
+                    )}
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {hasUrl ? 'URL configured — click to open' : 'Missing URL — DMs will mention title only'}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
             
             <div className="flex items-center gap-2 mb-2">
