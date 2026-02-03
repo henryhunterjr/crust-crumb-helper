@@ -194,12 +194,6 @@ function getSafeUrl(url: string | null): string | null {
   const trimmed = url.trim();
   if (!trimmed) return null;
   if (!/^https?:\/\//i.test(trimmed)) return null;
-
-  // Skool classroom lesson links often require additional query params.
-  // If it's a bare /classroom/<slug> link, it's frequently a 404.
-  const isSkoolClassroom = trimmed.includes('skool.com/crust-crumb-academy-7621/classroom/');
-  if (isSkoolClassroom && !trimmed.includes('?')) return null;
-
   return trimmed;
 }
 
