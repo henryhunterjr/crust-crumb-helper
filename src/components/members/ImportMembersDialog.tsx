@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Upload, FileText, Loader2, AlertTriangle } from 'lucide-react';
 import {
   Dialog,
@@ -28,6 +28,7 @@ export function ImportMembersDialog({
 }: ImportMembersDialogProps) {
   const [csvText, setCsvText] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [isParsing, setIsParsing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const parseCSV = (text: string): MemberImportRow[] => {
@@ -251,16 +252,28 @@ export function ImportMembersDialog({
   };
 
   const handleImport = () => {
-    try {
-      setError(null);
-      const rows = parseCSV(csvText);
-      if (rows.length === 0) {
-        throw new Error('No valid rows found in CSV');
-      }
-      onImport(rows);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to parse CSV');
-    }
+    // Yield to the browser so it can paint (reduces INP warnings in Chrome dev tools/extensions)
+    // before doing the heavier CSV parsing work.
+    setError(null);
+    if (!csvText.trim()) return;
+
+    setIsParsing(true);
+
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        try {
+          const rows = parseCSV(csvText);
+          if (rows.length === 0) {
+            throw new Error('No valid rows found in CSV');
+          }
+          onImport(rows);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Failed to parse CSV');
+        } finally {
+          setIsParsing(false);
+        }
+      }, 0);
+    });
   };
 
   return (
@@ -387,12 +400,12 @@ Jane Smith,jane@email.com,2024-01-10,Interested in bread baking,5,12,2024-01-20"
           </Button>
           <Button 
             onClick={handleImport} 
-            disabled={!csvText.trim() || isImporting}
+            disabled={!csvText.trim() || isImporting || isParsing}
           >
-            {isImporting ? (
+            {isImporting || isParsing ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Importing...
+                {isImporting ? 'Importing...' : 'Parsing CSV...'}
               </>
             ) : (
               'Import Members'
