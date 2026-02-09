@@ -11,6 +11,8 @@ import {
   TrendingUp,
   UserPlus,
   AlertTriangle,
+  Send,
+  Users,
 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useState, useMemo } from 'react';
@@ -22,6 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { useScheduledPosts } from '@/hooks/useScheduledPosts';
 import { useQuickResponses } from '@/hooks/useQuickResponses';
 import { useMembers } from '@/hooks/useMembers';
+import { useOutreachMessages } from '@/hooks/useOutreachMessages';
 import { ScheduledPost, POST_TYPES, TIME_SLOTS } from '@/types/postIdea';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -30,7 +33,8 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { scheduledPosts } = useScheduledPosts();
   const { data: recentResponses } = useQuickResponses('', null);
-  const { members } = useMembers();
+  const { members, stats } = useMembers();
+  const { messages: outreachMessages } = useOutreachMessages();
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const today = new Date();
@@ -80,6 +84,7 @@ export default function Dashboard() {
   const plannedThisWeek = thisWeeksPosts.filter(p => p.status === 'planned').length;
   const postedThisWeek = thisWeeksPosts.filter(p => p.status === 'posted').length;
   const totalResponses = recentResponses?.length || 0;
+  const queueCount = outreachMessages.filter(m => m.status === 'generated').length;
 
   const handleGenerateWelcomePost = () => {
     const names = newMembersThisWeek.map(m => m.skool_name).join(', ');

@@ -1,5 +1,7 @@
 export type EngagementStatus = 'never_engaged' | 'at_risk' | 'inactive' | 'active' | 'unknown';
 
+export type MessageStatus = 'not_contacted' | 'message_generated' | 'sent' | 'replied';
+
 export type OutreachType = 'welcome_message' | 'resource_recommendation' | 'feedback_request' | 'custom';
 
 export interface Member {
@@ -13,6 +15,7 @@ export interface Member {
   comment_count: number;
   last_active: string | null;
   engagement_status: EngagementStatus;
+  message_status: MessageStatus;
   outreach_sent: boolean;
   outreach_sent_at: string | null;
   outreach_responded: boolean;

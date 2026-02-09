@@ -27,6 +27,7 @@ import { NewMemberDigest } from '@/components/members/NewMemberDigest';
 import { useMembers } from '@/hooks/useMembers';
 import { Member, MemberFilter, MemberSortField, MemberImportRow, OutreachType } from '@/types/member';
 import { supabase } from '@/integrations/supabase/client';
+import { useOutreachMessages } from '@/hooks/useOutreachMessages';
 import { toast } from 'sonner';
 
 export default function Members() {
@@ -42,6 +43,8 @@ export default function Members() {
     markOutreachResponded,
     addMember
   } = useMembers();
+
+  const { saveMessage, updateMessageStatus } = useOutreachMessages();
 
   // URL params for filter
   const [searchParams, setSearchParams] = useSearchParams();
@@ -73,6 +76,7 @@ export default function Members() {
   const [matchedRecipes, setMatchedRecipes] = useState<string[]>([]);
   const [outreachType, setOutreachType] = useState<OutreachType>('resource_recommendation');
   const [customTopic, setCustomTopic] = useState('');
+  const [currentMessageId, setCurrentMessageId] = useState<string | null>(null);
 
   // Member detail state
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
@@ -246,6 +250,7 @@ export default function Members() {
     setGeneratedDM('');
     setMatchedResources([]);
     setMatchedRecipes([]);
+    setCurrentMessageId(null);
 
     try {
       const { data, error } = await supabase.functions.invoke('generate-dm', {
@@ -260,6 +265,26 @@ export default function Members() {
       setGeneratedDM(data.message);
       setMatchedResources(data.matched_resources || []);
       setMatchedRecipes(data.matched_recipes || []);
+
+      // Save to outreach log
+      try {
+        const saved = await saveMessage.mutateAsync({
+          member_id: member.id,
+          member_name: member.skool_name,
+          message_type: type,
+          message_text: data.message,
+          custom_topic: topic || customTopic || null,
+        });
+        setCurrentMessageId(saved.id);
+
+        // Update member message status
+        updateMember.mutate({ 
+          id: member.id, 
+          updates: { message_status: 'message_generated' } 
+        });
+      } catch (logErr) {
+        console.error('Error saving to outreach log:', logErr);
+      }
     } catch (error) {
       console.error('Error generating DM:', error);
       toast.error('Failed to generate DM');
@@ -280,6 +305,9 @@ export default function Members() {
 
   const handleMarkSent = (memberId: string) => {
     markOutreachSent.mutate(memberId);
+    if (currentMessageId) {
+      updateMessageStatus.mutate({ id: currentMessageId, status: 'sent' });
+    }
     toast.success('Marked as sent');
   };
 

@@ -26,6 +26,7 @@ interface QueueItem {
   message: string | null;
   status: 'pending' | 'generating' | 'done' | 'error';
   copied: boolean;
+  outreachMessageId: string | null;
 }
 
 export function BulkDMQueueDialog({
@@ -36,7 +37,6 @@ export function BulkDMQueueDialog({
   outreachType,
 }: BulkDMQueueDialogProps) {
   const [queue, setQueue] = useState<QueueItem[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
     if (open && members.length > 0) {
@@ -45,8 +45,8 @@ export function BulkDMQueueDialog({
         message: null,
         status: 'pending',
         copied: false,
+        outreachMessageId: null,
       })));
-      setCurrentIndex(0);
     }
   }, [open, members]);
 
@@ -63,7 +63,6 @@ export function BulkDMQueueDialog({
 
       const member = queue[pendingIndex].member;
       
-      // Retry logic for transient failures
       let attempts = 0;
       const maxAttempts = 3;
       
@@ -91,10 +90,40 @@ export function BulkDMQueueDialog({
             throw new Error('No message returned from AI');
           }
 
+          // Save to outreach log
+          let savedMessageId: string | null = null;
+          try {
+            const { data: savedMsg } = await supabase
+              .from('outreach_messages')
+              .insert({
+                member_id: member.id,
+                member_name: member.skool_name,
+                message_type: outreachType,
+                message_text: data.message,
+              })
+              .select()
+              .single();
+            
+            savedMessageId = savedMsg?.id || null;
+            
+            // Update member message status
+            await supabase
+              .from('members')
+              .update({ message_status: 'message_generated' })
+              .eq('id', member.id);
+          } catch (logErr) {
+            console.error('Error saving to outreach log:', logErr);
+          }
+
           setQueue(prev => prev.map((q, i) => 
-            i === pendingIndex ? { ...q, status: 'done', message: data.message } : q
+            i === pendingIndex ? { 
+              ...q, 
+              status: 'done', 
+              message: data.message,
+              outreachMessageId: savedMessageId,
+            } : q
           ));
-          return; // Success, exit the retry loop
+          return;
         } catch (err) {
           attempts++;
           console.error(`Error generating DM (attempt ${attempts}/${maxAttempts}):`, err);
@@ -104,7 +133,6 @@ export function BulkDMQueueDialog({
               i === pendingIndex ? { ...q, status: 'error', message: 'Failed to generate after retries' } : q
             ));
           } else {
-            // Wait before retrying (exponential backoff)
             await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
           }
         }
@@ -130,9 +158,22 @@ export function BulkDMQueueDialog({
     }
   };
 
-  const handleMarkSent = (index: number) => {
+  const handleMarkSent = async (index: number) => {
     const item = queue[index];
     onMarkSent(item.member.id);
+    
+    // Update outreach message status
+    if (item.outreachMessageId) {
+      try {
+        await supabase
+          .from('outreach_messages')
+          .update({ status: 'sent', sent_at: new Date().toISOString() })
+          .eq('id', item.outreachMessageId);
+      } catch (err) {
+        console.error('Error updating outreach message:', err);
+      }
+    }
+    
     setQueue(prev => prev.map((q, i) => 
       i === index ? { ...q, copied: true } : q
     ));

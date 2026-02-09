@@ -1,10 +1,10 @@
 import { format, parseISO, differenceInDays } from 'date-fns';
-import { MessageSquare, FileText, Calendar, Clock, Send, CheckCircle, Loader2, AlertCircle, Target } from 'lucide-react';
+import { MessageSquare, FileText, Calendar, Clock, Send, CheckCircle, Loader2, AlertCircle, Target, Mail } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Member, EngagementStatus } from '@/types/member';
+import { Member, EngagementStatus, MessageStatus } from '@/types/member';
 import { SkoolUsernameInput } from './SkoolUsernameInput';
 import { cn } from '@/lib/utils';
 
@@ -26,6 +26,13 @@ const statusConfig: Record<EngagementStatus, { label: string; className: string 
   unknown: { label: 'Unknown', className: 'bg-muted text-muted-foreground' },
 };
 
+const messageStatusConfig: Record<MessageStatus, { label: string; className: string; icon: React.ReactNode }> = {
+  not_contacted: { label: 'Not Contacted', className: 'text-muted-foreground', icon: <Mail className="h-3 w-3" /> },
+  message_generated: { label: 'DM Ready', className: 'bg-accent text-accent-foreground', icon: <FileText className="h-3 w-3" /> },
+  sent: { label: 'Sent', className: 'bg-primary/15 text-primary border-primary/30', icon: <Send className="h-3 w-3" /> },
+  replied: { label: 'Replied', className: 'bg-[hsl(142,76%,36%)]/15 text-[hsl(142,76%,36%)] border-[hsl(142,76%,36%)]/30', icon: <CheckCircle className="h-3 w-3" /> },
+};
+
 export function MemberCard({ 
   member, 
   isSelected, 
@@ -35,7 +42,8 @@ export function MemberCard({
   onClick,
   onUpdateUsername,
 }: MemberCardProps) {
-  const status = statusConfig[member.engagement_status] || statusConfig.unknown;
+  const engagementStatus = statusConfig[member.engagement_status] || statusConfig.unknown;
+  const msgStatus = messageStatusConfig[member.message_status] || messageStatusConfig.not_contacted;
   
   const joinDaysAgo = member.join_date 
     ? differenceInDays(new Date(), parseISO(member.join_date))
@@ -44,12 +52,6 @@ export function MemberCard({
   const lastActiveDaysAgo = member.last_active
     ? differenceInDays(new Date(), parseISO(member.last_active))
     : null;
-
-  const outreachStatus = member.outreach_responded
-    ? 'Responded ✓'
-    : member.outreach_sent && member.outreach_sent_at
-    ? `Contacted ${format(parseISO(member.outreach_sent_at), 'MMM d')}`
-    : 'Not contacted';
 
   const applicationAnswer = member.application_answer || '';
   const hasLearningGoals = applicationAnswer.trim().length > 0;
@@ -65,15 +67,19 @@ export function MemberCard({
         
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
-            <div>
+            <div className="flex items-center flex-wrap gap-2">
               <button 
                 onClick={onClick}
                 className="text-lg font-semibold hover:text-primary transition-colors text-left"
               >
                 {member.skool_name}
               </button>
-              <Badge className={cn("ml-2 text-xs", status.className)}>
-                {status.label}
+              <Badge className={cn("text-xs", engagementStatus.className)}>
+                {engagementStatus.label}
+              </Badge>
+              <Badge variant="outline" className={cn("text-xs flex items-center gap-1", msgStatus.className)}>
+                {msgStatus.icon}
+                {msgStatus.label}
               </Badge>
             </div>
             
@@ -112,7 +118,7 @@ export function MemberCard({
             </span>
           </div>
 
-          {/* Learning Goals Section - Prominently displayed */}
+          {/* Learning Goals Section */}
           <div className="mt-3 p-3 rounded-lg bg-accent/40 border border-border/50">
             <div className="flex items-center gap-1.5 mb-1.5">
               <Target className="h-3.5 w-3.5 text-primary" />
@@ -130,26 +136,18 @@ export function MemberCard({
             )}
           </div>
 
-          {/* Activity stats, outreach status, and Skool username */}
+          {/* Activity stats and Skool username */}
           <div className="flex flex-wrap items-center gap-4 mt-3 text-sm">
             <span className="flex items-center gap-1">
               <FileText className="h-3.5 w-3.5 text-muted-foreground" />
               {member.post_count} posts, {member.comment_count} comments
             </span>
-            <span className={cn(
-              "flex items-center gap-1",
-              member.outreach_responded ? "text-[hsl(142,76%,36%)]" : 
-              member.outreach_sent ? "text-primary" : "text-muted-foreground"
-            )}>
-              {member.outreach_responded ? (
-                <CheckCircle className="h-3.5 w-3.5" />
-              ) : member.outreach_sent ? (
+            {member.outreach_sent_at && (
+              <span className="flex items-center gap-1 text-muted-foreground">
                 <Send className="h-3.5 w-3.5" />
-              ) : (
-                <Send className="h-3.5 w-3.5" />
-              )}
-              {outreachStatus}
-            </span>
+                Contacted {format(parseISO(member.outreach_sent_at), 'MMM d')}
+              </span>
+            )}
             <SkoolUsernameInput
               username={member.skool_username}
               onSave={onUpdateUsername}
