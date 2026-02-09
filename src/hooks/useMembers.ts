@@ -144,6 +144,7 @@ export function useMembers() {
         .update({
           outreach_sent: true,
           outreach_sent_at: new Date().toISOString(),
+          message_status: 'sent',
         })
         .eq('id', id)
         .select()
@@ -161,7 +162,10 @@ export function useMembers() {
     mutationFn: async (id: string) => {
       const { data, error } = await supabase
         .from('members')
-        .update({ outreach_responded: true })
+        .update({ 
+          outreach_responded: true,
+          message_status: 'replied',
+        })
         .eq('id', id)
         .select()
         .single();
@@ -247,6 +251,10 @@ export function useMembers() {
       const responded = members.filter(m => m.outreach_responded).length;
       return sent > 0 ? Math.round((responded / sent) * 100) : 0;
     })(),
+    notContacted: members.filter(m => m.message_status === 'not_contacted').length,
+    dmReady: members.filter(m => m.message_status === 'message_generated').length,
+    messageSent: members.filter(m => m.message_status === 'sent').length,
+    replied: members.filter(m => m.message_status === 'replied').length,
   };
 
   return {

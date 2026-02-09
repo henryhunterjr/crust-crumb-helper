@@ -93,6 +93,7 @@ export type Database = {
           id: string
           join_date: string | null
           last_active: string | null
+          message_status: string
           notes: string | null
           outreach_responded: boolean | null
           outreach_sent: boolean | null
@@ -111,6 +112,7 @@ export type Database = {
           id?: string
           join_date?: string | null
           last_active?: string | null
+          message_status?: string
           notes?: string | null
           outreach_responded?: boolean | null
           outreach_sent?: boolean | null
@@ -129,6 +131,7 @@ export type Database = {
           id?: string
           join_date?: string | null
           last_active?: string | null
+          message_status?: string
           notes?: string | null
           outreach_responded?: boolean | null
           outreach_sent?: boolean | null
@@ -139,6 +142,50 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      outreach_messages: {
+        Row: {
+          created_at: string
+          custom_topic: string | null
+          id: string
+          member_id: string
+          member_name: string
+          message_text: string
+          message_type: string
+          sent_at: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          custom_topic?: string | null
+          id?: string
+          member_id: string
+          member_name: string
+          message_text: string
+          message_type?: string
+          sent_at?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          custom_topic?: string | null
+          id?: string
+          member_id?: string
+          member_name?: string
+          message_text?: string
+          message_type?: string
+          sent_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outreach_messages_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       post_ideas: {
         Row: {
