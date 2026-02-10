@@ -385,12 +385,12 @@ export default function Dashboard() {
                       </div>
                       <div className="flex items-center gap-2">
                         {plannedCount > 0 && (
-                          <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                          <Badge variant="secondary">
                             {plannedCount} planned
                           </Badge>
                         )}
                         {postedCount > 0 && (
-                          <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                          <Badge variant="outline">
                             {postedCount} posted
                           </Badge>
                         )}
@@ -401,6 +401,67 @@ export default function Dashboard() {
                     </div>
                   );
                 })}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Outreach & Community Health */}
+        <div className="grid gap-6 lg:grid-cols-2 mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Send className="h-4 w-4" />
+                Outreach Progress
+              </CardTitle>
+              <CardDescription>This week's outreach activity</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Messages Sent</span>
+                <span className="font-semibold">{stats.outreachSentThisWeek}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Response Rate</span>
+                <span className="font-semibold">{stats.responseRate}%</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Queue Ready</span>
+                <span className="font-semibold">{queueCount}</span>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button size="sm" variant="outline" onClick={() => navigate('/outreach')}>
+                  View Log
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Community Health
+              </CardTitle>
+              <CardDescription>Member engagement snapshot</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Total Members</span>
+                <span className="font-semibold">{stats.total}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Never Engaged</span>
+                <span className="font-semibold text-destructive">{stats.neverEngaged}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">At Risk</span>
+                <span className="font-semibold">{stats.atRisk}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Inactive 30+</span>
+                <span className="font-semibold">{stats.inactive}</span>
               </div>
             </CardContent>
           </Card>
