@@ -14,6 +14,121 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_feed: {
+        Row: {
+          activity_type: string
+          created_at: string
+          description: string | null
+          id: string
+          member_id: string | null
+          metadata: Json | null
+          title: string
+        }
+        Insert: {
+          activity_type: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          member_id?: string | null
+          metadata?: Json | null
+          title: string
+        }
+        Update: {
+          activity_type?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          member_id?: string | null
+          metadata?: Json | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_feed_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_personality_settings: {
+        Row: {
+          created_at: string
+          id: string
+          setting_key: string
+          setting_value: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          setting_key: string
+          setting_value: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          setting_key?: string
+          setting_value?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      campaign_posts: {
+        Row: {
+          campaign_id: string
+          content: string | null
+          created_at: string
+          day_number: number
+          id: string
+          post_type: string
+          scheduled_date: string | null
+          status: string
+          theme: string | null
+          time_slot: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          content?: string | null
+          created_at?: string
+          day_number: number
+          id?: string
+          post_type: string
+          scheduled_date?: string | null
+          status?: string
+          theme?: string | null
+          time_slot: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          content?: string | null
+          created_at?: string
+          day_number?: number
+          id?: string
+          post_type?: string
+          scheduled_date?: string | null
+          status?: string
+          theme?: string | null
+          time_slot?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_posts_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "content_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       classroom_resources: {
         Row: {
           category: string
@@ -21,9 +136,13 @@ export type Database = {
           description: string | null
           id: string
           keywords: string[] | null
+          last_checked_at: string | null
+          last_synced_at: string | null
+          parent_course_url: string | null
           skill_level: string | null
           title: string
           url: string | null
+          url_verified: boolean | null
         }
         Insert: {
           category: string
@@ -31,9 +150,13 @@ export type Database = {
           description?: string | null
           id?: string
           keywords?: string[] | null
+          last_checked_at?: string | null
+          last_synced_at?: string | null
+          parent_course_url?: string | null
           skill_level?: string | null
           title: string
           url?: string | null
+          url_verified?: boolean | null
         }
         Update: {
           category?: string
@@ -41,11 +164,98 @@ export type Database = {
           description?: string | null
           id?: string
           keywords?: string[] | null
+          last_checked_at?: string | null
+          last_synced_at?: string | null
+          parent_course_url?: string | null
           skill_level?: string | null
           title?: string
           url?: string | null
+          url_verified?: boolean | null
         }
         Relationships: []
+      }
+      content_campaigns: {
+        Row: {
+          bread_name: string | null
+          created_at: string
+          event_date: string | null
+          event_type: string
+          id: string
+          promotion_days: number
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          bread_name?: string | null
+          created_at?: string
+          event_date?: string | null
+          event_type?: string
+          id?: string
+          promotion_days?: number
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          bread_name?: string | null
+          created_at?: string
+          event_date?: string | null
+          event_type?: string
+          id?: string
+          promotion_days?: number
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      course_modules: {
+        Row: {
+          created_at: string
+          id: string
+          last_checked_at: string | null
+          resource_id: string
+          sort_order: number
+          title: string
+          topics: string[] | null
+          updated_at: string
+          url: string | null
+          url_verified: boolean
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_checked_at?: string | null
+          resource_id: string
+          sort_order?: number
+          title: string
+          topics?: string[] | null
+          updated_at?: string
+          url?: string | null
+          url_verified?: boolean
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_checked_at?: string | null
+          resource_id?: string
+          sort_order?: number
+          title?: string
+          topics?: string[] | null
+          updated_at?: string
+          url?: string | null
+          url_verified?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_modules_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "classroom_resources"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       dm_templates: {
         Row: {
@@ -83,6 +293,118 @@ export type Database = {
         }
         Relationships: []
       }
+      email_subscribers: {
+        Row: {
+          created_at: string
+          email: string
+          first_name: string | null
+          id: string
+          is_skool_member: boolean
+          last_name: string | null
+          matched_member_id: string | null
+          source: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          first_name?: string | null
+          id?: string
+          is_skool_member?: boolean
+          last_name?: string | null
+          matched_member_id?: string | null
+          source?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          first_name?: string | null
+          id?: string
+          is_skool_member?: boolean
+          last_name?: string | null
+          matched_member_id?: string | null
+          source?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_subscribers_matched_member_id_fkey"
+            columns: ["matched_member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      interest_mappings: {
+        Row: {
+          book_link: string | null
+          created_at: string
+          id: string
+          keywords: string[]
+          quick_win: string | null
+          recommended_course: string | null
+          recommended_recipe: string | null
+          updated_at: string
+        }
+        Insert: {
+          book_link?: string | null
+          created_at?: string
+          id?: string
+          keywords?: string[]
+          quick_win?: string | null
+          recommended_course?: string | null
+          recommended_recipe?: string | null
+          updated_at?: string
+        }
+        Update: {
+          book_link?: string | null
+          created_at?: string
+          id?: string
+          keywords?: string[]
+          quick_win?: string | null
+          recommended_course?: string | null
+          recommended_recipe?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      member_tags: {
+        Row: {
+          created_at: string
+          id: string
+          member_id: string
+          source: string
+          tag: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          member_id: string
+          source?: string
+          tag: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          member_id?: string
+          source?: string
+          tag?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_tags_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       members: {
         Row: {
           application_answer: string | null
@@ -99,6 +421,8 @@ export type Database = {
           outreach_sent: boolean | null
           outreach_sent_at: string | null
           post_count: number | null
+          priority_level: string | null
+          priority_score: number | null
           skool_name: string
           skool_username: string | null
           updated_at: string | null
@@ -118,6 +442,8 @@ export type Database = {
           outreach_sent?: boolean | null
           outreach_sent_at?: string | null
           post_count?: number | null
+          priority_level?: string | null
+          priority_score?: number | null
           skool_name: string
           skool_username?: string | null
           updated_at?: string | null
@@ -137,6 +463,8 @@ export type Database = {
           outreach_sent?: boolean | null
           outreach_sent_at?: string | null
           post_count?: number | null
+          priority_level?: string | null
+          priority_score?: number | null
           skool_name?: string
           skool_username?: string | null
           updated_at?: string | null
@@ -152,6 +480,7 @@ export type Database = {
           member_name: string
           message_text: string
           message_type: string
+          priority: string | null
           sent_at: string | null
           status: string
         }
@@ -163,6 +492,7 @@ export type Database = {
           member_name: string
           message_text: string
           message_type?: string
+          priority?: string | null
           sent_at?: string | null
           status?: string
         }
@@ -174,6 +504,7 @@ export type Database = {
           member_name?: string
           message_text?: string
           message_type?: string
+          priority?: string | null
           sent_at?: string | null
           status?: string
         }
@@ -186,6 +517,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      outreach_rules: {
+        Row: {
+          action_type: string
+          action_value: string | null
+          condition_field: string
+          condition_operator: string
+          condition_value: number
+          created_at: string
+          id: string
+          is_active: boolean
+          rule_name: string
+          rule_type: string
+          updated_at: string
+        }
+        Insert: {
+          action_type: string
+          action_value?: string | null
+          condition_field: string
+          condition_operator?: string
+          condition_value: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          rule_name: string
+          rule_type: string
+          updated_at?: string
+        }
+        Update: {
+          action_type?: string
+          action_value?: string | null
+          condition_field?: string
+          condition_operator?: string
+          condition_value?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          rule_name?: string
+          rule_type?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       post_ideas: {
         Row: {
@@ -266,9 +639,16 @@ export type Database = {
           description: string | null
           id: string
           keywords: string[] | null
+          last_checked_at: string | null
+          related_course: string | null
+          share_url: string | null
           skill_level: string | null
+          skool_url: string | null
+          tags: string[] | null
           title: string
           url: string | null
+          url_verified: boolean | null
+          uses_discard: boolean | null
         }
         Insert: {
           category: string
@@ -276,9 +656,16 @@ export type Database = {
           description?: string | null
           id?: string
           keywords?: string[] | null
+          last_checked_at?: string | null
+          related_course?: string | null
+          share_url?: string | null
           skill_level?: string | null
+          skool_url?: string | null
+          tags?: string[] | null
           title: string
           url?: string | null
+          url_verified?: boolean | null
+          uses_discard?: boolean | null
         }
         Update: {
           category?: string
@@ -286,16 +673,25 @@ export type Database = {
           description?: string | null
           id?: string
           keywords?: string[] | null
+          last_checked_at?: string | null
+          related_course?: string | null
+          share_url?: string | null
           skill_level?: string | null
+          skool_url?: string | null
+          tags?: string[] | null
           title?: string
           url?: string | null
+          url_verified?: boolean | null
+          uses_discard?: boolean | null
         }
         Relationships: []
       }
       scheduled_posts: {
         Row: {
+          campaign_id: string | null
           content: string
           created_at: string | null
+          day_theme: string | null
           id: string
           post_type: string | null
           posted_at: string | null
@@ -305,8 +701,10 @@ export type Database = {
           title: string
         }
         Insert: {
+          campaign_id?: string | null
           content: string
           created_at?: string | null
+          day_theme?: string | null
           id?: string
           post_type?: string | null
           posted_at?: string | null
@@ -316,8 +714,10 @@ export type Database = {
           title: string
         }
         Update: {
+          campaign_id?: string | null
           content?: string
           created_at?: string | null
+          day_theme?: string | null
           id?: string
           post_type?: string | null
           posted_at?: string | null
@@ -325,6 +725,89 @@ export type Database = {
           status?: string | null
           time_slot?: string | null
           title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_posts_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "content_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      url_health_checks: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          fallback_url: string | null
+          id: string
+          is_healthy: boolean
+          last_checked_at: string | null
+          source_id: string | null
+          source_type: string
+          status_code: number | null
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          fallback_url?: string | null
+          id?: string
+          is_healthy?: boolean
+          last_checked_at?: string | null
+          source_id?: string | null
+          source_type: string
+          status_code?: number | null
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          fallback_url?: string | null
+          id?: string
+          is_healthy?: boolean
+          last_checked_at?: string | null
+          source_id?: string | null
+          source_type?: string
+          status_code?: number | null
+          updated_at?: string
+          url?: string
+        }
+        Relationships: []
+      }
+      weekly_goals: {
+        Row: {
+          created_at: string
+          current_count: number
+          goal_label: string
+          goal_type: string
+          id: string
+          target_count: number
+          updated_at: string
+          week_start: string
+        }
+        Insert: {
+          created_at?: string
+          current_count?: number
+          goal_label: string
+          goal_type: string
+          id?: string
+          target_count?: number
+          updated_at?: string
+          week_start: string
+        }
+        Update: {
+          created_at?: string
+          current_count?: number
+          goal_label?: string
+          goal_type?: string
+          id?: string
+          target_count?: number
+          updated_at?: string
+          week_start?: string
         }
         Relationships: []
       }

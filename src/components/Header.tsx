@@ -11,7 +11,8 @@ const navItems = [
   { href: '/generate', label: 'Generate' },
   { href: '/calendar', label: 'Calendar' },
   { href: '/members', label: 'Members' },
-  { href: '/outreach-log', label: 'Outreach' },
+  { href: '/outreach-queue', label: 'Queue' },
+  { href: '/outreach-log', label: 'Log' },
 ];
 
 export function Header() {

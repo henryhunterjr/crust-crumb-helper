@@ -5,3 +5,9 @@ verify_jwt = false
 
 [functions.generate-dm]
 verify_jwt = false
+
+[functions.verify-url]
+verify_jwt = false
+
+[functions.sync-classroom]
+verify_jwt = false
