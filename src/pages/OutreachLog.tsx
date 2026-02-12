@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
-import { Search, Copy, CheckCircle } from 'lucide-react';
+import { useDebounce } from '@/hooks/useDebounce';
+import { Search, Copy, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Input } from '@/components/ui/input';
@@ -39,18 +40,32 @@ const statusStyles: Record<string, string> = {
 export default function OutreachLog() {
   const { messages, isLoading } = useOutreachMessages();
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 25;
 
   const filtered = useMemo(() => {
     return messages.filter(m => {
-      if (search && !m.member_name.toLowerCase().includes(search.toLowerCase())) return false;
+      if (debouncedSearch && !m.member_name.toLowerCase().includes(debouncedSearch.toLowerCase())) return false;
       if (typeFilter !== 'all' && m.message_type !== typeFilter) return false;
       if (statusFilter !== 'all' && m.status !== statusFilter) return false;
       return true;
     });
-  }, [messages, search, typeFilter, statusFilter]);
+  }, [messages, debouncedSearch, typeFilter, statusFilter]);
+
+  // Reset page on filter change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, typeFilter, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  const paginatedMessages = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filtered.slice(start, start + ITEMS_PER_PAGE);
+  }, [filtered, currentPage]);
 
   const handleCopy = async (id: string, text: string) => {
     try {
@@ -148,8 +163,9 @@ export default function OutreachLog() {
               : 'No messages match your filters.'}
           </div>
         ) : (
+        <>
           <div className="space-y-3">
-            {filtered.map((msg) => (
+            {paginatedMessages.map((msg) => (
               <Card key={msg.id} className="p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
@@ -190,6 +206,38 @@ export default function OutreachLog() {
               </Card>
             ))}
           </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-6">
+              <p className="text-sm text-muted-foreground">
+                Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)} of {filtered.length}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Previous
+                </Button>
+                <span className="text-sm text-muted-foreground px-2">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
         )}
       </main>
 
