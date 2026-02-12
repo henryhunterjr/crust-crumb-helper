@@ -194,13 +194,6 @@ function getSafeUrl(url: string | null): string | null {
   const trimmed = url.trim();
   if (!trimmed) return null;
   if (!/^https?:\/\//i.test(trimmed)) return null;
-
-  // Skool classroom links frequently 404 unless they are a "share" URL that includes
-  // query params (e.g. ?md=...). To avoid sending broken links, only allow Skool
-  // classroom URLs that include a query string.
-  const isSkoolClassroom = trimmed.includes('skool.com/') && trimmed.includes('/classroom/');
-  if (isSkoolClassroom && !trimmed.includes('?')) return null;
-
   return trimmed;
 }
 
