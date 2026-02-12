@@ -10,11 +10,10 @@ import {
   ChevronRight,
   TrendingUp,
   UserPlus,
-  AlertTriangle,
   Send,
   Users,
+  Zap,
 } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useState, useMemo } from 'react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -28,6 +27,9 @@ import { useOutreachMessages } from '@/hooks/useOutreachMessages';
 import { ScheduledPost, POST_TYPES, TIME_SLOTS } from '@/types/postIdea';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { UrgentActionsPanel } from '@/components/dashboard/UrgentActionsPanel';
+import { WeeklyGoalsWidget } from '@/components/dashboard/WeeklyGoalsWidget';
+import { CommunityHealthScore } from '@/components/dashboard/CommunityHealthScore';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -59,6 +61,9 @@ export default function Dashboard() {
       return differenceInDays(today, joinDate) >= 3;
     });
   }, [members, today]);
+
+  // Welcomed count (outreach sent)
+  const welcomedCount = useMemo(() => members.filter(m => m.outreach_sent).length, [members]);
 
   // Today's posts
   const todaysPosts = scheduledPosts.filter(
@@ -124,29 +129,8 @@ export default function Dashboard() {
       <Header />
       
       <main className="container py-8 px-4 flex-1">
-        {/* Overdue Welcome Alert */}
-        {membersNeedingWelcome.length > 0 && (
-          <Alert variant="destructive" className="mb-6 border-destructive/50 bg-destructive/10">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Members Awaiting Welcome</AlertTitle>
-            <AlertDescription className="flex items-center justify-between">
-              <span>
-                {membersNeedingWelcome.length} member{membersNeedingWelcome.length !== 1 ? 's' : ''} joined 3+ days ago and haven't been welcomed yet.
-              </span>
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="ml-4 shrink-0"
-                onClick={() => navigate('/members?filter=needs_welcome')}
-              >
-                View Members
-              </Button>
-            </AlertDescription>
-          </Alert>
-        )}
-
         {/* Welcome Header */}
-        <div className="mb-8">
+        <div className="mb-6">
           <h1 className="text-3xl font-serif font-bold text-foreground mb-2">
             Welcome back, Henry 👋
           </h1>
@@ -154,6 +138,14 @@ export default function Dashboard() {
             {format(today, 'EEEE, MMMM d, yyyy')}
           </p>
         </div>
+
+        {/* Urgent Actions Panel */}
+        <UrgentActionsPanel
+          membersNeedingWelcome={membersNeedingWelcome.length}
+          membersAtRisk={stats.atRisk}
+          membersNoGoals={stats.total - stats.total + members.filter(m => !m.application_answer || m.application_answer.trim().length === 0).length}
+          activeMembers={stats.active}
+        />
 
         {/* Quick Stats */}
         <div className="grid gap-4 md:grid-cols-4 mb-8">
@@ -224,7 +216,7 @@ export default function Dashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid gap-4 md:grid-cols-3 mb-8">
+        <div className="grid gap-4 md:grid-cols-4 mb-8">
           <Link to="/generate">
             <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
               <CardContent className="flex items-center gap-4 p-6">
@@ -232,8 +224,8 @@ export default function Dashboard() {
                   <Sparkles className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-semibold">Generate New Post</h3>
-                  <p className="text-sm text-muted-foreground">Create AI-powered content</p>
+                  <h3 className="font-semibold">Generate Post</h3>
+                  <p className="text-sm text-muted-foreground">AI-powered content</p>
                 </div>
               </CardContent>
             </Card>
@@ -247,7 +239,7 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <h3 className="font-semibold">Quick Responses</h3>
-                  <p className="text-sm text-muted-foreground">Browse saved replies</p>
+                  <p className="text-sm text-muted-foreground">Saved replies</p>
                 </div>
               </CardContent>
             </Card>
@@ -260,12 +252,39 @@ export default function Dashboard() {
                   <Calendar className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-semibold">Content Calendar</h3>
-                  <p className="text-sm text-muted-foreground">Plan your schedule</p>
+                  <h3 className="font-semibold">Calendar</h3>
+                  <p className="text-sm text-muted-foreground">Plan schedule</p>
                 </div>
               </CardContent>
             </Card>
           </Link>
+
+          <Link to="/outreach-queue">
+            <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full border-primary/20">
+              <CardContent className="flex items-center gap-4 p-6">
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Zap className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Outreach Queue</h3>
+                  <p className="text-sm text-muted-foreground">{queueCount} ready to send</p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        </div>
+
+        {/* Main grid: Goals + Health Score */}
+        <div className="grid gap-6 lg:grid-cols-2 mb-6">
+          <WeeklyGoalsWidget />
+          <CommunityHealthScore
+            totalMembers={stats.total}
+            welcomedCount={welcomedCount}
+            activeCount={stats.active}
+            neverEngaged={stats.neverEngaged}
+            atRisk={stats.atRisk}
+            responseRate={stats.responseRate}
+          />
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
@@ -430,7 +449,11 @@ export default function Dashboard() {
                 <span className="font-semibold">{queueCount}</span>
               </div>
               <div className="flex gap-2 pt-2">
-                <Button size="sm" variant="outline" onClick={() => navigate('/outreach')}>
+                <Button size="sm" variant="outline" onClick={() => navigate('/outreach-queue')}>
+                  <Zap className="h-4 w-4 mr-1" />
+                  Start Outreach
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => navigate('/outreach-log')}>
                   View Log
                   <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
@@ -442,9 +465,9 @@ export default function Dashboard() {
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Users className="h-4 w-4" />
-                Community Health
+                Member Snapshot
               </CardTitle>
-              <CardDescription>Member engagement snapshot</CardDescription>
+              <CardDescription>Current community status</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex justify-between items-center">
@@ -462,6 +485,12 @@ export default function Dashboard() {
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Inactive 30+</span>
                 <span className="font-semibold">{stats.inactive}</span>
+              </div>
+              <div className="pt-2">
+                <Button size="sm" variant="outline" onClick={() => navigate('/members')}>
+                  View All Members
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
               </div>
             </CardContent>
           </Card>
