@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Copy, RefreshCw, CheckCircle, Loader2, BookOpen, ChefHat, MessageCircle, Sparkles, Pencil, FileText, Save, ChevronDown } from 'lucide-react';
+import { Copy, RefreshCw, CheckCircle, Loader2, BookOpen, ChefHat, MessageCircle, Sparkles, Pencil, FileText, Save, ChevronDown, ExternalLink } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -18,9 +18,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider,
+} from '@/components/ui/tooltip';
 import { Member, OutreachType } from '@/types/member';
 import { DMTemplate } from '@/types/dmTemplate';
 import { useDMTemplates } from '@/hooks/useDMTemplates';
+import { useClassroomResources } from '@/hooks/useClassroomResources';
+import { useRecipes } from '@/hooks/useRecipes';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -88,6 +96,29 @@ export function GeneratedDMDialog({
   const [templateName, setTemplateName] = useState('');
   
   const { templates, createTemplate, incrementUseCount } = useDMTemplates();
+  const { resources: allResources } = useClassroomResources();
+  const { recipes: allRecipes } = useRecipes();
+
+  const getResourceUrl = (title: string): string | null => {
+    const resource = allResources.find(r => r.title === title);
+    return resource?.url || null;
+  };
+
+  const getRecipeUrl = (title: string): string | null => {
+    const recipe = allRecipes.find(r => r.title === title);
+    return (recipe as any)?.skool_url || recipe?.url || null;
+  };
+
+  const handleCopyResourceUrl = (title: string, type: 'resource' | 'recipe') => {
+    const url = type === 'resource' ? getResourceUrl(title) : getRecipeUrl(title);
+    if (url) {
+      navigator.clipboard.writeText(url).then(() => {
+        toast.success(`Link copied for "${title}"`);
+      });
+    } else {
+      toast.error(`No URL found for "${title}"`);
+    }
+  };
 
   useEffect(() => {
     setLocalCustomTopic(customTopic);
@@ -293,8 +324,11 @@ export function GeneratedDMDialog({
 
               {/* Resources Used Indicator - for resource-based types */}
               {showResources && hasResources && (
+                <TooltipProvider>
                 <div className="mt-4 p-3 bg-accent/30 rounded-lg border border-border/50">
-                  <p className="text-xs font-medium text-muted-foreground mb-2">Resources matched for this member:</p>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">
+                    Resources matched — click to copy link:
+                  </p>
                   
                   {matchedResources.length > 0 && (
                     <div className="mb-2">
@@ -303,14 +337,34 @@ export function GeneratedDMDialog({
                         <span className="text-xs font-medium text-foreground">Classroom Resources</span>
                       </div>
                       <div className="flex flex-wrap gap-1">
-                        {matchedResources.slice(0, 3).map((resource, idx) => (
-                          <Badge key={idx} variant="secondary" className="text-xs">
-                            {resource}
-                          </Badge>
-                        ))}
-                        {matchedResources.length > 3 && (
+                        {matchedResources.slice(0, 5).map((resource, idx) => {
+                          const url = getResourceUrl(resource);
+                          return (
+                            <Tooltip key={idx}>
+                              <TooltipTrigger asChild>
+                                <Badge
+                                  variant="secondary"
+                                  className={cn(
+                                    "text-xs transition-colors",
+                                    url
+                                      ? "cursor-pointer hover:bg-primary hover:text-primary-foreground"
+                                      : "opacity-60"
+                                  )}
+                                  onClick={() => handleCopyResourceUrl(resource, 'resource')}
+                                >
+                                  {resource}
+                                  {url && <ExternalLink className="h-2.5 w-2.5 ml-1" />}
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {url ? 'Click to copy link' : 'No URL available'}
+                              </TooltipContent>
+                            </Tooltip>
+                          );
+                        })}
+                        {matchedResources.length > 5 && (
                           <Badge variant="outline" className="text-xs">
-                            +{matchedResources.length - 3} more
+                            +{matchedResources.length - 5} more
                           </Badge>
                         )}
                       </div>
@@ -324,20 +378,41 @@ export function GeneratedDMDialog({
                         <span className="text-xs font-medium text-foreground">Recipes</span>
                       </div>
                       <div className="flex flex-wrap gap-1">
-                        {matchedRecipes.slice(0, 3).map((recipe, idx) => (
-                          <Badge key={idx} variant="secondary" className="text-xs">
-                            {recipe}
-                          </Badge>
-                        ))}
-                        {matchedRecipes.length > 3 && (
+                        {matchedRecipes.slice(0, 5).map((recipe, idx) => {
+                          const url = getRecipeUrl(recipe);
+                          return (
+                            <Tooltip key={idx}>
+                              <TooltipTrigger asChild>
+                                <Badge
+                                  variant="secondary"
+                                  className={cn(
+                                    "text-xs transition-colors",
+                                    url
+                                      ? "cursor-pointer hover:bg-primary hover:text-primary-foreground"
+                                      : "opacity-60"
+                                  )}
+                                  onClick={() => handleCopyResourceUrl(recipe, 'recipe')}
+                                >
+                                  {recipe}
+                                  {url && <ExternalLink className="h-2.5 w-2.5 ml-1" />}
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {url ? 'Click to copy link' : 'No URL available'}
+                              </TooltipContent>
+                            </Tooltip>
+                          );
+                        })}
+                        {matchedRecipes.length > 5 && (
                           <Badge variant="outline" className="text-xs">
-                            +{matchedRecipes.length - 3} more
+                            +{matchedRecipes.length - 5} more
                           </Badge>
                         )}
                       </div>
                     </div>
                   )}
                 </div>
+                </TooltipProvider>
               )}
 
               {/* Feedback request indicator */}
