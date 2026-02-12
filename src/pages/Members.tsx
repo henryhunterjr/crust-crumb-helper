@@ -1,6 +1,7 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Upload, Search, ArrowUpDown, UserPlus, RefreshCw } from 'lucide-react';
+import { useDebounce } from '@/hooks/useDebounce';
+import { Upload, Search, ArrowUpDown, UserPlus, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -55,6 +56,9 @@ export default function Members() {
   const [activeFilter, setActiveFilter] = useState<MemberFilter>('all');
   const [sortField, setSortField] = useState<MemberSortField>('join_date');
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearch = useDebounce(searchQuery, 300);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 25;
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Handle filter from URL params
@@ -132,8 +136,8 @@ export default function Members() {
     }
 
     // Apply search
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
+    if (debouncedSearch) {
+      const query = debouncedSearch.toLowerCase();
       result = result.filter(m => 
         m.skool_name.toLowerCase().includes(query) ||
         m.email?.toLowerCase().includes(query) ||
@@ -157,8 +161,19 @@ export default function Members() {
     });
 
     return result;
-  }, [members, activeFilter, searchQuery, sortField]);
+  }, [members, activeFilter, debouncedSearch, sortField]);
 
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeFilter, debouncedSearch, sortField]);
+
+  // Paginate
+  const totalPages = Math.max(1, Math.ceil(filteredMembers.length / ITEMS_PER_PAGE));
+  const paginatedMembers = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredMembers.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredMembers, currentPage]);
   const filterCounts = useMemo(() => {
     const today = new Date();
     return {
@@ -468,8 +483,9 @@ export default function Members() {
             )}
           </div>
         ) : (
+        <>
           <div className="space-y-3">
-            {filteredMembers.map((member) => (
+            {paginatedMembers.map((member) => (
               <MemberCard
                 key={member.id}
                 member={member}
@@ -485,6 +501,38 @@ export default function Members() {
               />
             ))}
           </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-6">
+              <p className="text-sm text-muted-foreground">
+                Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredMembers.length)} of {filteredMembers.length}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Previous
+                </Button>
+                <span className="text-sm text-muted-foreground px-2">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
         )}
 
         {/* Bulk actions bar */}
