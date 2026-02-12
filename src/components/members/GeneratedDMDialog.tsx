@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Copy, RefreshCw, CheckCircle, Loader2, BookOpen, ChefHat, MessageCircle, Sparkles, Pencil, FileText, Save, ChevronDown, ExternalLink } from 'lucide-react';
+import { Copy, RefreshCw, CheckCircle, Loader2, BookOpen, ChefHat, MessageCircle, Sparkles, Pencil, FileText, Save, ChevronDown, ExternalLink, Link } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -91,6 +91,7 @@ export function GeneratedDMDialog({
   onCustomTopicChange,
 }: GeneratedDMDialogProps) {
   const [copied, setCopied] = useState(false);
+  const [localMessage, setLocalMessage] = useState(message);
   const [localCustomTopic, setLocalCustomTopic] = useState(customTopic);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [templateName, setTemplateName] = useState('');
@@ -109,6 +110,16 @@ export function GeneratedDMDialog({
     return (recipe as any)?.skool_url || recipe?.url || null;
   };
 
+  const handleInsertLink = (title: string, type: 'resource' | 'recipe') => {
+    const url = type === 'resource' ? getResourceUrl(title) : getRecipeUrl(title);
+    if (url) {
+      setLocalMessage(prev => prev + `\n\n${url}`);
+      toast.success(`Link inserted for "${title}"`);
+    } else {
+      toast.error(`No URL found for "${title}"`);
+    }
+  };
+
   const handleCopyResourceUrl = (title: string, type: 'resource' | 'recipe') => {
     const url = type === 'resource' ? getResourceUrl(title) : getRecipeUrl(title);
     if (url) {
@@ -121,12 +132,16 @@ export function GeneratedDMDialog({
   };
 
   useEffect(() => {
+    setLocalMessage(message);
+  }, [message]);
+
+  useEffect(() => {
     setLocalCustomTopic(customTopic);
   }, [customTopic]);
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(message);
+      await navigator.clipboard.writeText(localMessage);
       setCopied(true);
       toast.success('Message copied!');
       setTimeout(() => setCopied(false), 2000);
@@ -317,8 +332,8 @@ export function GeneratedDMDialog({
           ) : message ? (
             <>
               <div className="bg-muted/50 rounded-lg p-4">
-                <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                  {message}
+               <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                  {localMessage}
                 </p>
               </div>
 
@@ -327,7 +342,7 @@ export function GeneratedDMDialog({
                 <TooltipProvider>
                 <div className="mt-4 p-3 bg-accent/30 rounded-lg border border-border/50">
                   <p className="text-xs font-medium text-muted-foreground mb-2">
-                    Resources matched — click to copy link:
+                    Resources matched — click badge to copy link, or insert into DM:
                   </p>
                   
                   {matchedResources.length > 0 && (
@@ -336,30 +351,47 @@ export function GeneratedDMDialog({
                         <BookOpen className="h-3 w-3 text-primary" />
                         <span className="text-xs font-medium text-foreground">Classroom Resources</span>
                       </div>
-                      <div className="flex flex-wrap gap-1">
+                      <div className="flex flex-wrap gap-1.5">
                         {matchedResources.slice(0, 5).map((resource, idx) => {
                           const url = getResourceUrl(resource);
                           return (
-                            <Tooltip key={idx}>
-                              <TooltipTrigger asChild>
-                                <Badge
-                                  variant="secondary"
-                                  className={cn(
-                                    "text-xs transition-colors",
-                                    url
-                                      ? "cursor-pointer hover:bg-primary hover:text-primary-foreground"
-                                      : "opacity-60"
-                                  )}
-                                  onClick={() => handleCopyResourceUrl(resource, 'resource')}
-                                >
-                                  {resource}
-                                  {url && <ExternalLink className="h-2.5 w-2.5 ml-1" />}
-                                </Badge>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                {url ? 'Click to copy link' : 'No URL available'}
-                              </TooltipContent>
-                            </Tooltip>
+                            <div key={idx} className="flex items-center gap-1">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge
+                                    variant="secondary"
+                                    className={cn(
+                                      "text-xs transition-colors",
+                                      url
+                                        ? "cursor-pointer hover:bg-primary hover:text-primary-foreground"
+                                        : "opacity-60"
+                                    )}
+                                    onClick={() => handleCopyResourceUrl(resource, 'resource')}
+                                  >
+                                    {resource}
+                                    {url && <ExternalLink className="h-2.5 w-2.5 ml-1" />}
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {url ? 'Click to copy link' : 'No URL available'}
+                                </TooltipContent>
+                              </Tooltip>
+                              {url && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-5 w-5 rounded-sm"
+                                      onClick={() => handleInsertLink(resource, 'resource')}
+                                    >
+                                      <Link className="h-3 w-3" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Insert link into DM</TooltipContent>
+                                </Tooltip>
+                              )}
+                            </div>
                           );
                         })}
                         {matchedResources.length > 5 && (
@@ -377,30 +409,47 @@ export function GeneratedDMDialog({
                         <ChefHat className="h-3 w-3 text-primary" />
                         <span className="text-xs font-medium text-foreground">Recipes</span>
                       </div>
-                      <div className="flex flex-wrap gap-1">
+                      <div className="flex flex-wrap gap-1.5">
                         {matchedRecipes.slice(0, 5).map((recipe, idx) => {
                           const url = getRecipeUrl(recipe);
                           return (
-                            <Tooltip key={idx}>
-                              <TooltipTrigger asChild>
-                                <Badge
-                                  variant="secondary"
-                                  className={cn(
-                                    "text-xs transition-colors",
-                                    url
-                                      ? "cursor-pointer hover:bg-primary hover:text-primary-foreground"
-                                      : "opacity-60"
-                                  )}
-                                  onClick={() => handleCopyResourceUrl(recipe, 'recipe')}
-                                >
-                                  {recipe}
-                                  {url && <ExternalLink className="h-2.5 w-2.5 ml-1" />}
-                                </Badge>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                {url ? 'Click to copy link' : 'No URL available'}
-                              </TooltipContent>
-                            </Tooltip>
+                            <div key={idx} className="flex items-center gap-1">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge
+                                    variant="secondary"
+                                    className={cn(
+                                      "text-xs transition-colors",
+                                      url
+                                        ? "cursor-pointer hover:bg-primary hover:text-primary-foreground"
+                                        : "opacity-60"
+                                    )}
+                                    onClick={() => handleCopyResourceUrl(recipe, 'recipe')}
+                                  >
+                                    {recipe}
+                                    {url && <ExternalLink className="h-2.5 w-2.5 ml-1" />}
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {url ? 'Click to copy link' : 'No URL available'}
+                                </TooltipContent>
+                              </Tooltip>
+                              {url && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-5 w-5 rounded-sm"
+                                      onClick={() => handleInsertLink(recipe, 'recipe')}
+                                    >
+                                      <Link className="h-3 w-3" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Insert link into DM</TooltipContent>
+                                </Tooltip>
+                              )}
+                            </div>
                           );
                         })}
                         {matchedRecipes.length > 5 && (
