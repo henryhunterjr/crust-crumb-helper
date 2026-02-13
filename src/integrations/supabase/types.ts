@@ -603,7 +603,11 @@ export type Database = {
           created_at: string
           id: string
           last_used_at: string | null
+          related_course_ids: string[] | null
+          related_recipe_ids: string[] | null
+          search_hit_count: number | null
           title: string
+          topic_tags: string[] | null
           trigger_phrases: string[] | null
           updated_at: string
           use_count: number | null
@@ -614,7 +618,11 @@ export type Database = {
           created_at?: string
           id?: string
           last_used_at?: string | null
+          related_course_ids?: string[] | null
+          related_recipe_ids?: string[] | null
+          search_hit_count?: number | null
           title: string
+          topic_tags?: string[] | null
           trigger_phrases?: string[] | null
           updated_at?: string
           use_count?: number | null
@@ -625,7 +633,11 @@ export type Database = {
           created_at?: string
           id?: string
           last_used_at?: string | null
+          related_course_ids?: string[] | null
+          related_recipe_ids?: string[] | null
+          search_hit_count?: number | null
           title?: string
+          topic_tags?: string[] | null
           trigger_phrases?: string[] | null
           updated_at?: string
           use_count?: number | null

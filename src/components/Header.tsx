@@ -8,6 +8,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 const navItems = [
   { href: '/', label: 'Dashboard' },
   { href: '/responses', label: 'Responses' },
+  { href: '/smart-search', label: 'Smart Search' },
   { href: '/generate', label: 'Generate' },
   { href: '/calendar', label: 'Calendar' },
   { href: '/members', label: 'Members' },
