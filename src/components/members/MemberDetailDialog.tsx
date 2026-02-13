@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/select';
 import { Member, EngagementStatus, MessageStatus } from '@/types/member';
 import { MemberMessageHistory } from './MemberMessageHistory';
+import { MemberTagEditor } from './MemberTagEditor';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -136,6 +137,9 @@ export function MemberDetailDialog({
                 <span>{member.comment_count} comments</span>
               </div>
             </div>
+
+            {/* Tags */}
+            <MemberTagEditor memberId={member.id} />
 
             {/* Application answer */}
             {member.application_answer && (

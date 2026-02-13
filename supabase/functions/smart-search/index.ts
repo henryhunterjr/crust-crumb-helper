@@ -179,6 +179,17 @@ serve(async (req) => {
     // Sort by score
     results.sort((a, b) => b.score - a.score);
 
+    // Increment search_hit_count for matched quick responses
+    const matchedQRIds = results.filter(r => r.source === 'quick_response').map(r => r.id);
+    if (matchedQRIds.length > 0) {
+      for (const qrId of matchedQRIds) {
+        const currentCount = qrResult.data?.find((q: any) => q.id === qrId)?.search_hit_count || 0;
+        await supabase.from('quick_responses')
+          .update({ search_hit_count: currentCount + 1 })
+          .eq('id', qrId);
+      }
+    }
+
     // Group by source
     const grouped = {
       quick_responses: results.filter(r => r.source === 'quick_response'),

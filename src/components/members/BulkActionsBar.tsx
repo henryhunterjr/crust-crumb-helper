@@ -1,4 +1,5 @@
-import { X, MessageSquare, BookOpen, MessageCircle, ChevronDown, Sparkles, FileText } from 'lucide-react';
+import { useState } from 'react';
+import { X, MessageSquare, BookOpen, MessageCircle, ChevronDown, Sparkles, FileText, Tags } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -9,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { OutreachType, Member } from '@/types/member';
+import { BulkTagDialog } from './BulkTagDialog';
 
 interface BulkActionsBarProps {
   selectedCount: number;
@@ -26,6 +28,7 @@ export function BulkActionsBar({
   selectedMembers = []
 }: BulkActionsBarProps) {
   const navigate = useNavigate();
+  const [bulkTagOpen, setBulkTagOpen] = useState(false);
 
   if (selectedCount === 0) return null;
 
@@ -56,6 +59,22 @@ export function BulkActionsBar({
         <FileText className="h-4 w-4 mr-2" />
         Welcome Post
       </Button>
+
+      {/* Tag Selected button */}
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => setBulkTagOpen(true)}
+      >
+        <Tags className="h-4 w-4 mr-2" />
+        Tag Selected
+      </Button>
+
+      <BulkTagDialog
+        open={bulkTagOpen}
+        onOpenChange={setBulkTagOpen}
+        memberIds={selectedMembers.map(m => m.id)}
+      />
       
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
