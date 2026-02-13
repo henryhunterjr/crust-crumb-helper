@@ -95,10 +95,16 @@ export function AIPersonalitySection() {
     try {
       const { data, error } = await supabase.functions.invoke('generate-dm', {
         body: {
-          member_name: 'Sam',
-          message_type: 'welcome_message',
-          application_answer: 'I want to improve my sourdough shaping and learn about scoring techniques',
-          tags: ['sourdough', 'shaping'],
+          member: {
+            id: '00000000-0000-0000-0000-000000000000',
+            skool_name: 'Sam',
+            join_date: new Date().toISOString().split('T')[0],
+            application_answer: 'I want to improve my sourdough shaping and learn about scoring techniques',
+            post_count: 0,
+            comment_count: 0,
+            last_active: null,
+          },
+          outreach_type: 'welcome_message',
         },
       });
       if (error) throw error;

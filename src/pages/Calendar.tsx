@@ -119,8 +119,9 @@ export default function Calendar() {
         },
       });
       if (error) throw error;
-      setEditorTitle(data.title || suggestion);
-      setEditorContent(data.content || '');
+      const post = data.posts?.[0] || data;
+      setEditorTitle(post.title || suggestion);
+      setEditorContent(post.content || '');
       toast.success('Content generated!');
     } catch (err: any) {
       toast.error('Generation failed: ' + (err.message || 'Unknown error'));
