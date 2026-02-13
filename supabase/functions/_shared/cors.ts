@@ -4,6 +4,7 @@
 const ALLOWED_ORIGINS = [
   'https://crust-crumb-helper.lovable.app',
   'https://id-preview--6392866a-c322-4459-97b2-6e085274a327.lovable.app',
+  'https://crust-crumb-helper.vercel.app',
   'http://localhost:5173',
   'http://localhost:8080',
 ];
