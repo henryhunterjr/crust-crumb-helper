@@ -24,6 +24,21 @@ interface Recipe {
   skill_level: string;
   keywords: string[] | null;
   url: string | null;
+  skool_url: string | null;
+}
+
+interface InterestMapping {
+  id: string;
+  keywords: string[];
+  recommended_course: string | null;
+  recommended_recipe: string | null;
+  quick_win: string | null;
+  book_link: string | null;
+}
+
+interface MemberTag {
+  tag: string;
+  source: string;
 }
 
 // Extract keywords from text
@@ -54,42 +69,90 @@ function extractKeywords(text: string): string[] {
     .filter(word => word.length > 2 && !stopWords.has(word));
 }
 
-// Find matching resources based on member's application answer
-function findMatchingResources(
-  applicationAnswer: string | null,
-  resources: ClassroomResource[]
-): ClassroomResource[] {
-  if (!applicationAnswer || resources.length === 0) {
-    return resources
-      .filter(r => r.skill_level === 'beginner')
-      .slice(0, 5);
+function getSafeUrl(url: string | null): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  if (!/^https?:\/\//i.test(trimmed)) return null;
+  return trimmed;
+}
+
+// Map interest tags to interest_mappings keywords
+const tagToKeywordMap: Record<string, string[]> = {
+  'sourdough-interested': ['sourdough', 'starter', 'levain', 'wild yeast'],
+  'shaping-focused': ['shaping', 'scoring', 'presentation', 'ear'],
+  'business-builder': ['sell', 'selling', 'market', 'farmers market', 'cottage', 'business'],
+  'yeast-water': ['yeast water', 'fruit water', 'natural leavening'],
+  'flavor-explorer': ['flavor', 'tang', 'sour', 'mild', 'fermentation'],
+  'focaccia-fan': ['focaccia', 'flatbread', 'pizza'],
+};
+
+// Find interest mappings that match member tags
+function findMappingsForTags(tags: string[], mappings: InterestMapping[]): InterestMapping[] {
+  const matched: InterestMapping[] = [];
+  
+  for (const tag of tags) {
+    const searchKeywords = tagToKeywordMap[tag];
+    if (!searchKeywords) continue;
+    
+    for (const mapping of mappings) {
+      if (matched.includes(mapping)) continue;
+      
+      const hasOverlap = mapping.keywords.some(mk => 
+        searchKeywords.some(sk => 
+          mk.toLowerCase().includes(sk.toLowerCase()) || sk.toLowerCase().includes(mk.toLowerCase())
+        )
+      );
+      
+      if (hasOverlap) {
+        matched.push(mapping);
+      }
+    }
   }
   
-  const memberKeywords = extractKeywords(applicationAnswer);
-  
+  return matched;
+}
+
+// Find matching resources based on member tags + interest mappings + application answer
+function findMatchingResources(
+  applicationAnswer: string | null,
+  resources: ClassroomResource[],
+  tagMappings: InterestMapping[]
+): ClassroomResource[] {
   const scoredResources = resources.map(resource => {
     let score = 0;
     
-    if (resource.keywords) {
-      for (const keyword of resource.keywords) {
-        if (memberKeywords.includes(keyword.toLowerCase())) {
-          score += 3;
-        }
-        for (const memberKeyword of memberKeywords) {
-          if (keyword.toLowerCase().includes(memberKeyword) || 
-              memberKeyword.includes(keyword.toLowerCase())) {
-            score += 1;
-          }
-        }
+    // Boost resources recommended by interest mappings
+    for (const mapping of tagMappings) {
+      if (mapping.recommended_course && 
+          resource.title.toLowerCase().includes(mapping.recommended_course.toLowerCase())) {
+        score += 10;
       }
     }
     
-    const titleWords = extractKeywords(resource.title);
-    const descWords = resource.description ? extractKeywords(resource.description) : [];
-    
-    for (const memberKeyword of memberKeywords) {
-      if (titleWords.includes(memberKeyword)) score += 2;
-      if (descWords.includes(memberKeyword)) score += 1;
+    // Keyword matching from application answer
+    if (applicationAnswer) {
+      const memberKeywords = extractKeywords(applicationAnswer);
+      
+      if (resource.keywords) {
+        for (const keyword of resource.keywords) {
+          if (memberKeywords.includes(keyword.toLowerCase())) score += 3;
+          for (const memberKeyword of memberKeywords) {
+            if (keyword.toLowerCase().includes(memberKeyword) || 
+                memberKeyword.includes(keyword.toLowerCase())) {
+              score += 1;
+            }
+          }
+        }
+      }
+      
+      const titleWords = extractKeywords(resource.title);
+      const descWords = resource.description ? extractKeywords(resource.description) : [];
+      
+      for (const memberKeyword of memberKeywords) {
+        if (titleWords.includes(memberKeyword)) score += 2;
+        if (descWords.includes(memberKeyword)) score += 1;
+      }
     }
     
     if (resource.skill_level === 'beginner') score += 0.5;
@@ -112,61 +175,62 @@ function findMatchingResources(
   return matches;
 }
 
-// Find matching recipes based on member's application answer
+// Find matching recipes based on member tags + interest mappings + application answer
 function findMatchingRecipes(
   applicationAnswer: string | null,
-  recipes: Recipe[]
+  recipes: Recipe[],
+  tagMappings: InterestMapping[]
 ): Recipe[] {
-  if (!applicationAnswer || recipes.length === 0) {
-    return recipes
-      .filter(r => r.skill_level === 'beginner')
-      .slice(0, 3);
-  }
-  
-  const memberKeywords = extractKeywords(applicationAnswer);
-  const lowerAnswer = applicationAnswer.toLowerCase();
-  
-  // Check for specific bread type mentions
-  const breadTypes = [
-    'bagel', 'focaccia', 'baguette', 'challah', 'ciabatta', 'brioche', 'pizza',
-    'pita', 'cinnamon roll', 'english muffin', 'bread bowl', 'cracker', 'pancake',
-    'babka', 'danish', 'scone', 'doughnut', 'donut', 'muffin', 'roll', 'bun',
-    'rye', 'sourdough', 'yeasted', 'gluten-free', 'gluten free', 'whole wheat',
-    'milk bread', 'shokupan', 'king cake', 'banana bread', 'pumpkin', 'blueberry',
-    'cranberry', 'walnut', 'chocolate', 'cheddar', 'jalapeño', 'jalapeno'
-  ];
-  
-  const mentionedTypes = breadTypes.filter(type => lowerAnswer.includes(type));
-  
   const scoredRecipes = recipes.map(recipe => {
     let score = 0;
     
-    // High score for direct bread type mention
-    for (const type of mentionedTypes) {
-      if (recipe.title.toLowerCase().includes(type)) score += 5;
-      if (recipe.keywords?.some(k => k.toLowerCase().includes(type))) score += 4;
-    }
-    
-    if (recipe.keywords) {
-      for (const keyword of recipe.keywords) {
-        if (memberKeywords.includes(keyword.toLowerCase())) {
-          score += 3;
-        }
-        for (const memberKeyword of memberKeywords) {
-          if (keyword.toLowerCase().includes(memberKeyword) || 
-              memberKeyword.includes(keyword.toLowerCase())) {
-            score += 1;
-          }
-        }
+    // Boost recipes recommended by interest mappings
+    for (const mapping of tagMappings) {
+      if (mapping.recommended_recipe && 
+          recipe.title.toLowerCase().includes(mapping.recommended_recipe.toLowerCase())) {
+        score += 10;
       }
     }
     
-    const titleWords = extractKeywords(recipe.title);
-    const descWords = recipe.description ? extractKeywords(recipe.description) : [];
-    
-    for (const memberKeyword of memberKeywords) {
-      if (titleWords.includes(memberKeyword)) score += 2;
-      if (descWords.includes(memberKeyword)) score += 1;
+    if (applicationAnswer) {
+      const memberKeywords = extractKeywords(applicationAnswer);
+      const lowerAnswer = applicationAnswer.toLowerCase();
+      
+      const breadTypes = [
+        'bagel', 'focaccia', 'baguette', 'challah', 'ciabatta', 'brioche', 'pizza',
+        'pita', 'cinnamon roll', 'english muffin', 'bread bowl', 'cracker', 'pancake',
+        'babka', 'danish', 'scone', 'doughnut', 'donut', 'muffin', 'roll', 'bun',
+        'rye', 'sourdough', 'yeasted', 'gluten-free', 'gluten free', 'whole wheat',
+        'milk bread', 'shokupan', 'king cake', 'banana bread', 'pumpkin', 'blueberry',
+        'cranberry', 'walnut', 'chocolate', 'cheddar', 'jalapeño', 'jalapeno'
+      ];
+      
+      const mentionedTypes = breadTypes.filter(type => lowerAnswer.includes(type));
+      
+      for (const type of mentionedTypes) {
+        if (recipe.title.toLowerCase().includes(type)) score += 5;
+        if (recipe.keywords?.some(k => k.toLowerCase().includes(type))) score += 4;
+      }
+      
+      if (recipe.keywords) {
+        for (const keyword of recipe.keywords) {
+          if (memberKeywords.includes(keyword.toLowerCase())) score += 3;
+          for (const memberKeyword of memberKeywords) {
+            if (keyword.toLowerCase().includes(memberKeyword) || 
+                memberKeyword.includes(keyword.toLowerCase())) {
+              score += 1;
+            }
+          }
+        }
+      }
+      
+      const titleWords = extractKeywords(recipe.title);
+      const descWords = recipe.description ? extractKeywords(recipe.description) : [];
+      
+      for (const memberKeyword of memberKeywords) {
+        if (titleWords.includes(memberKeyword)) score += 2;
+        if (descWords.includes(memberKeyword)) score += 1;
+      }
     }
     
     if (recipe.skill_level === 'beginner') score += 0.5;
@@ -189,14 +253,6 @@ function findMatchingRecipes(
   return matches;
 }
 
-function getSafeUrl(url: string | null): string | null {
-  if (!url) return null;
-  const trimmed = url.trim();
-  if (!trimmed) return null;
-  if (!/^https?:\/\//i.test(trimmed)) return null;
-  return trimmed;
-}
-
 // Format resources for the prompt
 function formatResourcesForPrompt(resources: ClassroomResource[]): string {
   if (resources.length === 0) {
@@ -216,9 +272,25 @@ function formatRecipesForPrompt(recipes: Recipe[]): string {
   }
   
   return recipes.map(r => {
-    const safeUrl = getSafeUrl(r.url);
+    const safeUrl = getSafeUrl(r.skool_url || r.url);
     return `- "${r.title}" (${r.category}, ${r.skill_level}): ${r.description || 'No description'} | URL: ${safeUrl || '(none)'}`;
   }).join('\n');
+}
+
+// Format tag-based recommendations for the prompt
+function formatTagRecommendations(tagMappings: InterestMapping[]): string {
+  if (tagMappings.length === 0) return '';
+  
+  const parts = tagMappings.map(m => {
+    const items: string[] = [];
+    if (m.recommended_course) items.push(`Course: "${m.recommended_course}"`);
+    if (m.recommended_recipe) items.push(`Recipe: "${m.recommended_recipe}"`);
+    if (m.quick_win) items.push(`Quick win: ${m.quick_win}`);
+    if (m.book_link) items.push(`Book link: ${m.book_link}`);
+    return `Keywords [${m.keywords.join(', ')}]: ${items.join(' | ')}`;
+  });
+  
+  return `\n\nTAG-BASED RECOMMENDATIONS (prioritize these):\n${parts.join('\n')}`;
 }
 
 // Detect interest type for link recommendations
@@ -227,14 +299,12 @@ function detectInterestType(applicationAnswer: string | null): { starterInterest
   
   const lowerAnswer = applicationAnswer.toLowerCase();
   
-  // Starter-related keywords
   const starterKeywords = [
     'starter', 'sourdough starter', 'getting started', 'begin', 'new to sourdough',
     'starting', 'start sourdough', 'levain', 'mother dough', 'wild yeast',
     'feeding', 'maintain', 'troubleshoot starter', 'starter help', 'build a starter'
   ];
   
-  // Recipe/baking-related keywords
   const recipeKeywords = [
     'recipe', 'bake', 'make', 'bread', 'loaf', 'bagel', 'focaccia', 'baguette',
     'challah', 'ciabatta', 'brioche', 'pizza', 'rolls', 'croissant', 'pastry',
@@ -253,7 +323,9 @@ function getWelcomeMessagePrompt(
   resourcesForPrompt: string,
   recipesForPrompt: string,
   starterInterest: boolean,
-  recipeInterest: boolean
+  recipeInterest: boolean,
+  tagRecommendations: string,
+  memberTags: string[]
 ): string {
   let linkInstructions = '';
   
@@ -264,26 +336,31 @@ function getWelcomeMessagePrompt(
     linkInstructions += `\n- IMPORTANT: Include this link to our Recipe Pantry: https://pantry.bakinggreatbread.com/ - mention it has all our tested recipes`;
   }
   if (!starterInterest && !recipeInterest && !hasApplicationAnswer) {
-    // Default for new members without clear goals
     linkInstructions = `\n- Include our Starter Sorcerer companion app (https://starter-sorcerer.vercel.app/) for starter help
 - Include our Recipe Pantry (https://pantry.bakinggreatbread.com/) for recipes`;
   }
+
+  const tagContext = memberTags.length > 0 
+    ? `\nMember's interest tags: [${memberTags.join(', ')}] — use these to personalize the recommendation.` 
+    : '';
 
   return `Generate a warm welcome DM for a new bread baking community member.
 
 Community: Crust & Crumb Academy (bread baking)
 Tone: Henry's voice - warm, welcoming, like greeting a new friend joining your kitchen.
+${tagContext}
 
 Available Classroom Resources (recommend beginner-friendly ones):
 ${resourcesForPrompt}
 
 Available Recipes (recommend easy starter recipes):
 ${recipesForPrompt}
+${tagRecommendations}
 
 Instructions:
 - Warmly welcome them by first name
 ${hasApplicationAnswer 
-  ? '- Acknowledge what they said they wanted to learn or make\n- Point them to 1-2 specific resources/recipes that match their goals'
+  ? '- Acknowledge what they said they wanted to learn or make\n- Point them to 1-2 specific resources/recipes that match their goals and tags'
   : '- Since no specific goals mentioned, suggest our most popular beginner resources'}${linkInstructions}
  - Only include a URL if it is explicitly shown next to an item in the lists above (e.g. "URL: https://...").
  - If an item shows "URL: (none)", do NOT invent a link—just mention the exact title so they can find it in the Classroom/Recipe Pantry.
@@ -301,7 +378,9 @@ function getResourceRecommendationPrompt(
   resourcesForPrompt: string,
   recipesForPrompt: string,
   starterInterest: boolean,
-  recipeInterest: boolean
+  recipeInterest: boolean,
+  tagRecommendations: string,
+  memberTags: string[]
 ): string {
   let linkInstructions = '';
   
@@ -312,19 +391,26 @@ function getResourceRecommendationPrompt(
     linkInstructions += `\n- IMPORTANT: Include this link to our Recipe Pantry: https://pantry.bakinggreatbread.com/ - it has all our tested recipes organized by skill level`;
   }
 
+  const tagContext = memberTags.length > 0 
+    ? `\nMember's interest tags: [${memberTags.join(', ')}] — use these to tailor your recommendations. Prioritize resources that match their tags.` 
+    : '';
+
   return `Generate a warm, personal DM to a bread baking community member recommending resources.
 
 Community: Crust & Crumb Academy (bread baking)
 Tone: Henry's voice - warm, encouraging, personal, like a friend checking in. Not salesy or corporate.
+${tagContext}
 
 Available Classroom Resources (recommend if they want to LEARN something):
 ${resourcesForPrompt}
 
 Available Recipes (recommend if they mention wanting to MAKE a specific bread):
 ${recipesForPrompt}
+${tagRecommendations}
 
 Instructions:
-- Analyze what the member said they want to learn or make
+- Analyze what the member said they want to learn or make, combined with their interest tags
+- If tag-based recommendations are provided above, prioritize those courses and recipes
 - If they mention a specific bread type (bagels, focaccia, sourdough, etc.), check if we have that recipe and recommend it
 - If they want to learn technique or troubleshoot, recommend a classroom resource
 - You can recommend BOTH a recipe AND a classroom resource if relevant
@@ -344,11 +430,16 @@ Do not use: 'dive deep', 'journey', 'excited to have you', 'don't hesitate', em 
 }
 
 // Generate feedback request prompt
-function getFeedbackRequestPrompt(hasApplicationAnswer: boolean): string {
+function getFeedbackRequestPrompt(hasApplicationAnswer: boolean, memberTags: string[]): string {
+  const tagContext = memberTags.length > 0 
+    ? `\nMember's interest tags: [${memberTags.join(', ')}] — reference their interests naturally in the check-in.` 
+    : '';
+
   return `Generate a warm, personal check-in DM to a bread baking community member asking for their feedback.
 
 Community: Crust & Crumb Academy (bread baking)
 Tone: Genuine care, not marketing. Like a community leader who actually wants to know how to help.
+${tagContext}
 
 Instructions:
 Write a DM that:
@@ -369,11 +460,16 @@ Do not use: 'we miss you', 'dive deep', 'journey', 'excited', 'don't hesitate', 
 }
 
 // Generate custom topic prompt
-function getCustomTopicPrompt(customTopic: string, hasApplicationAnswer: boolean): string {
+function getCustomTopicPrompt(customTopic: string, hasApplicationAnswer: boolean, memberTags: string[]): string {
+  const tagContext = memberTags.length > 0 
+    ? `\nMember's interest tags: [${memberTags.join(', ')}] — weave their interests into the message if relevant.` 
+    : '';
+
   return `Generate a personal DM for a bread baking community member.
 
 Community: Crust & Crumb Academy (bread baking)
 Tone: Personal, warm, like a friend reaching out. Not automated or corporate.
+${tagContext}
 
 Purpose of this DM: ${customTopic}
 
@@ -433,24 +529,56 @@ serve(async (req) => {
     let systemPrompt: string;
     let matchedResources: ClassroomResource[] = [];
     let matchedRecipes: Recipe[] = [];
+    let memberTags: string[] = [];
+    let tagMappings: InterestMapping[] = [];
+    let tagRecommendations = '';
 
-    // Determine if we need to fetch resources (for welcome and resource_recommendation)
+    // Determine if we need to fetch resources
     const needsResources = outreach_type === 'welcome_message' || outreach_type === 'resource_recommendation';
 
-    if (needsResources && SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+    if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
       const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
       
-      const [resourcesResult, recipesResult] = await Promise.all([
-        supabase.from('classroom_resources').select('*'),
-        supabase.from('recipes').select('*')
-      ]);
+      // Fetch member tags and interest mappings in parallel with resources
+      const queries: Promise<any>[] = [
+        supabase.from('member_tags').select('tag, source').eq('member_id', member.id),
+        supabase.from('interest_mappings').select('*'),
+      ];
       
-      if (resourcesResult.data && resourcesResult.data.length > 0) {
-        matchedResources = findMatchingResources(member.application_answer, resourcesResult.data);
+      if (needsResources) {
+        queries.push(
+          supabase.from('classroom_resources').select('*'),
+          supabase.from('recipes').select('*')
+        );
       }
       
-      if (recipesResult.data && recipesResult.data.length > 0) {
-        matchedRecipes = findMatchingRecipes(member.application_answer, recipesResult.data);
+      const results = await Promise.all(queries);
+      
+      // Process member tags
+      const tagsResult = results[0];
+      if (tagsResult.data) {
+        memberTags = tagsResult.data.map((t: MemberTag) => t.tag);
+      }
+      
+      // Process interest mappings
+      const mappingsResult = results[1];
+      if (mappingsResult.data) {
+        // Find mappings that match member's interest tags
+        tagMappings = findMappingsForTags(memberTags, mappingsResult.data);
+        tagRecommendations = formatTagRecommendations(tagMappings);
+      }
+      
+      if (needsResources) {
+        const resourcesResult = results[2];
+        const recipesResult = results[3];
+        
+        if (resourcesResult?.data && resourcesResult.data.length > 0) {
+          matchedResources = findMatchingResources(member.application_answer, resourcesResult.data, tagMappings);
+        }
+        
+        if (recipesResult?.data && recipesResult.data.length > 0) {
+          matchedRecipes = findMatchingRecipes(member.application_answer, recipesResult.data, tagMappings);
+        }
       }
     }
 
@@ -463,10 +591,10 @@ serve(async (req) => {
     // Select the appropriate prompt based on outreach type
     switch (outreach_type) {
       case 'welcome_message':
-        systemPrompt = getWelcomeMessagePrompt(hasApplicationAnswer, resourcesForPrompt, recipesForPrompt, starterInterest, recipeInterest);
+        systemPrompt = getWelcomeMessagePrompt(hasApplicationAnswer, resourcesForPrompt, recipesForPrompt, starterInterest, recipeInterest, tagRecommendations, memberTags);
         break;
       case 'feedback_request':
-        systemPrompt = getFeedbackRequestPrompt(hasApplicationAnswer);
+        systemPrompt = getFeedbackRequestPrompt(hasApplicationAnswer, memberTags);
         break;
       case 'custom':
         if (!custom_topic.trim()) {
@@ -475,20 +603,22 @@ serve(async (req) => {
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
-        systemPrompt = getCustomTopicPrompt(custom_topic, hasApplicationAnswer);
+        systemPrompt = getCustomTopicPrompt(custom_topic, hasApplicationAnswer, memberTags);
         break;
       case 'resource_recommendation':
       default:
-        systemPrompt = getResourceRecommendationPrompt(hasApplicationAnswer, resourcesForPrompt, recipesForPrompt, starterInterest, recipeInterest);
+        systemPrompt = getResourceRecommendationPrompt(hasApplicationAnswer, resourcesForPrompt, recipesForPrompt, starterInterest, recipeInterest, tagRecommendations, memberTags);
         break;
     }
+
+    const tagsLine = memberTags.length > 0 ? `\n- Interest tags: [${memberTags.join(', ')}]` : '';
 
     const userPrompt = `Member Info:
 - Name: ${member.skool_name}
 - Joined: ${member.join_date || 'Unknown'}
 - What they wanted to learn when joining: "${member.application_answer || 'Not provided'}"
 - Days since last activity: ${daysSinceActive}
-- Posts: ${member.post_count || 0}, Comments: ${member.comment_count || 0}
+- Posts: ${member.post_count || 0}, Comments: ${member.comment_count || 0}${tagsLine}
 
 Write a personalized DM for this member.`;
 
@@ -546,6 +676,13 @@ Write a personalized DM for this member.`;
         outreach_type,
         matched_resources: matchedResources.map(r => r.title),
         matched_recipes: matchedRecipes.map(r => r.title),
+        member_tags: memberTags,
+        tag_recommendations: tagMappings.map(m => ({
+          keywords: m.keywords,
+          course: m.recommended_course,
+          recipe: m.recommended_recipe,
+          quick_win: m.quick_win,
+        })),
         has_application_answer: hasApplicationAnswer
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

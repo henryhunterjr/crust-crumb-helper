@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useDebounce } from '@/hooks/useDebounce';
-import { Upload, Search, ArrowUpDown, UserPlus, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Upload, Search, ArrowUpDown, UserPlus, RefreshCw, ChevronLeft, ChevronRight, Tags } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -64,6 +64,7 @@ export default function Members() {
   const ITEMS_PER_PAGE = 25;
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectedTagFilters, setSelectedTagFilters] = useState<string[]>([]);
+  const [isRetagging, setIsRetagging] = useState(false);
 
   // Handle filter from URL params
   useEffect(() => {
@@ -422,6 +423,37 @@ export default function Members() {
               title="Refresh member data"
             >
               <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={async () => {
+                setIsRetagging(true);
+                try {
+                  const taggableMembers = members.map(m => ({
+                    id: m.id,
+                    application_answer: m.application_answer,
+                    post_count: m.post_count,
+                    comment_count: m.comment_count,
+                    last_active: m.last_active,
+                    engagement_status: m.engagement_status,
+                  }));
+                  const tagCount = await autoTagMembers(taggableMembers);
+                  toast.success(`Auto-tagged ${members.length} members with ${tagCount} tags`);
+                } catch (err) {
+                  console.error('Re-tag error:', err);
+                  toast.error('Failed to re-tag members');
+                } finally {
+                  setIsRetagging(false);
+                }
+              }}
+              disabled={isRetagging || members.length === 0}
+            >
+              {isRetagging ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Tags className="h-4 w-4 mr-2" />
+              )}
+              Re-tag All
             </Button>
             <Button variant="outline" onClick={() => setAddMemberDialogOpen(true)}>
               <UserPlus className="h-4 w-4 mr-2" />
