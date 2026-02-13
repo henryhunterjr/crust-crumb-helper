@@ -10,7 +10,7 @@ const ALLOWED_ORIGINS = [
 
 export function getCorsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get('Origin') || '';
-  const isAllowed = ALLOWED_ORIGINS.some(o => origin === o) || origin.endsWith('.lovable.app');
+  const isAllowed = ALLOWED_ORIGINS.some(o => origin === o) || origin.endsWith('.lovable.app') || origin.endsWith('.lovableproject.com');
   return {
     'Access-Control-Allow-Origin': isAllowed ? origin : ALLOWED_ORIGINS[0],
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
