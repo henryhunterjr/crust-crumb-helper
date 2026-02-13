@@ -14,6 +14,7 @@ const navItems = [
   { href: '/members', label: 'Members' },
   { href: '/outreach-queue', label: 'Queue' },
   { href: '/outreach-log', label: 'Log' },
+  { href: '/email-campaigns', label: 'Email' },
 ];
 
 export function Header() {
