@@ -76,6 +76,50 @@ export type Database = {
         }
         Relationships: []
       }
+      campaign_analytics: {
+        Row: {
+          campaign_id: string | null
+          comments_count: number | null
+          created_at: string
+          estimated_participants: number | null
+          id: string
+          new_members_during: number | null
+          notes: string | null
+          photos_shared: number | null
+          updated_at: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          comments_count?: number | null
+          created_at?: string
+          estimated_participants?: number | null
+          id?: string
+          new_members_during?: number | null
+          notes?: string | null
+          photos_shared?: number | null
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string | null
+          comments_count?: number | null
+          created_at?: string
+          estimated_participants?: number | null
+          id?: string
+          new_members_during?: number | null
+          notes?: string | null
+          photos_shared?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_analytics_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "content_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_posts: {
         Row: {
           campaign_id: string
@@ -587,38 +631,53 @@ export type Database = {
         Row: {
           created_at: string
           custom_topic: string | null
+          engagement_status_7d_later: string | null
+          engagement_status_at_send: string | null
           id: string
           member_id: string
           member_name: string
           message_text: string
           message_type: string
           priority: string | null
+          responded: boolean | null
+          responded_at: string | null
           sent_at: string | null
           status: string
+          template_type: string | null
         }
         Insert: {
           created_at?: string
           custom_topic?: string | null
+          engagement_status_7d_later?: string | null
+          engagement_status_at_send?: string | null
           id?: string
           member_id: string
           member_name: string
           message_text: string
           message_type?: string
           priority?: string | null
+          responded?: boolean | null
+          responded_at?: string | null
           sent_at?: string | null
           status?: string
+          template_type?: string | null
         }
         Update: {
           created_at?: string
           custom_topic?: string | null
+          engagement_status_7d_later?: string | null
+          engagement_status_at_send?: string | null
           id?: string
           member_id?: string
           member_name?: string
           message_text?: string
           message_type?: string
           priority?: string | null
+          responded?: boolean | null
+          responded_at?: string | null
           sent_at?: string | null
           status?: string
+          template_type?: string | null
         }
         Relationships: [
           {
@@ -859,6 +918,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      segment_snapshots: {
+        Row: {
+          created_at: string
+          id: string
+          member_count: number
+          segment_name: string
+          snapshot_date: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          member_count?: number
+          segment_name: string
+          snapshot_date: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          member_count?: number
+          segment_name?: string
+          snapshot_date?: string
+        }
+        Relationships: []
       }
       url_health_checks: {
         Row: {

@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.generate-email]
 verify_jwt = false
+
+[functions.generate-campaign]
+verify_jwt = false
