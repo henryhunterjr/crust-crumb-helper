@@ -11,6 +11,7 @@ import Members from "./pages/Members";
 import Settings from "./pages/Settings";
 import OutreachLog from "./pages/OutreachLog";
 import OutreachQueue from "./pages/OutreachQueue";
+import SmartSearch from "./pages/SmartSearch";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
           <Route path="/settings" element={<Settings />} />
           <Route path="/outreach-log" element={<OutreachLog />} />
           <Route path="/outreach-queue" element={<OutreachQueue />} />
+          <Route path="/smart-search" element={<SmartSearch />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

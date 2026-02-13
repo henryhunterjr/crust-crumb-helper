@@ -25,7 +25,9 @@ import { BulkActionsBar } from '@/components/members/BulkActionsBar';
 import { BulkDMQueueDialog } from '@/components/members/BulkDMQueueDialog';
 import { AddMemberDialog } from '@/components/members/AddMemberDialog';
 import { NewMemberDigest } from '@/components/members/NewMemberDigest';
+import { TagFilterDropdown } from '@/components/members/TagFilterDropdown';
 import { useMembers } from '@/hooks/useMembers';
+import { useMemberTags } from '@/hooks/useMemberTags';
 import { Member, MemberFilter, MemberSortField, MemberImportRow, OutreachType } from '@/types/member';
 import { supabase } from '@/integrations/supabase/client';
 import { useOutreachMessages } from '@/hooks/useOutreachMessages';
@@ -46,6 +48,7 @@ export default function Members() {
   } = useMembers();
 
   const { saveMessage, updateMessageStatus } = useOutreachMessages();
+  const { tagsByMember, tagCounts, autoTagMembers } = useMemberTags();
 
   // URL params for filter
   const [searchParams, setSearchParams] = useSearchParams();
@@ -60,6 +63,7 @@ export default function Members() {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 25;
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedTagFilters, setSelectedTagFilters] = useState<string[]>([]);
 
   // Handle filter from URL params
   useEffect(() => {
@@ -135,6 +139,14 @@ export default function Members() {
         break;
     }
 
+    // Apply tag filters (AND logic)
+    if (selectedTagFilters.length > 0) {
+      result = result.filter(m => {
+        const memberTags = (tagsByMember[m.id] || []).map(t => t.tag);
+        return selectedTagFilters.every(tag => memberTags.includes(tag));
+      });
+    }
+
     // Apply search
     if (debouncedSearch) {
       const query = debouncedSearch.toLowerCase();
@@ -161,12 +173,12 @@ export default function Members() {
     });
 
     return result;
-  }, [members, activeFilter, debouncedSearch, sortField]);
+  }, [members, activeFilter, debouncedSearch, sortField, selectedTagFilters, tagsByMember]);
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeFilter, debouncedSearch, sortField]);
+  }, [activeFilter, debouncedSearch, sortField, selectedTagFilters]);
 
   // Paginate
   const totalPages = Math.max(1, Math.ceil(filteredMembers.length / ITEMS_PER_PAGE));
@@ -207,8 +219,25 @@ export default function Members() {
       
       const { inserted, updated } = result;
       
-      // Calculate import summary from results
+      // Auto-tag imported members
       const allMembers = result.results;
+      try {
+        const tagCount = await autoTagMembers(allMembers.map(m => ({
+          id: m.id,
+          application_answer: m.application_answer,
+          post_count: m.post_count,
+          comment_count: m.comment_count,
+          last_active: m.last_active,
+          engagement_status: m.engagement_status,
+        })));
+        if (tagCount > 0) {
+          toast.success(`Auto-tagged members with ${tagCount} tags`);
+        }
+      } catch (tagErr) {
+        console.error('Auto-tagging error:', tagErr);
+      }
+      
+      // Calculate import summary from results
       const summary = allMembers.reduce((acc, m) => {
         acc[m.engagement_status] = (acc[m.engagement_status] || 0) + 1;
         return acc;
@@ -420,6 +449,11 @@ export default function Members() {
           />
           
           <div className="flex gap-2 ml-auto">
+            <TagFilterDropdown
+              tagCounts={tagCounts}
+              selectedTags={selectedTagFilters}
+              onSelectedTagsChange={setSelectedTagFilters}
+            />
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -498,6 +532,7 @@ export default function Members() {
                   await updateMember.mutateAsync({ id: member.id, updates: { skool_username: username } });
                   toast.success('Skool username saved');
                 }}
+                tags={tagsByMember[member.id] || []}
               />
             ))}
           </div>

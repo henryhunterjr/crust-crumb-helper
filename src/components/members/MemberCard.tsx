@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Member, EngagementStatus, MessageStatus } from '@/types/member';
 import { SkoolUsernameInput } from './SkoolUsernameInput';
+import { MemberTagBadges } from './MemberTagBadges';
+import { MemberTag } from '@/hooks/useMemberTags';
 import { cn } from '@/lib/utils';
 
 interface MemberCardProps {
@@ -16,6 +18,7 @@ interface MemberCardProps {
   isGenerating: boolean;
   onClick: () => void;
   onUpdateUsername: (username: string) => Promise<void>;
+  tags?: MemberTag[];
 }
 
 const statusConfig: Record<EngagementStatus, { label: string; className: string }> = {
@@ -41,6 +44,7 @@ export function MemberCard({
   isGenerating,
   onClick,
   onUpdateUsername,
+  tags = [],
 }: MemberCardProps) {
   const engagementStatus = statusConfig[member.engagement_status] || statusConfig.unknown;
   const msgStatus = messageStatusConfig[member.message_status] || messageStatusConfig.not_contacted;
@@ -82,6 +86,9 @@ export function MemberCard({
                 {msgStatus.label}
               </Badge>
             </div>
+            {tags.length > 0 && (
+              <MemberTagBadges tags={tags} maxVisible={5} className="mt-1" />
+            )}
             
             <Button
               size="sm"
