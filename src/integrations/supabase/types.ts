@@ -293,41 +293,153 @@ export type Database = {
         }
         Relationships: []
       }
+      email_campaigns: {
+        Row: {
+          campaign_name: string
+          campaign_type: string
+          created_at: string
+          email_count: number
+          id: string
+          sent_at: string | null
+          status: string
+          target_segment: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_name: string
+          campaign_type?: string
+          created_at?: string
+          email_count?: number
+          id?: string
+          sent_at?: string | null
+          status?: string
+          target_segment?: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_name?: string
+          campaign_type?: string
+          created_at?: string
+          email_count?: number
+          id?: string
+          sent_at?: string | null
+          status?: string
+          target_segment?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      email_drafts: {
+        Row: {
+          body_text: string
+          campaign_id: string
+          created_at: string
+          id: string
+          member_id: string | null
+          personalization_data: Json | null
+          recipient_email: string
+          recipient_name: string | null
+          status: string
+          subject: string
+          subscriber_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          body_text: string
+          campaign_id: string
+          created_at?: string
+          id?: string
+          member_id?: string | null
+          personalization_data?: Json | null
+          recipient_email: string
+          recipient_name?: string | null
+          status?: string
+          subject: string
+          subscriber_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          body_text?: string
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          member_id?: string | null
+          personalization_data?: Json | null
+          recipient_email?: string
+          recipient_name?: string | null
+          status?: string
+          subject?: string
+          subscriber_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_drafts_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "email_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_drafts_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_drafts_subscriber_id_fkey"
+            columns: ["subscriber_id"]
+            isOneToOne: false
+            referencedRelation: "email_subscribers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_subscribers: {
         Row: {
+          confirmation_time: string | null
           created_at: string
           email: string
           first_name: string | null
           id: string
           is_skool_member: boolean
           last_name: string | null
+          list_name: string | null
           matched_member_id: string | null
           source: string | null
           status: string
+          subscription_time: string | null
           updated_at: string
         }
         Insert: {
+          confirmation_time?: string | null
           created_at?: string
           email: string
           first_name?: string | null
           id?: string
           is_skool_member?: boolean
           last_name?: string | null
+          list_name?: string | null
           matched_member_id?: string | null
           source?: string | null
           status?: string
+          subscription_time?: string | null
           updated_at?: string
         }
         Update: {
+          confirmation_time?: string | null
           created_at?: string
           email?: string
           first_name?: string | null
           id?: string
           is_skool_member?: boolean
           last_name?: string | null
+          list_name?: string | null
           matched_member_id?: string | null
           source?: string | null
           status?: string
+          subscription_time?: string | null
           updated_at?: string
         }
         Relationships: [

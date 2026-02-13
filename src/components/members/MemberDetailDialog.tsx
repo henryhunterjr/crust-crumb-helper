@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { format, parseISO, differenceInDays } from 'date-fns';
-import { Calendar, Clock, FileText, MessageSquare, Send, CheckCircle, Save, Link2, History } from 'lucide-react';
+import { Calendar, Clock, FileText, MessageSquare, Send, CheckCircle, Save, Link2, History, Mail, Lightbulb } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -26,6 +27,7 @@ import { MemberMessageHistory } from './MemberMessageHistory';
 import { MemberTagEditor } from './MemberTagEditor';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface MemberDetailDialogProps {
   open: boolean;
@@ -61,6 +63,20 @@ export function MemberDetailDialog({
   const [status, setStatus] = useState<EngagementStatus>(member?.engagement_status || 'unknown');
   const [skoolUsername, setSkoolUsername] = useState(member?.skool_username || '');
   const [hasChanges, setHasChanges] = useState(false);
+
+  // Check if member is also on email list
+  const { data: emailSubscriber } = useQuery({
+    queryKey: ['email-subscriber-match', member?.id],
+    enabled: !!member?.id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('email_subscribers')
+        .select('*')
+        .eq('matched_member_id', member!.id)
+        .maybeSingle();
+      return data;
+    },
+  });
 
   if (!member) return null;
 
@@ -156,6 +172,27 @@ export function MemberDetailDialog({
               <div>
                 <Label className="text-xs text-muted-foreground">Email</Label>
                 <p className="mt-1 text-sm">{member.email}</p>
+              </div>
+            )}
+
+            {/* Email list indicator */}
+            {emailSubscriber && (
+              <div className="bg-primary/5 border border-primary/20 rounded-md p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <Mail className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">Also on email list</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Subscribed {emailSubscriber.subscription_time
+                    ? format(parseISO(emailSubscriber.subscription_time), 'MMM yyyy')
+                    : 'date unknown'}
+                  {emailSubscriber.status === 'subscribed' ? ', confirmed' : ', unconfirmed'}
+                </p>
+                <p className="text-xs text-muted-foreground">{emailSubscriber.email}</p>
+                <div className="flex items-center gap-1.5 mt-2 text-xs text-muted-foreground">
+                  <Lightbulb className="h-3.5 w-3.5" />
+                  <span>This member can be reached via email if DMs don't work.</span>
+                </div>
               </div>
             )}
 
