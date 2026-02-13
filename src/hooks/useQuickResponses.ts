@@ -35,7 +35,7 @@ export function useCreateQuickResponse() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (response: Omit<QuickResponse, "id" | "use_count" | "last_used_at" | "created_at" | "updated_at">) => {
+    mutationFn: async (response: Pick<QuickResponse, 'title' | 'content' | 'category' | 'trigger_phrases'>) => {
       const { data, error } = await supabase
         .from("quick_responses")
         .insert(response)

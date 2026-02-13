@@ -1,4 +1,4 @@
-import { Copy, Edit, Clock } from "lucide-react";
+import { Copy, Edit, Clock, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -10,6 +10,7 @@ import {
 import { QuickResponse } from "@/types/quickResponse";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import { ResponseTopicTags } from "./ResponseTopicTags";
 
 interface ResponseDetailDialogProps {
   response: QuickResponse | null;
@@ -67,6 +68,14 @@ export function ResponseDetailDialog({
               </div>
             </div>
           )}
+
+          <ResponseTopicTags
+            responseId={response.id}
+            topicTags={response.topic_tags || []}
+            relatedCourseIds={response.related_course_ids || []}
+            relatedRecipeIds={response.related_recipe_ids || []}
+            searchHitCount={response.search_hit_count || 0}
+          />
           
           <div className="flex items-center justify-between mt-6 pt-4 border-t">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">

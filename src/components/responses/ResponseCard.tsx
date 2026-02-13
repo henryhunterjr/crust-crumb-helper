@@ -1,10 +1,11 @@
-import { Copy, Edit, Trash2, Clock } from "lucide-react";
+import { Copy, Edit, Trash2, Clock, Search } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { QuickResponse } from "@/types/quickResponse";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import { ResponseTopicTags } from "./ResponseTopicTags";
 
 interface ResponseCardProps {
   response: QuickResponse;
@@ -39,6 +40,12 @@ export function ResponseCard({ response, onEdit, onDelete, onCopy }: ResponseCar
             <Badge variant="secondary" className="text-xs">
               {response.category}
             </Badge>
+            {(response.search_hit_count || 0) > 0 && (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Search className="h-3 w-3" />
+                {response.search_hit_count}x
+              </span>
+            )}
           </div>
           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <Button
@@ -64,6 +71,15 @@ export function ResponseCard({ response, onEdit, onDelete, onCopy }: ResponseCar
         <p className="text-sm text-muted-foreground whitespace-pre-line mb-4">
           {previewContent}
         </p>
+
+        <ResponseTopicTags
+          responseId={response.id}
+          topicTags={response.topic_tags || []}
+          relatedCourseIds={response.related_course_ids || []}
+          relatedRecipeIds={response.related_recipe_ids || []}
+          searchHitCount={response.search_hit_count || 0}
+          compact
+        />
         
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">

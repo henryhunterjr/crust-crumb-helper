@@ -45,7 +45,7 @@ export default function Index() {
     }, {} as Record<string, number>);
   }, [allResponses]);
 
-  const handleCreate = (data: Omit<QuickResponse, "id" | "use_count" | "last_used_at" | "created_at" | "updated_at">) => {
+  const handleCreate = (data: Pick<QuickResponse, 'title' | 'content' | 'category' | 'trigger_phrases'>) => {
     createMutation.mutate(data, {
       onSuccess: () => {
         setFormOpen(false);
@@ -53,7 +53,7 @@ export default function Index() {
     });
   };
 
-  const handleUpdate = (data: Omit<QuickResponse, "id" | "use_count" | "last_used_at" | "created_at" | "updated_at">) => {
+  const handleUpdate = (data: Pick<QuickResponse, 'title' | 'content' | 'category' | 'trigger_phrases'>) => {
     if (!editingResponse) return;
     updateMutation.mutate(
       { id: editingResponse.id, ...data },

@@ -39,7 +39,7 @@ type FormData = z.infer<typeof formSchema>;
 interface ResponseFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: Omit<QuickResponse, "id" | "use_count" | "last_used_at" | "created_at" | "updated_at">) => void;
+  onSubmit: (data: Pick<QuickResponse, 'title' | 'content' | 'category' | 'trigger_phrases'>) => void;
   initialData?: QuickResponse | null;
   isLoading?: boolean;
 }
