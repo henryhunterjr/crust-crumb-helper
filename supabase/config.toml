@@ -23,3 +23,9 @@ verify_jwt = false
 
 [functions.generate-campaign]
 verify_jwt = false
+
+[functions.generate-weekly-report]
+verify_jwt = false
+
+[functions.evaluate-rules]
+verify_jwt = false

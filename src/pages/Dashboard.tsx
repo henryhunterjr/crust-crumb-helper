@@ -30,6 +30,7 @@ import { toast } from 'sonner';
 import { UrgentActionsPanel } from '@/components/dashboard/UrgentActionsPanel';
 import { WeeklyGoalsWidget } from '@/components/dashboard/WeeklyGoalsWidget';
 import { CommunityHealthScore } from '@/components/dashboard/CommunityHealthScore';
+import { WeeklyReportCard } from '@/components/dashboard/WeeklyReportCard';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -285,6 +286,11 @@ export default function Dashboard() {
             atRisk={stats.atRisk}
             responseRate={stats.responseRate}
           />
+        </div>
+
+        {/* Weekly Report */}
+        <div className="mb-6">
+          <WeeklyReportCard />
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
