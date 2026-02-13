@@ -4,6 +4,8 @@ import { ClassroomResourcesSection } from '@/components/settings/ClassroomResour
 import { RecipePantrySection } from '@/components/settings/RecipePantrySection';
 import { DMTemplatesSection } from '@/components/settings/DMTemplatesSection';
 import { InterestMappingsSection } from '@/components/settings/InterestMappingsSection';
+import { OutreachRulesSection } from '@/components/settings/OutreachRulesSection';
+import { AIPersonalitySection } from '@/components/settings/AIPersonalitySection';
 
 export default function Settings() {
   return (
@@ -13,9 +15,11 @@ export default function Settings() {
       <main className="container py-6 px-4 space-y-6 flex-1">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-foreground">Settings</h1>
-          <p className="text-muted-foreground">Manage your interest mappings, classroom resources, recipes, and DM templates</p>
+          <p className="text-muted-foreground">Manage AI voice, outreach rules, interest mappings, resources, recipes, and templates</p>
         </div>
 
+        <AIPersonalitySection />
+        <OutreachRulesSection />
         <InterestMappingsSection />
         <DMTemplatesSection />
         <ClassroomResourcesSection />

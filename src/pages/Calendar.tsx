@@ -1,125 +1,382 @@
-import { useState } from 'react';
-import { format, isSameDay } from 'date-fns';
+import { useState, useMemo } from 'react';
+import {
+  format, addDays, addWeeks, subWeeks, startOfWeek, endOfWeek, startOfMonth, endOfMonth,
+  eachDayOfInterval, isSameDay, isSameMonth, isToday, getDay, addMonths, subMonths,
+} from 'date-fns';
+import { ChevronLeft, ChevronRight, Plus, Copy, Check, CheckCircle, Sparkles, Edit, Loader2 } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
-import { CalendarGrid } from '@/components/calendar/CalendarGrid';
-import { DayDetailPanel } from '@/components/calendar/DayDetailPanel';
-import { SchedulePostDialog } from '@/components/calendar/SchedulePostDialog';
-import { useScheduledPosts } from '@/hooks/useScheduledPosts';
-import { ScheduledPost } from '@/types/postIdea';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useCalendarPosts, useCalendarTemplates, ScheduledPostSlot } from '@/hooks/useCalendarPosts';
+import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DAY_NAMES_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+const SLOT_CONFIG = [
+  { time: '12:30', label: '12:30 PM', type: 'value', icon: '📌', typeLabel: 'Value' },
+  { time: '19:00', label: '7:00 PM', type: 'engagement', icon: '💬', typeLabel: 'Engagement' },
+];
 
 export default function Calendar() {
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [selectedPost, setSelectedPost] = useState<ScheduledPost | null>(null);
-  const [showDayPanel, setShowDayPanel] = useState(false);
+  const [view, setView] = useState<'week' | 'month'>('week');
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const { posts, isLoading, createPost, updatePost, markPosted } = useCalendarPosts();
+  const { getTemplateForSlot } = useCalendarTemplates();
 
-  const {
-    scheduledPosts,
-    createScheduledPost,
-    updateScheduledPost,
-    reschedulePost,
-    deleteScheduledPost,
-    markAsPosted,
-  } = useScheduledPosts();
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editingPost, setEditingPost] = useState<ScheduledPostSlot | null>(null);
+  const [editorDate, setEditorDate] = useState<Date | null>(null);
+  const [editorSlot, setEditorSlot] = useState<typeof SLOT_CONFIG[0] | null>(null);
+  const [editorTitle, setEditorTitle] = useState('');
+  const [editorContent, setEditorContent] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const handleDayClick = (date: Date) => {
-    setSelectedDate(date);
-    setSelectedPost(null);
-    setShowDayPanel(true);
+  // Week boundaries
+  const weekStart = startOfWeek(currentDate);
+  const weekEnd = endOfWeek(currentDate);
+  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+
+  // Month boundaries
+  const monthStart = startOfMonth(currentDate);
+  const monthEnd = endOfMonth(currentDate);
+  const calendarStart = startOfWeek(monthStart);
+  const calendarEnd = endOfWeek(monthEnd);
+  const monthDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+
+  const getPostsForSlot = (date: Date, slotTime: string): ScheduledPostSlot | undefined => {
+    return posts.find(p =>
+      isSameDay(new Date(p.scheduled_date), date) &&
+      p.time_slot === slotTime
+    );
   };
 
-  const handlePostClick = (post: ScheduledPost) => {
-    setSelectedPost(post);
-    setSelectedDate(new Date(post.scheduled_date));
-    setDialogOpen(true);
+  // Stats for header
+  const weekPosts = posts.filter(p => {
+    const d = new Date(p.scheduled_date);
+    return d >= weekStart && d <= weekEnd;
+  });
+  const draftedCount = weekPosts.filter(p => p.status === 'planned').length;
+  const postedCount = weekPosts.filter(p => p.status === 'posted').length;
+  const emptySlots = 14 - weekPosts.length;
+
+  const openEditor = (date: Date, slot: typeof SLOT_CONFIG[0], existingPost?: ScheduledPostSlot) => {
+    setEditorDate(date);
+    setEditorSlot(slot);
+    if (existingPost) {
+      setEditingPost(existingPost);
+      setEditorTitle(existingPost.title);
+      setEditorContent(existingPost.content);
+    } else {
+      setEditingPost(null);
+      setEditorTitle('');
+      setEditorContent('');
+    }
+    setEditorOpen(true);
   };
 
-  const handlePostDrop = (postId: string, newDate: Date) => {
-    reschedulePost.mutate({
-      id: postId,
-      scheduled_date: format(newDate, 'yyyy-MM-dd'),
-    });
+  const handleSave = async () => {
+    if (!editorDate || !editorSlot || !editorTitle.trim()) return;
+    const dateStr = format(editorDate, 'yyyy-MM-dd');
+
+    if (editingPost) {
+      updatePost.mutate({ id: editingPost.id, title: editorTitle, content: editorContent });
+    } else {
+      createPost.mutate({
+        title: editorTitle,
+        content: editorContent,
+        scheduled_date: dateStr,
+        time_slot: editorSlot.time,
+        post_type: editorSlot.type,
+        status: 'planned',
+      });
+    }
+    setEditorOpen(false);
   };
 
-  const handleAddPost = () => {
-    setSelectedPost(null);
-    setDialogOpen(true);
+  const handleAIGenerate = async () => {
+    if (!editorDate || !editorSlot) return;
+    const template = getTemplateForSlot(editorDate, editorSlot.time);
+    const suggestion = template?.template_text || `${editorSlot.typeLabel} post for ${format(editorDate, 'EEEE')}`;
+
+    setIsGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-post', {
+        body: {
+          topic: suggestion,
+          postType: editorSlot.type === 'value' ? 'educational' : 'community-building',
+          targetAudience: 'all-members',
+        },
+      });
+      if (error) throw error;
+      setEditorTitle(data.title || suggestion);
+      setEditorContent(data.content || '');
+      toast.success('Content generated!');
+    } catch (err: any) {
+      toast.error('Generation failed: ' + (err.message || 'Unknown error'));
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
-  const handleSave = (post: {
-    title: string;
-    content: string;
-    scheduled_date: string;
-    time_slot?: string;
-    post_type?: string;
-  }) => {
-    createScheduledPost.mutate(post);
+  const handleCopy = async (post: ScheduledPostSlot) => {
+    try {
+      await navigator.clipboard.writeText(`${post.title}\n\n${post.content}`);
+      setCopiedId(post.id);
+      toast.success('Copied!');
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch { toast.error('Failed to copy'); }
   };
 
-  const handleUpdate = (id: string, updates: Partial<ScheduledPost>) => {
-    updateScheduledPost.mutate({ id, ...updates });
+  const handleCopyAndPost = async (post: ScheduledPostSlot) => {
+    await handleCopy(post);
+    window.open('https://www.skool.com/crust-crumb-academy-7621', '_blank');
+    markPosted.mutate(post.id);
   };
-
-  const handleDelete = (id: string) => {
-    deleteScheduledPost.mutate(id);
-  };
-
-  const handleMarkPosted = (id: string) => {
-    markAsPosted.mutate(id);
-  };
-
-  const postsForSelectedDay = selectedDate
-    ? scheduledPosts.filter(post => isSameDay(new Date(post.scheduled_date), selectedDate))
-    : [];
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header />
-      
-      <main className="container py-8 px-4 flex-1">
-        <div className="mb-8">
-          <h1 className="text-3xl font-serif font-bold text-foreground mb-2">
-            Content Calendar
-          </h1>
-          <p className="text-muted-foreground">
-            Plan and schedule your community posts. Drag posts to reschedule.
-          </p>
+      <main className="container py-6 px-4 flex-1">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold">Content Calendar</h1>
+            <p className="text-muted-foreground">
+              {view === 'week'
+                ? `${format(weekStart, 'MMM d')} – ${format(weekEnd, 'MMM d, yyyy')}`
+                : format(currentDate, 'MMMM yyyy')}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Tabs value={view} onValueChange={(v) => setView(v as 'week' | 'month')}>
+              <TabsList className="h-8">
+                <TabsTrigger value="week" className="text-xs px-3 h-7">Week</TabsTrigger>
+                <TabsTrigger value="month" className="text-xs px-3 h-7">Month</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCurrentDate(view === 'week' ? subWeeks(currentDate, 1) : subMonths(currentDate, 1))}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setCurrentDate(new Date())}>Today</Button>
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCurrentDate(view === 'week' ? addWeeks(currentDate, 1) : addMonths(currentDate, 1))}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
-        <div className="grid lg:grid-cols-[1fr_350px] gap-6">
-          <CalendarGrid
-            posts={scheduledPosts}
-            onDayClick={handleDayClick}
-            onPostClick={handlePostClick}
-            onPostDrop={handlePostDrop}
-          />
+        {view === 'week' && (
+          <>
+            <div className="text-sm text-muted-foreground mb-4">
+              {draftedCount} drafted · {postedCount} posted · {emptySlots} empty
+            </div>
 
-          {showDayPanel && selectedDate && (
-            <DayDetailPanel
-              selectedDate={selectedDate}
-              posts={postsForSelectedDay}
-              onAddPost={handleAddPost}
-              onEditPost={handlePostClick}
-              onDeletePost={handleDelete}
-              onMarkPosted={handleMarkPosted}
-              onClose={() => setShowDayPanel(false)}
-            />
-          )}
-        </div>
+            {/* Weekly Grid */}
+            <div className="space-y-1">
+              {weekDays.map(day => {
+                const dayIdx = getDay(day);
+                return (
+                  <div key={day.toISOString()} className={cn(
+                    "grid grid-cols-[120px_1fr_1fr] gap-2 p-2 rounded-lg border",
+                    isToday(day) && "bg-primary/5 border-primary/20"
+                  )}>
+                    {/* Day label */}
+                    <div className="flex flex-col justify-center">
+                      <span className={cn("text-sm font-medium", isToday(day) && "text-primary")}>
+                        {DAY_NAMES_FULL[dayIdx]}
+                      </span>
+                      <span className="text-xs text-muted-foreground">{format(day, 'MMM d')}</span>
+                    </div>
 
-        <SchedulePostDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          selectedDate={selectedDate}
-          existingPost={selectedPost}
-          onSave={handleSave}
-          onUpdate={handleUpdate}
-          onDelete={handleDelete}
-          onMarkPosted={handleMarkPosted}
-        />
+                    {/* Slots */}
+                    {SLOT_CONFIG.map(slot => {
+                      const post = getPostsForSlot(day, slot.time);
+                      const template = getTemplateForSlot(day, slot.time);
+
+                      if (post) {
+                        return (
+                          <div key={slot.time} className={cn(
+                            "border rounded-md p-2 text-xs",
+                            post.status === 'posted'
+                              ? "bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800 opacity-70"
+                              : "bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800"
+                          )}>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="font-medium">{slot.icon} {slot.label}</span>
+                              <Badge variant="outline" className={cn("text-[10px] h-4",
+                                post.status === 'posted' ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                              )}>
+                                {post.status === 'posted' ? '✓ Posted' : '⏳ Draft'}
+                              </Badge>
+                            </div>
+                            <p className={cn("font-medium mb-1 line-clamp-1", post.status === 'posted' && "line-through")}>
+                              {post.title}
+                            </p>
+                            {post.campaign_id && (
+                              <Badge variant="secondary" className="text-[9px] h-3.5 mb-1">Campaign</Badge>
+                            )}
+                            <div className="flex gap-1 mt-1">
+                              <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1.5" onClick={() => openEditor(day, slot, post)}>
+                                <Edit className="h-2.5 w-2.5 mr-0.5" />View
+                              </Button>
+                              <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1.5" onClick={() => handleCopy(post)}>
+                                {copiedId === post.id ? <Check className="h-2.5 w-2.5" /> : <Copy className="h-2.5 w-2.5" />}
+                              </Button>
+                              {post.status !== 'posted' && (
+                                <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1.5" onClick={() => handleCopyAndPost(post)}>
+                                  <CheckCircle className="h-2.5 w-2.5 mr-0.5" />Post
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // Empty slot with template suggestion
+                      return (
+                        <div key={slot.time} className="border border-dashed rounded-md p-2 text-xs text-muted-foreground hover:border-primary/50 hover:bg-accent/30 transition-colors cursor-pointer"
+                          onClick={() => openEditor(day, slot)}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span>{slot.icon} {slot.label}</span>
+                            <Badge variant="outline" className="text-[10px] h-4 bg-destructive/10 text-destructive border-destructive/20">Empty</Badge>
+                          </div>
+                          {template && (
+                            <p className="text-[11px] italic line-clamp-2">💡 {template.template_text}</p>
+                          )}
+                          <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1.5 mt-1">
+                            <Plus className="h-2.5 w-2.5 mr-0.5" />Draft Post
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {view === 'month' && (
+          <Card>
+            <CardContent className="p-4">
+              <div className="grid grid-cols-7 gap-1 mb-2">
+                {DAY_NAMES.map(d => (
+                  <div key={d} className="text-center text-xs font-medium text-muted-foreground py-1">{d}</div>
+                ))}
+              </div>
+              <div className="grid grid-cols-7 gap-1">
+                {monthDays.map((day, i) => {
+                  const isCurrentMonth = isSameMonth(day, currentDate);
+                  const slot1 = getPostsForSlot(day, '12:30');
+                  const slot2 = getPostsForSlot(day, '19:00');
+
+                  const getDot = (post?: ScheduledPostSlot) => {
+                    if (!post) return 'bg-destructive/30';
+                    if (post.status === 'posted') return 'bg-green-500';
+                    return 'bg-yellow-500';
+                  };
+
+                  return (
+                    <div
+                      key={i}
+                      className={cn(
+                        "aspect-square p-1 rounded cursor-pointer hover:bg-accent/50 transition-colors flex flex-col items-center justify-center gap-1",
+                        !isCurrentMonth && "opacity-30",
+                        isToday(day) && "bg-primary/10 ring-1 ring-primary/30"
+                      )}
+                      onClick={() => {
+                        setCurrentDate(day);
+                        setView('week');
+                      }}
+                    >
+                      <span className={cn("text-xs font-medium", isToday(day) && "text-primary")}>
+                        {format(day, 'd')}
+                      </span>
+                      <div className="flex gap-0.5">
+                        <div className={cn("h-2 w-2 rounded-full", getDot(slot1))} />
+                        <div className={cn("h-2 w-2 rounded-full", getDot(slot2))} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground justify-center">
+                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-green-500 inline-block" /> Posted</span>
+                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-yellow-500 inline-block" /> Drafted</span>
+                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-destructive/30 inline-block" /> Empty</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Post Editor Dialog */}
+        <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>
+                {editingPost ? 'Edit Post' : 'Draft Post'}
+              </DialogTitle>
+              {editorDate && editorSlot && (
+                <p className="text-sm text-muted-foreground">
+                  {format(editorDate, 'EEEE, MMM d')} — {editorSlot.label} ({editorSlot.typeLabel})
+                </p>
+              )}
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              {!editingPost && editorDate && editorSlot && (() => {
+                const tmpl = getTemplateForSlot(editorDate, editorSlot.time);
+                return tmpl ? (
+                  <div className="bg-accent/50 rounded-md p-3 text-sm">
+                    <span className="font-medium">💡 Template suggestion:</span> {tmpl.template_text}
+                  </div>
+                ) : null;
+              })()}
+              <div className="space-y-2">
+                <Label>Title</Label>
+                <Input value={editorTitle} onChange={e => setEditorTitle(e.target.value)} placeholder="Post title" />
+              </div>
+              <div className="space-y-2">
+                <Label>Content</Label>
+                <Textarea value={editorContent} onChange={e => setEditorContent(e.target.value)} className="min-h-[180px]" placeholder="Write your post content..." />
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={handleAIGenerate} disabled={isGenerating}>
+                  {isGenerating ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1" />}
+                  AI Generate
+                </Button>
+                {editingPost && (
+                  <>
+                    <Button variant="outline" size="sm" onClick={() => handleCopy(editingPost)}>
+                      <Copy className="h-4 w-4 mr-1" />Copy
+                    </Button>
+                    {editingPost.status !== 'posted' && (
+                      <Button variant="outline" size="sm" onClick={() => { handleCopyAndPost(editingPost); setEditorOpen(false); }}>
+                        <CheckCircle className="h-4 w-4 mr-1" />Copy & Post
+                      </Button>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditorOpen(false)}>Cancel</Button>
+              <Button onClick={handleSave} disabled={!editorTitle.trim()}>
+                {editingPost ? 'Update' : 'Save Draft'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
-
       <Footer />
     </div>
   );

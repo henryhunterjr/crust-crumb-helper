@@ -76,6 +76,36 @@ export type Database = {
         }
         Relationships: []
       }
+      calendar_templates: {
+        Row: {
+          created_at: string | null
+          day_of_week: number
+          id: string
+          slot_time: string
+          slot_type: string
+          template_text: string
+          week_number: number
+        }
+        Insert: {
+          created_at?: string | null
+          day_of_week: number
+          id?: string
+          slot_time: string
+          slot_type: string
+          template_text: string
+          week_number: number
+        }
+        Update: {
+          created_at?: string | null
+          day_of_week?: number
+          id?: string
+          slot_time?: string
+          slot_type?: string
+          template_text?: string
+          week_number?: number
+        }
+        Relationships: []
+      }
       campaign_analytics: {
         Row: {
           campaign_id: string | null
@@ -1014,6 +1044,33 @@ export type Database = {
           id?: string
           target_count?: number
           updated_at?: string
+          week_start?: string
+        }
+        Relationships: []
+      }
+      weekly_reports: {
+        Row: {
+          generated_at: string | null
+          health_score: number | null
+          id: string
+          report_data: Json
+          week_end: string
+          week_start: string
+        }
+        Insert: {
+          generated_at?: string | null
+          health_score?: number | null
+          id?: string
+          report_data?: Json
+          week_end: string
+          week_start: string
+        }
+        Update: {
+          generated_at?: string | null
+          health_score?: number | null
+          id?: string
+          report_data?: Json
+          week_end?: string
           week_start?: string
         }
         Relationships: []
