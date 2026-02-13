@@ -7,14 +7,15 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 
 const navItems = [
   { href: '/', label: 'Dashboard' },
-  { href: '/responses', label: 'Responses' },
-  { href: '/smart-search', label: 'Smart Search' },
-  { href: '/generate', label: 'Generate' },
-  { href: '/calendar', label: 'Calendar' },
   { href: '/members', label: 'Members' },
   { href: '/outreach-queue', label: 'Queue' },
-  { href: '/outreach-log', label: 'Log' },
+  { href: '/smart-search', label: 'Search' },
+  { href: '/campaigns', label: 'Campaigns' },
+  { href: '/calendar', label: 'Calendar' },
   { href: '/email-campaigns', label: 'Email' },
+  { href: '/analytics', label: 'Analytics' },
+  { href: '/responses', label: 'Responses' },
+  { href: '/outreach-log', label: 'Log' },
 ];
 
 export function Header() {

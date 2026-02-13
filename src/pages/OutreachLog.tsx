@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
 import { useDebounce } from '@/hooks/useDebounce';
-import { Search, Copy, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Copy, CheckCircle, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useOutreachMessages } from '@/hooks/useOutreachMessages';
+import { useRespondedTracking } from '@/hooks/useAnalytics';
 import { toast } from 'sonner';
 
 const typeLabels: Record<string, string> = {
@@ -39,6 +40,7 @@ const statusStyles: Record<string, string> = {
 
 export default function OutreachLog() {
   const { messages, isLoading } = useOutreachMessages();
+  const { updateResponded } = useRespondedTracking();
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -190,18 +192,37 @@ export default function OutreachLog() {
                       </p>
                     )}
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="shrink-0"
-                    onClick={() => handleCopy(msg.id, msg.message_text)}
-                  >
-                    {copiedId === msg.id ? (
-                      <><CheckCircle className="h-4 w-4 mr-1" /> Copied</>
-                    ) : (
-                      <><Copy className="h-4 w-4 mr-1" /> Copy</>
+                  <div className="flex flex-col gap-1.5 shrink-0">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleCopy(msg.id, msg.message_text)}
+                    >
+                      {copiedId === msg.id ? (
+                        <><CheckCircle className="h-4 w-4 mr-1" /> Copied</>
+                      ) : (
+                        <><Copy className="h-4 w-4 mr-1" /> Copy</>
+                      )}
+                    </Button>
+                    {(msg.status === 'sent' || msg.status === 'replied') && (
+                      <Select
+                        value={(msg as any).responded === true ? 'yes' : (msg as any).responded === false ? 'no' : 'unknown'}
+                        onValueChange={(val) => {
+                          const responded = val === 'yes' ? true : val === 'no' ? false : null;
+                          updateResponded.mutate({ id: msg.id, responded });
+                        }}
+                      >
+                        <SelectTrigger className="h-8 text-xs w-[110px]">
+                          <SelectValue placeholder="Responded?" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="unknown">Unknown</SelectItem>
+                          <SelectItem value="yes">✓ Responded</SelectItem>
+                          <SelectItem value="no">✗ No Reply</SelectItem>
+                        </SelectContent>
+                      </Select>
                     )}
-                  </Button>
+                  </div>
                 </div>
               </Card>
             ))}
