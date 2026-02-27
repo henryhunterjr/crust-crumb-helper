@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import Responses from "./pages/Responses";
 import Generate from "./pages/Generate";
@@ -15,6 +16,7 @@ import SmartSearch from "./pages/SmartSearch";
 import EmailCampaigns from "./pages/EmailCampaigns";
 import Campaigns from "./pages/Campaigns";
 import Analytics from "./pages/Analytics";
+import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,18 +28,19 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/responses" element={<Responses />} />
-          <Route path="/generate" element={<Generate />} />
-          <Route path="/calendar" element={<Calendar />} />
-          <Route path="/members" element={<Members />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/outreach-log" element={<OutreachLog />} />
-          <Route path="/outreach-queue" element={<OutreachQueue />} />
-          <Route path="/smart-search" element={<SmartSearch />} />
-          <Route path="/email-campaigns" element={<EmailCampaigns />} />
-          <Route path="/campaigns" element={<Campaigns />} />
-          <Route path="/analytics" element={<Analytics />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/responses" element={<ProtectedRoute><Responses /></ProtectedRoute>} />
+          <Route path="/generate" element={<ProtectedRoute><Generate /></ProtectedRoute>} />
+          <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
+          <Route path="/members" element={<ProtectedRoute><Members /></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+          <Route path="/outreach-log" element={<ProtectedRoute><OutreachLog /></ProtectedRoute>} />
+          <Route path="/outreach-queue" element={<ProtectedRoute><OutreachQueue /></ProtectedRoute>} />
+          <Route path="/smart-search" element={<ProtectedRoute><SmartSearch /></ProtectedRoute>} />
+          <Route path="/email-campaigns" element={<ProtectedRoute><EmailCampaigns /></ProtectedRoute>} />
+          <Route path="/campaigns" element={<ProtectedRoute><Campaigns /></ProtectedRoute>} />
+          <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

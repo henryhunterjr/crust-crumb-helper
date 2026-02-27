@@ -2,9 +2,10 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Zap, Copy, Check, CheckCircle, RotateCcw, SkipForward, 
-  ChevronLeft, ChevronRight, Loader2, Edit2, Filter
+  ChevronLeft, ChevronRight, Loader2, Edit2, Filter, ExternalLink
 } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
+import { copyAndOpenSkool } from '@/lib/skoolLinks';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
@@ -485,23 +486,41 @@ export default function OutreachQueue() {
                   {/* Action buttons */}
                   {(item.status === 'generated' || item.status === 'approved') && (
                     <div className="flex flex-wrap gap-2">
-                      <Button size="sm" variant="outline" onClick={() => handleCopy(index)}>
+                      <Button size="sm" variant="outline" onClick={() => handleCopy(index)} aria-label="Copy message">
                         <Copy className="h-3 w-3 mr-1" />Copy
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => toggleEdit(index)}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        aria-label="Copy message and open Skool"
+                        onClick={async () => {
+                          const text = item.isEditing ? item.editedMessage : (item.message || '');
+                          const success = await copyAndOpenSkool(text, item.member.skool_username);
+                          if (success) toast.success('Copied! Opening Skool...');
+                          else toast.error('Failed to copy');
+                        }}
+                      >
+                        <ExternalLink className="h-3 w-3 mr-1" />Open Skool
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => toggleEdit(index)} aria-label={item.isEditing ? 'Finish editing' : 'Edit message'}>
                         <Edit2 className="h-3 w-3 mr-1" />{item.isEditing ? 'Done' : 'Edit'}
                       </Button>
                       {item.status === 'generated' && (
-                        <Button size="sm" onClick={() => handleApprove(index)}>
+                        <Button size="sm" onClick={() => handleApprove(index)} aria-label="Approve message">
                           <Check className="h-3 w-3 mr-1" />Approve
                         </Button>
                       )}
-                      <Button size="sm" variant="outline" onClick={() => handleRegenerate(index)}>
+                      <Button size="sm" variant="outline" onClick={() => handleRegenerate(index)} aria-label="Regenerate message">
                         <RotateCcw className="h-3 w-3 mr-1" />Regenerate
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => handleSkip(index)}>
+                      <Button size="sm" variant="outline" onClick={() => handleSkip(index)} aria-label="Skip this member">
                         <SkipForward className="h-3 w-3 mr-1" />Skip
                       </Button>
+                      {item.status === 'approved' && (
+                        <Button size="sm" onClick={() => handleMarkSent(index)} aria-label="Mark as sent">
+                          <CheckCircle className="h-3 w-3 mr-1" />Mark Sent
+                        </Button>
+                      )}
                       {item.status === 'approved' && (
                         <Button size="sm" onClick={() => handleMarkSent(index)}>
                           <CheckCircle className="h-3 w-3 mr-1" />Mark Sent
