@@ -32,6 +32,7 @@ import { Member, MemberFilter, MemberSortField, MemberImportRow, OutreachType } 
 import { supabase } from '@/integrations/supabase/client';
 import { useOutreachMessages } from '@/hooks/useOutreachMessages';
 import { toast } from 'sonner';
+import { SEGMENTATION_THRESHOLDS } from '@/config/segmentation';
 
 export default function Members() {
   const { 
@@ -106,7 +107,7 @@ export default function Members() {
         result = result.filter(m => {
           if (!m.join_date) return false;
           const joinDate = parseISO(m.join_date);
-          return differenceInDays(today, joinDate) <= 7;
+          return differenceInDays(today, joinDate) <= SEGMENTATION_THRESHOLDS.joinedThisWeekDays;
         });
         break;
       case 'needs_welcome':
@@ -114,7 +115,7 @@ export default function Members() {
           if (!m.join_date) return false;
           if (m.outreach_sent) return false;
           const joinDate = parseISO(m.join_date);
-          return differenceInDays(today, joinDate) >= 3;
+          return differenceInDays(today, joinDate) >= SEGMENTATION_THRESHOLDS.needsWelcomeDays;
         });
         break;
       case 'never_engaged':
@@ -194,13 +195,13 @@ export default function Members() {
       joined_this_week: members.filter(m => {
         if (!m.join_date) return false;
         const joinDate = parseISO(m.join_date);
-        return differenceInDays(today, joinDate) <= 7;
+        return differenceInDays(today, joinDate) <= SEGMENTATION_THRESHOLDS.joinedThisWeekDays;
       }).length,
       needs_welcome: members.filter(m => {
         if (!m.join_date) return false;
         if (m.outreach_sent) return false;
         const joinDate = parseISO(m.join_date);
-        return differenceInDays(today, joinDate) >= 3;
+        return differenceInDays(today, joinDate) >= SEGMENTATION_THRESHOLDS.needsWelcomeDays;
       }).length,
       never_engaged: members.filter(m => m.engagement_status === 'never_engaged').length,
       at_risk: members.filter(m => m.engagement_status === 'at_risk').length,
