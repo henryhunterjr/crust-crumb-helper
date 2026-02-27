@@ -365,6 +365,7 @@ ${hasApplicationAnswer
 - Encourage them to ask questions anytime
 - Keep it under 120 words
 - Sign off as Henry
+- Write as PLAIN TEXT only. No markdown, no asterisks, no bold, no headers, no bullet points. Write like a real person typing a message.
 
 Do not use: 'dive deep', 'journey', 'excited to have you', 'don't hesitate', em dashes, 'embark', 'game changer'`;
 }
@@ -422,6 +423,7 @@ ${hasApplicationAnswer
   - Invitation to ask questions or share their progress
 - Keep it under 130 words
 - Sign off as Henry
+- Write as PLAIN TEXT only. No markdown, no asterisks, no bold, no headers. Write like a real person typing a message.
 
 Do not use: 'dive deep', 'journey', 'excited to have you', 'don't hesitate', em dashes, 'embark', 'game changer'`;
 }
@@ -452,6 +454,7 @@ ${hasApplicationAnswer
 - Makes it easy to reply (no pressure, genuine curiosity)
 - Keep it under 100 words
 - Sign off as Henry
+- Write as PLAIN TEXT only. No markdown, no asterisks, no bold, no headers. Write like a real person typing a message.
 
 Do not use: 'we miss you', 'dive deep', 'journey', 'excited', 'don't hesitate', em dashes, any guilt-tripping language`;
 }
@@ -479,6 +482,7 @@ ${hasApplicationAnswer
   : ''}
 - Keep it under 100 words
 - Sign off as Henry
+- Write as PLAIN TEXT only. No markdown, no asterisks, no bold, no headers. Write like a real person typing a message.
 
 Do not use: 'dive deep', 'journey', 'don't hesitate', em dashes, corporate language`;
 }
@@ -658,7 +662,7 @@ Write a personalized DM for this member.`;
     }
 
     const data = await response.json();
-    const message = data.choices?.[0]?.message?.content;
+    let message = data.choices?.[0]?.message?.content;
 
     if (!message) {
       return new Response(
@@ -667,9 +671,20 @@ Write a personalized DM for this member.`;
       );
     }
 
+    // Post-process: strip markdown artifacts that look unnatural in a DM
+    message = message
+      .replace(/\*\*([^*]+)\*\*/g, '$1')   // bold → plain
+      .replace(/\*([^*]+)\*/g, '$1')        // italic → plain
+      .replace(/^#+\s+/gm, '')              // headings → plain
+      .replace(/^[-*]\s+/gm, '• ')          // markdown bullets → simple bullets
+      .replace(/\n{3,}/g, '\n\n')           // collapse triple+ newlines
+      .replace(/---+/g, '')                 // horizontal rules
+      .replace(/—/g, ' - ')                 // em dashes → hyphens
+      .trim();
+
     return new Response(
       JSON.stringify({ 
-        message: message.trim(),
+        message,
         outreach_type,
         matched_resources: matchedResources.map(r => r.title),
         matched_recipes: matchedRecipes.map(r => r.title),

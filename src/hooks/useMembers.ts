@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Member, EngagementStatus, MemberImportRow } from '@/types/member';
 import { differenceInDays, parseISO } from 'date-fns';
+import { SEGMENTATION_THRESHOLDS } from '@/config/segmentation';
 
 export function useMembers() {
   const queryClient = useQueryClient();
@@ -41,21 +42,21 @@ export function useMembers() {
         const postCount = row.posts || 0;
         const commentCount = row.comments || 0;
         
-        // Calculate engagement status
+        // Calculate engagement status using configurable thresholds
         let engagementStatus: EngagementStatus = 'unknown';
         
         if (joinDate && postCount === 0 && commentCount === 0) {
           const daysSinceJoin = differenceInDays(today, joinDate);
-          if (daysSinceJoin > 7) {
+          if (daysSinceJoin > SEGMENTATION_THRESHOLDS.neverEngagedDays) {
             engagementStatus = 'never_engaged';
           }
         } else if (lastActive) {
           const daysSinceActive = differenceInDays(today, lastActive);
-          if (daysSinceActive <= 7) {
+          if (daysSinceActive <= SEGMENTATION_THRESHOLDS.activeDays) {
             engagementStatus = 'active';
-          } else if (daysSinceActive > 30) {
+          } else if (daysSinceActive > SEGMENTATION_THRESHOLDS.inactiveDays) {
             engagementStatus = 'inactive';
-          } else if (daysSinceActive > 14 && (postCount > 0 || commentCount > 0)) {
+          } else if (daysSinceActive > SEGMENTATION_THRESHOLDS.atRiskDays && (postCount > 0 || commentCount > 0)) {
             engagementStatus = 'at_risk';
           }
         }
@@ -204,8 +205,8 @@ export function useMembers() {
       const joinDate = memberData.join_date ? parseISO(memberData.join_date) : today;
       const daysSinceJoin = differenceInDays(today, joinDate);
       
-      // New members with no activity are 'never_engaged' after 7 days
-      const engagementStatus: EngagementStatus = daysSinceJoin > 7 ? 'never_engaged' : 'unknown';
+      // New members with no activity are 'never_engaged' after threshold days
+      const engagementStatus: EngagementStatus = daysSinceJoin > SEGMENTATION_THRESHOLDS.neverEngagedDays ? 'never_engaged' : 'unknown';
 
       const { data, error } = await supabase
         .from('members')
