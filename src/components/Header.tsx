@@ -1,9 +1,11 @@
 import { Link, useLocation } from 'react-router-dom';
 import logo from "@/assets/logo.png";
 import { cn } from '@/lib/utils';
-import { Settings } from 'lucide-react';
+import { Settings, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { useAuth } from '@/hooks/useAuth';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const navItems = [
   { href: '/', label: 'Dashboard' },
@@ -20,6 +22,11 @@ const navItems = [
 
 export function Header() {
   const location = useLocation();
+  const { user, signOut } = useAuth();
+
+  const initials = user?.user_metadata?.full_name
+    ? user.user_metadata.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase()
+    : user?.email?.[0]?.toUpperCase() || '?';
 
   return (
     <header className="border-b bg-card">
@@ -62,6 +69,7 @@ export function Header() {
                 <Button
                   variant="ghost"
                   size="icon"
+                  aria-label="Settings"
                   className={cn(
                     "ml-2",
                     location.pathname === '/settings'
@@ -75,6 +83,29 @@ export function Header() {
             </TooltipTrigger>
             <TooltipContent>Settings</TooltipContent>
           </Tooltip>
+
+          {user && (
+            <div className="flex items-center gap-2 ml-3 pl-3 border-l border-border">
+              <Avatar className="h-7 w-7">
+                <AvatarImage src={user.user_metadata?.avatar_url} alt={user.user_metadata?.full_name || 'User'} />
+                <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+              </Avatar>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Sign out"
+                    onClick={signOut}
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Sign out</TooltipContent>
+              </Tooltip>
+            </div>
+          )}
         </nav>
       </div>
     </header>

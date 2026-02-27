@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Search, Copy, RefreshCw, Plus, BookOpen, FileText, ChefHat, MessageSquare, Loader2, Check, AlertCircle } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -28,6 +28,39 @@ interface GroupedResults {
   recipes: SearchResult[];
 }
 
+/** Strip markdown artifacts from AI text */
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/#{1,6}\s?/g, '')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/^[-*]\s+/gm, '')
+    .replace(/—/g, '-')
+    .trim();
+}
+
+/** Deduplicate results by id */
+function dedupeResults(results: SearchResult[]): SearchResult[] {
+  const seen = new Set<string>();
+  return results.filter(r => {
+    if (seen.has(r.id)) return false;
+    seen.add(r.id);
+    return true;
+  });
+}
+
+/** Highlight query terms in text by wrapping matches in <mark> */
+function highlightTerms(text: string, query: string): React.ReactNode {
+  if (!query.trim()) return text;
+  const words = query.trim().split(/\s+/).filter(w => w.length > 2);
+  if (words.length === 0) return text;
+  const pattern = new RegExp(`(${words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
+  const parts = text.split(pattern);
+  return parts.map((part, i) =>
+    pattern.test(part) ? <mark key={i} className="bg-primary/20 text-foreground rounded px-0.5">{part}</mark> : part
+  );
+}
+
 export default function SmartSearch() {
   const [query, setQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -54,9 +87,18 @@ export default function SmartSearch() {
 
       setResults(data.grouped);
       setTotalResults(data.total_results);
+      // Deduplicate grouped results
+      if (data.grouped) {
+        data.grouped.quick_responses = dedupeResults(data.grouped.quick_responses || []);
+        data.grouped.classroom = dedupeResults(data.grouped.classroom || []);
+        data.grouped.recipes = dedupeResults(data.grouped.recipes || []);
+      }
+      setResults(data.grouped);
+      setTotalResults(data.total_results);
       if (data.composed_response) {
-        setComposedResponse(data.composed_response);
-        setEditableResponse(data.composed_response);
+        const cleaned = stripMarkdown(data.composed_response);
+        setComposedResponse(cleaned);
+        setEditableResponse(cleaned);
       }
     } catch (err) {
       console.error('Search error:', err);
@@ -77,8 +119,9 @@ export default function SmartSearch() {
 
       if (error) throw error;
       if (data.composed_response) {
-        setComposedResponse(data.composed_response);
-        setEditableResponse(data.composed_response);
+        const cleaned = stripMarkdown(data.composed_response);
+        setComposedResponse(cleaned);
+        setEditableResponse(cleaned);
       }
     } catch (err) {
       toast.error('Failed to regenerate');
@@ -203,8 +246,8 @@ export default function SmartSearch() {
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-medium text-sm">{r.title}</h4>
-                            <p className="text-xs text-muted-foreground mt-1 line-clamp-3">{r.content}</p>
+                            <h4 className="font-medium text-sm">{highlightTerms(r.title, query)}</h4>
+                            <p className="text-xs text-muted-foreground mt-1 line-clamp-3">{highlightTerms(r.content, query)}</p>
                             {r.category && <Badge variant="outline" className="text-[10px] mt-2">{r.category}</Badge>}
                           </div>
                           <Button
@@ -241,9 +284,9 @@ export default function SmartSearch() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               {sourceIcon(r.source)}
-                              <h4 className="font-medium text-sm">{r.title}</h4>
+                              <h4 className="font-medium text-sm">{highlightTerms(r.title, query)}</h4>
                             </div>
-                            {r.content && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{r.content}</p>}
+                            {r.content && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{highlightTerms(r.content, query)}</p>}
                             <div className="flex items-center gap-2 mt-2">
                               {r.category && <Badge variant="outline" className="text-[10px]">{r.category}</Badge>}
                               {r.url ? (
@@ -275,8 +318,8 @@ export default function SmartSearch() {
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-medium text-sm">{r.title}</h4>
-                            {r.content && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{r.content}</p>}
+                            <h4 className="font-medium text-sm">{highlightTerms(r.title, query)}</h4>
+                            {r.content && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{highlightTerms(r.content, query)}</p>}
                             <div className="flex items-center gap-2 mt-2">
                               {r.category && <Badge variant="outline" className="text-[10px]">{r.category}</Badge>}
                               {r.url && <Badge variant="outline" className="text-[10px] bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">URL ✓</Badge>}

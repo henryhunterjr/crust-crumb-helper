@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Copy, RefreshCw, CheckCircle, Loader2, BookOpen, ChefHat, MessageCircle, Sparkles, Pencil, FileText, Save, ChevronDown, ExternalLink, Link } from 'lucide-react';
+import { copyAndOpenSkool } from '@/lib/skoolLinks';
 import {
   Dialog,
   DialogContent,
@@ -573,6 +574,7 @@ export function GeneratedDMDialog({
                 size="sm"
                 onClick={handleCopy}
                 disabled={isGenerating || !message}
+                aria-label="Copy DM to clipboard"
               >
                 {copied ? (
                   <CheckCircle className="h-4 w-4 mr-2" />
@@ -580,6 +582,24 @@ export function GeneratedDMDialog({
                   <Copy className="h-4 w-4 mr-2" />
                 )}
                 Copy DM
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  const success = await copyAndOpenSkool(localMessage, member?.skool_username);
+                  if (success) {
+                    toast.success('Copied! Opening Skool...');
+                  } else {
+                    toast.error('Failed to copy');
+                  }
+                }}
+                disabled={isGenerating || !message}
+                aria-label="Copy message and open Skool chat"
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Copy & Open Skool
               </Button>
 
               <Button

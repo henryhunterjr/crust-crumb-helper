@@ -421,6 +421,7 @@ export default function Members() {
               size="icon"
               onClick={() => refetch()}
               disabled={isFetching}
+              aria-label="Refresh member data"
               title="Refresh member data"
             >
               <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
