@@ -29,18 +29,18 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/responses" element={<ProtectedRoute><Responses /></ProtectedRoute>} />
-          <Route path="/generate" element={<ProtectedRoute><Generate /></ProtectedRoute>} />
-          <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
-          <Route path="/members" element={<ProtectedRoute><Members /></ProtectedRoute>} />
-          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-          <Route path="/outreach-log" element={<ProtectedRoute><OutreachLog /></ProtectedRoute>} />
-          <Route path="/outreach-queue" element={<ProtectedRoute><OutreachQueue /></ProtectedRoute>} />
-          <Route path="/smart-search" element={<ProtectedRoute><SmartSearch /></ProtectedRoute>} />
-          <Route path="/email-campaigns" element={<ProtectedRoute><EmailCampaigns /></ProtectedRoute>} />
-          <Route path="/campaigns" element={<ProtectedRoute><Campaigns /></ProtectedRoute>} />
-          <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/responses" element={<Responses />} />
+          <Route path="/generate" element={<Generate />} />
+          <Route path="/calendar" element={<Calendar />} />
+          <Route path="/members" element={<Members />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/outreach-log" element={<OutreachLog />} />
+          <Route path="/outreach-queue" element={<OutreachQueue />} />
+          <Route path="/smart-search" element={<SmartSearch />} />
+          <Route path="/email-campaigns" element={<EmailCampaigns />} />
+          <Route path="/campaigns" element={<Campaigns />} />
+          <Route path="/analytics" element={<Analytics />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
