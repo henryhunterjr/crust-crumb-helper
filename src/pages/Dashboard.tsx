@@ -58,6 +58,8 @@ export default function Dashboard() {
     return members.filter(m => {
       if (!m.join_date) return false;
       if (m.outreach_sent) return false;
+      if (m.engagement_status === 'active') return false;
+      if (m.engagement_status === 'unknown') return false;
       const joinDate = parseISO(m.join_date);
       return differenceInDays(today, joinDate) >= 3;
     });

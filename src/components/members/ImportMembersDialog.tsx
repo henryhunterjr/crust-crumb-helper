@@ -351,12 +351,15 @@ Jane Smith,jane@email.com,2024-01-10,Interested in bread baking,5,12,2024-01-20"
           </TabsContent>
         </Tabs>
 
-        <div className="mt-4 p-3 bg-muted/50 rounded-md">
+        <div className="mt-4 p-3 bg-muted/50 rounded-md space-y-2">
           <p className="text-xs text-muted-foreground">
             <strong>Smart Merge:</strong> Existing members (matched by name) will be updated with new data. New members will be added.
           </p>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs text-muted-foreground">
             <strong>Columns:</strong> Name (required), Email, Join Date, <strong>Application Answer</strong> (for personalization), Posts, Comments, Last Active
+          </p>
+          <p className="text-xs text-muted-foreground">
+            <strong>⚠️ Missing activity data?</strong> If your CSV doesn't include Posts, Comments, or Last Active columns, members will be imported with "Unknown" engagement status instead of being marked as disengaged. You can manually update their status later from the Members page.
           </p>
         </div>
 

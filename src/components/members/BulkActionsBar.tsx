@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, MessageSquare, BookOpen, MessageCircle, ChevronDown, Sparkles, FileText, Tags } from 'lucide-react';
+import { X, MessageSquare, BookOpen, MessageCircle, ChevronDown, Sparkles, FileText, Tags, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,6 +18,8 @@ interface BulkActionsBarProps {
   onBulkGenerateDMs: (outreachType: OutreachType) => void;
   isGenerating: boolean;
   selectedMembers?: Member[];
+  onBulkMarkActive?: () => void;
+  isBulkUpdating?: boolean;
 }
 
 export function BulkActionsBar({ 
@@ -25,7 +27,9 @@ export function BulkActionsBar({
   onClearSelection, 
   onBulkGenerateDMs,
   isGenerating,
-  selectedMembers = []
+  selectedMembers = [],
+  onBulkMarkActive,
+  isBulkUpdating = false,
 }: BulkActionsBarProps) {
   const navigate = useNavigate();
   const [bulkTagOpen, setBulkTagOpen] = useState(false);
@@ -50,6 +54,19 @@ export function BulkActionsBar({
         {selectedCount} member{selectedCount !== 1 ? 's' : ''} selected
       </span>
       
+      {/* Mark as Active button */}
+      {onBulkMarkActive && (
+        <Button 
+          size="sm" 
+          variant="outline"
+          onClick={onBulkMarkActive}
+          disabled={isBulkUpdating}
+        >
+          <CheckCircle className="h-4 w-4 mr-2" />
+          Mark Active
+        </Button>
+      )}
+
       {/* Generate Welcome Post button */}
       <Button 
         size="sm" 

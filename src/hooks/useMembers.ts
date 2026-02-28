@@ -45,12 +45,8 @@ export function useMembers() {
         // Calculate engagement status using configurable thresholds
         let engagementStatus: EngagementStatus = 'unknown';
         
-        if (joinDate && postCount === 0 && commentCount === 0) {
-          const daysSinceJoin = differenceInDays(today, joinDate);
-          if (daysSinceJoin > SEGMENTATION_THRESHOLDS.neverEngagedDays) {
-            engagementStatus = 'never_engaged';
-          }
-        } else if (lastActive) {
+        if (lastActive) {
+          // We have real activity data — use it
           const daysSinceActive = differenceInDays(today, lastActive);
           if (daysSinceActive <= SEGMENTATION_THRESHOLDS.activeDays) {
             engagementStatus = 'active';
@@ -59,6 +55,10 @@ export function useMembers() {
           } else if (daysSinceActive > SEGMENTATION_THRESHOLDS.atRiskDays && (postCount > 0 || commentCount > 0)) {
             engagementStatus = 'at_risk';
           }
+        } else if (joinDate && postCount === 0 && commentCount === 0) {
+          // No last_active, no posts, no comments — we have no activity data
+          // Keep as 'unknown' (we don't know their status)
+          engagementStatus = 'unknown';
         }
         
         const memberData = {
@@ -205,8 +205,8 @@ export function useMembers() {
       const joinDate = memberData.join_date ? parseISO(memberData.join_date) : today;
       const daysSinceJoin = differenceInDays(today, joinDate);
       
-      // New members with no activity are 'never_engaged' after threshold days
-      const engagementStatus: EngagementStatus = daysSinceJoin > SEGMENTATION_THRESHOLDS.neverEngagedDays ? 'never_engaged' : 'unknown';
+      // New members added manually have no activity data — keep as 'unknown'
+      const engagementStatus: EngagementStatus = 'unknown';
 
       const { data, error } = await supabase
         .from('members')
