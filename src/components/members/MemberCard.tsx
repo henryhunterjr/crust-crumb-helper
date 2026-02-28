@@ -4,6 +4,13 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Member, EngagementStatus, MessageStatus } from '@/types/member';
 import { SkoolUsernameInput } from './SkoolUsernameInput';
 import { MemberTagBadges } from './MemberTagBadges';
@@ -18,6 +25,7 @@ interface MemberCardProps {
   isGenerating: boolean;
   onClick: () => void;
   onUpdateUsername: (username: string) => Promise<void>;
+  onUpdateEngagementStatus?: (status: EngagementStatus) => void;
   tags?: MemberTag[];
 }
 
@@ -44,6 +52,7 @@ export function MemberCard({
   isGenerating,
   onClick,
   onUpdateUsername,
+  onUpdateEngagementStatus,
   tags = [],
 }: MemberCardProps) {
   const engagementStatus = statusConfig[member.engagement_status] || statusConfig.unknown;
@@ -78,9 +87,25 @@ export function MemberCard({
               >
                 {member.skool_name}
               </button>
-              <Badge className={cn("text-xs", engagementStatus.className)}>
-                {engagementStatus.label}
-              </Badge>
+              <Select
+                value={member.engagement_status}
+                onValueChange={(value) => {
+                  onUpdateEngagementStatus?.(value as EngagementStatus);
+                }}
+              >
+                <SelectTrigger className="h-6 w-auto gap-1 px-2 border-0 focus:ring-0" onClick={(e) => e.stopPropagation()}>
+                  <Badge className={cn("text-xs", engagementStatus.className)}>
+                    {engagementStatus.label}
+                  </Badge>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">✅ Active</SelectItem>
+                  <SelectItem value="at_risk">⚠️ At Risk</SelectItem>
+                  <SelectItem value="inactive">💤 Inactive</SelectItem>
+                  <SelectItem value="never_engaged">🔴 Never Engaged</SelectItem>
+                  <SelectItem value="unknown">❓ Unknown</SelectItem>
+                </SelectContent>
+              </Select>
               <Badge variant="outline" className={cn("text-xs flex items-center gap-1", msgStatus.className)}>
                 {msgStatus.icon}
                 {msgStatus.label}

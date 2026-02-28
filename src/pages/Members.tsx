@@ -114,6 +114,8 @@ export default function Members() {
         result = result.filter(m => {
           if (!m.join_date) return false;
           if (m.outreach_sent) return false;
+          if (m.engagement_status === 'active') return false;
+          if (m.engagement_status === 'unknown') return false;
           const joinDate = parseISO(m.join_date);
           return differenceInDays(today, joinDate) >= SEGMENTATION_THRESHOLDS.needsWelcomeDays;
         });
@@ -200,6 +202,8 @@ export default function Members() {
       needs_welcome: members.filter(m => {
         if (!m.join_date) return false;
         if (m.outreach_sent) return false;
+        if (m.engagement_status === 'active') return false;
+        if (m.engagement_status === 'unknown') return false;
         const joinDate = parseISO(m.join_date);
         return differenceInDays(today, joinDate) >= SEGMENTATION_THRESHOLDS.needsWelcomeDays;
       }).length,
@@ -399,6 +403,31 @@ export default function Members() {
     setBulkDMDialogOpen(true);
   };
 
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+
+  const handleBulkMarkActive = async () => {
+    setIsBulkUpdating(true);
+    try {
+      const todayStr = new Date().toISOString().split('T')[0];
+      for (const member of selectedMembers) {
+        await updateMember.mutateAsync({
+          id: member.id,
+          updates: {
+            engagement_status: 'active' as any,
+            last_active: todayStr,
+          },
+        });
+      }
+      toast.success(`Marked ${selectedMembers.length} members as Active`);
+      setSelectedIds(new Set());
+    } catch (err) {
+      console.error('Bulk mark active error:', err);
+      toast.error('Failed to update some members');
+    } finally {
+      setIsBulkUpdating(false);
+    }
+  };
+
   const selectedMembers = members.filter(m => selectedIds.has(m.id));
   const allVisibleSelected = filteredMembers.length > 0 && 
     filteredMembers.every(m => selectedIds.has(m.id));
@@ -566,6 +595,13 @@ export default function Members() {
                   await updateMember.mutateAsync({ id: member.id, updates: { skool_username: username } });
                   toast.success('Skool username saved');
                 }}
+                onUpdateEngagementStatus={(status) => {
+                  const updates: any = { engagement_status: status };
+                  if (status === 'active') {
+                    updates.last_active = new Date().toISOString().split('T')[0];
+                  }
+                  updateMember.mutate({ id: member.id, updates });
+                }}
                 tags={tagsByMember[member.id] || []}
               />
             ))}
@@ -611,6 +647,8 @@ export default function Members() {
           onBulkGenerateDMs={handleBulkGenerateDMs}
           isGenerating={false}
           selectedMembers={selectedMembers}
+          onBulkMarkActive={handleBulkMarkActive}
+          isBulkUpdating={isBulkUpdating}
         />
 
         {/* Dialogs */}
