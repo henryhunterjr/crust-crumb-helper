@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 import { corsHeaders, handleCors } from '../_shared/cors.ts';
+import { loadAISettings, buildVoiceBlock } from '../_shared/ai-settings.ts';
 
 const DAY_THEMES = [
   { day: 1, dayName: 'Sunday', theme: 'announcement', description: 'Announcement — what we\'re making, why it\'s special, recipe link' },
@@ -68,11 +69,13 @@ Deno.serve(async (req) => {
 
     const bakeAlongUrl = bakeAlongCourse?.[0]?.url || '';
 
-    const systemPrompt = `You are generating a 7-day content campaign for Henry Hunter's Crust & Crumb Academy Saturday Bake-Along.
+    // Load AI personality settings from database
+    const settings = await loadAISettings(supabase);
+    const voiceBlock = buildVoiceBlock(settings);
 
-VOICE: Henry Hunter — clear, confident, practical. Uses contractions naturally. No em dashes (use commas or break the sentence). Encouraging but not corny. Speaks like a smart person talking to another smart person.
+    const systemPrompt = `You are generating a 7-day content campaign for ${settings.my_name}'s ${settings.community_name} Saturday Bake-Along.
 
-AVOID: "ensure", "dive", "delve", "enhance", "game changer", "tapestry", "unveil", "crucial", "it's worth noting", "arguably", "in today's world", "journey", "embark", "don't hesitate", "we miss you", "excited"
+${voiceBlock}
 
 POST TYPES:
 - "value" posts = Educational, informative, technique-focused. Include relevant classroom or recipe links. These teach something. 150-300 words.

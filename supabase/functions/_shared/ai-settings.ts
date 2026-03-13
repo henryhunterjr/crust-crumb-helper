@@ -1,8 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+// Shared AI personality settings loader for all edge functions
+// Reads from ai_personality_settings table so UI changes take effect
 
-export interface AISettings {
+import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+export interface AIPersonalitySettings {
   tone_description: string;
   avoided_words: string;
   use_contractions: string;
@@ -21,7 +22,7 @@ export interface AISettings {
   about_me: string;
 }
 
-const DEFAULTS: AISettings = {
+const DEFAULTS: AIPersonalitySettings = {
   tone_description: 'Warm, direct, no-nonsense coach. Not a cheerleader, not a guru — a guide who\'s been there. Clear, confident, practical. Write like a smart person talking to another smart person. Encouraging but not corny. Use contractions naturally. Keep it concise.',
   avoided_words: 'ensure, dive, delve, enhance, game changer, tapestry, unveil, crucial, it\'s worth noting, arguably, in today\'s world, not only... but also, don\'t hesitate, embark, journey, excited, amazing, incredible, hack, secret, perfect loaf',
   use_contractions: 'true',
@@ -40,55 +41,58 @@ const DEFAULTS: AISettings = {
   about_me: 'I\'m an artisan bread baker and cookbook author with 5 published books. I sold 80-90 loaves per market at my peak. I have 26 years in marketing and advertising (CBS and Fox). I learned bread from a German baker named Herr Sherman during my Army service. I run a 50,000+ member Facebook group and a 457+ member Skool Academy. My books include "Sourdough for the Rest of Us" and "From Oven to Market."',
 };
 
-export function useAISettings() {
-  const queryClient = useQueryClient();
+/**
+ * Fetch AI personality settings from Supabase, falling back to defaults.
+ * Call this in each edge function instead of hardcoding voice instructions.
+ */
+export async function loadAISettings(supabase: SupabaseClient): Promise<AIPersonalitySettings> {
+  try {
+    const { data, error } = await supabase
+      .from('ai_personality_settings')
+      .select('setting_key, setting_value');
 
-  const { data: settings = DEFAULTS, isLoading } = useQuery({
-    queryKey: ['ai-settings'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('ai_personality_settings')
-        .select('setting_key, setting_value');
-      if (error) throw error;
+    if (error) {
+      console.error('Failed to load AI settings, using defaults:', error.message);
+      return { ...DEFAULTS };
+    }
 
-      const result = { ...DEFAULTS };
-      data?.forEach((row: any) => {
+    const result = { ...DEFAULTS };
+    if (data) {
+      for (const row of data) {
         if (row.setting_key in result) {
           (result as any)[row.setting_key] = row.setting_value;
         }
-      });
-      return result;
-    },
-  });
-
-  const saveSettings = useMutation({
-    mutationFn: async (newSettings: Partial<AISettings>) => {
-      const entries = Object.entries(newSettings);
-      for (const [key, value] of entries) {
-        const { data: existing } = await supabase
-          .from('ai_personality_settings')
-          .select('id')
-          .eq('setting_key', key)
-          .maybeSingle();
-
-        if (existing) {
-          await supabase
-            .from('ai_personality_settings')
-            .update({ setting_value: value })
-            .eq('setting_key', key);
-        } else {
-          await supabase
-            .from('ai_personality_settings')
-            .insert({ setting_key: key, setting_value: value });
-        }
       }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ai-settings'] });
-      toast.success('AI settings saved');
-    },
-    onError: () => toast.error('Failed to save settings'),
-  });
+    }
+    return result;
+  } catch (err) {
+    console.error('Error loading AI settings:', err);
+    return { ...DEFAULTS };
+  }
+}
 
-  return { settings, isLoading, saveSettings, DEFAULTS };
+/**
+ * Build a voice instruction block from settings for use in system prompts.
+ */
+export function buildVoiceBlock(settings: AIPersonalitySettings): string {
+  const parts: string[] = [];
+
+  parts.push(`VOICE: ${settings.my_name} — ${settings.tone_description}`);
+  parts.push(`\nTeaching style: ${settings.teaching_style}`);
+  parts.push(`\nCommunity: ${settings.community_name}`);
+
+  if (settings.avoided_words) {
+    parts.push(`\nAVOID these words/phrases: ${settings.avoided_words}`);
+  }
+  if (settings.no_em_dashes === 'true') {
+    parts.push('\nDo not use em dashes (use commas or break the sentence).');
+  }
+  if (settings.use_contractions === 'true') {
+    parts.push('\nUse contractions naturally.');
+  }
+  if (settings.include_emoji === 'true') {
+    parts.push(`\nEmoji use: max ${settings.emoji_limit || '2'} per message, placed naturally.`);
+  }
+
+  return parts.join('');
 }

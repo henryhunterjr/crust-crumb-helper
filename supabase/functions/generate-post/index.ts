@@ -1,22 +1,43 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 import { corsHeaders, handleCors } from '../_shared/cors.ts';
+import { loadAISettings, buildVoiceBlock } from '../_shared/ai-settings.ts';
 
-const systemPrompt = `You are helping Henry Hunter Jr. write posts for his bread baking community "Crust & Crumb Academy" on Skool.
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
 
-Henry's voice:
-- Warm, encouraging, slightly masculine tone
-- Uses "perfection not required" philosophy
-- Avoids corporate marketing speak
-- Speaks from experience, not theory
-- Uses contractions naturally
-- References common struggles home bakers face
+  try {
+    const { topic, postType, targetAudience } = await req.json();
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY is not configured");
+    }
+
+    // Load AI personality settings from database
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    let voiceBlock = '';
+    if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+      const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      const settings = await loadAISettings(supabase);
+      voiceBlock = buildVoiceBlock(settings);
+    } else {
+      voiceBlock = 'VOICE: Henry Hunter Jr. — Warm, direct, no-nonsense coach. Clear, confident, practical. Uses contractions naturally. No em dashes.\nAVOID: "ensure", "dive", "delve", "enhance", "game changer", "tapestry", "unveil", "crucial", "journey", "embark", "don\'t hesitate", "excited", "amazing", "incredible", "hack", "secret", "perfect loaf"';
+    }
+
+    const systemPrompt = `You are helping ${voiceBlock.includes('Henry Hunter') ? 'Henry Hunter Jr.' : 'the community owner'} write posts for the bread baking community on Skool.
+
+${voiceBlock}
 
 Post guidelines:
 - Always include a relevant emoji in the title
 - Keep posts scannable but personal
 - End with a clear call to action or question
-- Never use: "dive deep", "game changer", "crucial", "embark", "journey", or em dashes
 
 Generate 3 variations of the requested post type for the given topic. Each should have:
 - title: Under 80 characters, includes emoji
@@ -30,19 +51,6 @@ Return ONLY valid JSON in this exact format:
     {"title": "...", "content": "..."}
   ]
 }`;
-
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  try {
-    const { topic, postType, targetAudience } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
 
     const audienceGuidance = {
       'new-members': 'Write specifically for new community members - welcome them warmly, make them feel at home, and guide them on getting started. If member names are mentioned in the topic, personalize the post by @mentioning them.',
@@ -108,7 +116,7 @@ Remember to match Henry's warm, encouraging voice and end each post with a clear
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
-    
+
     if (!content) {
       throw new Error("No content returned from AI");
     }
@@ -118,7 +126,7 @@ Remember to match Henry's warm, encouraging voice and end each post with a clear
     if (!jsonMatch) {
       throw new Error("Could not parse AI response");
     }
-    
+
     const parsed = JSON.parse(jsonMatch[0]);
 
     return new Response(JSON.stringify(parsed), {

@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 import { corsHeaders, handleCors } from '../_shared/cors.ts';
+import { loadAISettings, type AIPersonalitySettings } from '../_shared/ai-settings.ts';
 
 interface ClassroomResource {
   id: string;
@@ -77,11 +78,14 @@ function getSafeUrl(url: string | null): string | null {
 // Map interest tags to interest_mappings keywords
 const tagToKeywordMap: Record<string, string[]> = {
   'sourdough-interested': ['sourdough', 'starter', 'levain', 'wild yeast'],
-  'shaping-focused': ['shaping', 'scoring', 'presentation', 'ear'],
+  'shaping-focused': ['shaping', 'scoring', 'presentation', 'bread ear'],
   'business-builder': ['sell', 'selling', 'market', 'farmers market', 'cottage', 'business'],
   'yeast-water': ['yeast water', 'fruit water', 'natural leavening'],
   'flavor-explorer': ['flavor', 'tang', 'sour', 'mild', 'fermentation'],
   'focaccia-fan': ['focaccia', 'flatbread', 'pizza'],
+  'enriched-interested': ['challah', 'brioche', 'babka', 'milk bread', 'enriched', 'cinnamon roll', 'danish'],
+  'yeasted-interested': ['sandwich', 'loaf', 'yeasted', 'yeast bread', 'rolls', 'buns'],
+  'gluten-free': ['gluten free', 'gluten-free', 'celiac'],
 };
 
 // Find interest mappings that match member tags
@@ -322,7 +326,8 @@ function getWelcomeMessagePrompt(
   starterInterest: boolean,
   recipeInterest: boolean,
   tagRecommendations: string,
-  memberTags: string[]
+  memberTags: string[],
+  aiSettings?: AIPersonalitySettings
 ): string {
   let linkInstructions = '';
   
@@ -341,10 +346,16 @@ function getWelcomeMessagePrompt(
     ? `\nMember's interest tags: [${memberTags.join(', ')}] — use these to personalize the recommendation.` 
     : '';
 
+  const name = aiSettings?.my_name || 'Henry';
+  const communityName = aiSettings?.community_name || 'Crust & Crumb Academy';
+  const tone = aiSettings?.tone_description || "warm, welcoming, like greeting a new friend joining your kitchen";
+  const avoidList = aiSettings?.avoided_words || "dive deep, journey, excited to have you, don't hesitate, em dashes, embark, game changer";
+  const signoff = aiSettings?.dm_signoff || '';
+
   return `Generate a warm welcome DM for a new bread baking community member.
 
-Community: Crust & Crumb Academy (bread baking)
-Tone: Henry's voice - warm, welcoming, like greeting a new friend joining your kitchen.
+Community: ${communityName} (bread baking)
+Tone: ${name}'s voice - ${tone}
 ${tagContext}
 
 Available Classroom Resources (recommend beginner-friendly ones):
@@ -356,7 +367,7 @@ ${tagRecommendations}
 
 Instructions:
 - Warmly welcome them by first name
-${hasApplicationAnswer 
+${hasApplicationAnswer
   ? '- Acknowledge what they said they wanted to learn or make\n- Point them to 1-2 specific resources/recipes that match their goals and tags'
   : '- Since no specific goals mentioned, suggest our most popular beginner resources'}${linkInstructions}
  - Only include a URL if it is explicitly shown next to an item in the lists above (e.g. "URL: https://...").
@@ -364,10 +375,10 @@ ${hasApplicationAnswer
 - Invite them to introduce themselves in the community
 - Encourage them to ask questions anytime
 - Keep it under 120 words
-- Sign off as Henry
+- Sign off as ${name.split(' ')[0]}${signoff ? ` (use signoff style: "${signoff}")` : ''}
 - Write as PLAIN TEXT only. No markdown, no asterisks, no bold, no headers, no bullet points. Write like a real person typing a message.
 
-Do not use: 'dive deep', 'journey', 'excited to have you', 'don't hesitate', em dashes, 'embark', 'game changer'`;
+Do not use: ${avoidList}`;
 }
 
 // Generate resource recommendation prompt
@@ -378,7 +389,8 @@ function getResourceRecommendationPrompt(
   starterInterest: boolean,
   recipeInterest: boolean,
   tagRecommendations: string,
-  memberTags: string[]
+  memberTags: string[],
+  aiSettings?: AIPersonalitySettings
 ): string {
   let linkInstructions = '';
   
@@ -393,10 +405,15 @@ function getResourceRecommendationPrompt(
     ? `\nMember's interest tags: [${memberTags.join(', ')}] — use these to tailor your recommendations. Prioritize resources that match their tags.` 
     : '';
 
+  const name = aiSettings?.my_name || 'Henry';
+  const communityName = aiSettings?.community_name || 'Crust & Crumb Academy';
+  const tone = aiSettings?.tone_description || "warm, encouraging, personal, like a friend checking in. Not salesy or corporate";
+  const avoidList = aiSettings?.avoided_words || "dive deep, journey, excited to have you, don't hesitate, em dashes, embark, game changer";
+
   return `Generate a warm, personal DM to a bread baking community member recommending resources.
 
-Community: Crust & Crumb Academy (bread baking)
-Tone: Henry's voice - warm, encouraging, personal, like a friend checking in. Not salesy or corporate.
+Community: ${communityName} (bread baking)
+Tone: ${name}'s voice - ${tone}
 ${tagContext}
 
 Available Classroom Resources (recommend if they want to LEARN something):
@@ -412,7 +429,7 @@ Instructions:
 - If they mention a specific bread type (bagels, focaccia, sourdough, etc.), check if we have that recipe and recommend it
 - If they want to learn technique or troubleshoot, recommend a classroom resource
 - You can recommend BOTH a recipe AND a classroom resource if relevant
-${hasApplicationAnswer 
+${hasApplicationAnswer
   ? '- Reference what they said they wanted to learn or make\n- Match them to specific resources and/or recipes from the lists above'
   : '- Since their application answer is empty/vague, recommend beginner sourdough resources\n- Use a warm, welcoming tone for someone just getting started'}${linkInstructions}
 - Write the DM with:
@@ -422,21 +439,25 @@ ${hasApplicationAnswer
    - If an item shows "URL: (none)", do NOT invent a link—just mention the exact title so they can find it in the Classroom/Recipe Pantry.
   - Invitation to ask questions or share their progress
 - Keep it under 130 words
-- Sign off as Henry
+- Sign off as ${name.split(' ')[0]}
 - Write as PLAIN TEXT only. No markdown, no asterisks, no bold, no headers. Write like a real person typing a message.
 
-Do not use: 'dive deep', 'journey', 'excited to have you', 'don't hesitate', em dashes, 'embark', 'game changer'`;
+Do not use: ${avoidList}`;
 }
 
 // Generate feedback request prompt
-function getFeedbackRequestPrompt(hasApplicationAnswer: boolean, memberTags: string[]): string {
-  const tagContext = memberTags.length > 0 
-    ? `\nMember's interest tags: [${memberTags.join(', ')}] — reference their interests naturally in the check-in.` 
+function getFeedbackRequestPrompt(hasApplicationAnswer: boolean, memberTags: string[], aiSettings?: AIPersonalitySettings): string {
+  const tagContext = memberTags.length > 0
+    ? `\nMember's interest tags: [${memberTags.join(', ')}] — reference their interests naturally in the check-in.`
     : '';
+
+  const name = aiSettings?.my_name || 'Henry';
+  const communityName = aiSettings?.community_name || 'Crust & Crumb Academy';
+  const avoidList = aiSettings?.avoided_words || "we miss you, dive deep, journey, excited, don't hesitate, em dashes";
 
   return `Generate a warm, personal check-in DM to a bread baking community member asking for their feedback.
 
-Community: Crust & Crumb Academy (bread baking)
+Community: ${communityName} (bread baking)
 Tone: Genuine care, not marketing. Like a community leader who actually wants to know how to help.
 ${tagContext}
 
@@ -444,7 +465,7 @@ Instructions:
 Write a DM that:
 - Greets them warmly by first name
 - Acknowledges you're just checking in (without guilt-tripping about activity)
-${hasApplicationAnswer 
+${hasApplicationAnswer
   ? '- Briefly references what they originally said they wanted to learn (if available)'
   : '- Welcomes them warmly as a member'}
 - Asks 1-2 simple questions from these options:
@@ -453,21 +474,25 @@ ${hasApplicationAnswer
   - Is there something specific you're struggling with?
 - Makes it easy to reply (no pressure, genuine curiosity)
 - Keep it under 100 words
-- Sign off as Henry
+- Sign off as ${name.split(' ')[0]}
 - Write as PLAIN TEXT only. No markdown, no asterisks, no bold, no headers. Write like a real person typing a message.
 
-Do not use: 'we miss you', 'dive deep', 'journey', 'excited', 'don't hesitate', em dashes, any guilt-tripping language`;
+Do not use: we miss you, ${avoidList}, any guilt-tripping language`;
 }
 
 // Generate custom topic prompt
-function getCustomTopicPrompt(customTopic: string, hasApplicationAnswer: boolean, memberTags: string[]): string {
-  const tagContext = memberTags.length > 0 
-    ? `\nMember's interest tags: [${memberTags.join(', ')}] — weave their interests into the message if relevant.` 
+function getCustomTopicPrompt(customTopic: string, hasApplicationAnswer: boolean, memberTags: string[], aiSettings?: AIPersonalitySettings): string {
+  const tagContext = memberTags.length > 0
+    ? `\nMember's interest tags: [${memberTags.join(', ')}] — weave their interests into the message if relevant.`
     : '';
+
+  const name = aiSettings?.my_name || 'Henry';
+  const communityName = aiSettings?.community_name || 'Crust & Crumb Academy';
+  const avoidList = aiSettings?.avoided_words || "dive deep, journey, don't hesitate, em dashes, corporate language";
 
   return `Generate a personal DM for a bread baking community member.
 
-Community: Crust & Crumb Academy (bread baking)
+Community: ${communityName} (bread baking)
 Tone: Personal, warm, like a friend reaching out. Not automated or corporate.
 ${tagContext}
 
@@ -477,14 +502,14 @@ Instructions:
 Write a DM that:
 - Greets them by first name
 - Addresses the specific purpose naturally
-${hasApplicationAnswer 
+${hasApplicationAnswer
   ? '- References their learning goals if relevant to the topic'
   : ''}
 - Keep it under 100 words
-- Sign off as Henry
+- Sign off as ${name.split(' ')[0]}
 - Write as PLAIN TEXT only. No markdown, no asterisks, no bold, no headers. Write like a real person typing a message.
 
-Do not use: 'dive deep', 'journey', 'don't hesitate', em dashes, corporate language`;
+Do not use: ${avoidList}`;
 }
 
 serve(async (req) => {
@@ -533,13 +558,17 @@ serve(async (req) => {
     let memberTags: string[] = [];
     let tagMappings: InterestMapping[] = [];
     let tagRecommendations = '';
+    let aiSettings: AIPersonalitySettings | undefined;
 
     // Determine if we need to fetch resources
     const needsResources = outreach_type === 'welcome_message' || outreach_type === 'resource_recommendation';
 
     if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
       const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-      
+
+      // Load AI personality settings from database
+      aiSettings = await loadAISettings(supabase);
+
       // Fetch member tags and interest mappings in parallel with resources
       const queries: Promise<any>[] = [
         supabase.from('member_tags').select('tag, source').eq('member_id', member.id),
@@ -592,10 +621,10 @@ serve(async (req) => {
     // Select the appropriate prompt based on outreach type
     switch (outreach_type) {
       case 'welcome_message':
-        systemPrompt = getWelcomeMessagePrompt(hasApplicationAnswer, resourcesForPrompt, recipesForPrompt, starterInterest, recipeInterest, tagRecommendations, memberTags);
+        systemPrompt = getWelcomeMessagePrompt(hasApplicationAnswer, resourcesForPrompt, recipesForPrompt, starterInterest, recipeInterest, tagRecommendations, memberTags, aiSettings);
         break;
       case 'feedback_request':
-        systemPrompt = getFeedbackRequestPrompt(hasApplicationAnswer, memberTags);
+        systemPrompt = getFeedbackRequestPrompt(hasApplicationAnswer, memberTags, aiSettings);
         break;
       case 'custom':
         if (!custom_topic.trim()) {
@@ -604,11 +633,11 @@ serve(async (req) => {
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
-        systemPrompt = getCustomTopicPrompt(custom_topic, hasApplicationAnswer, memberTags);
+        systemPrompt = getCustomTopicPrompt(custom_topic, hasApplicationAnswer, memberTags, aiSettings);
         break;
       case 'resource_recommendation':
       default:
-        systemPrompt = getResourceRecommendationPrompt(hasApplicationAnswer, resourcesForPrompt, recipesForPrompt, starterInterest, recipeInterest, tagRecommendations, memberTags);
+        systemPrompt = getResourceRecommendationPrompt(hasApplicationAnswer, resourcesForPrompt, recipesForPrompt, starterInterest, recipeInterest, tagRecommendations, memberTags, aiSettings);
         break;
     }
 

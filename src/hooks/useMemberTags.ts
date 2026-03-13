@@ -23,11 +23,11 @@ export interface InterestMapping {
 // Tag color categories
 export function getTagColor(tag: string): string {
   // Interest tags → blue
-  const interestTags = ['sourdough-interested', 'shaping-focused', 'yeast-water', 'flavor-explorer', 'focaccia-fan'];
+  const interestTags = ['sourdough-interested', 'shaping-focused', 'yeast-water', 'flavor-explorer', 'focaccia-fan', 'enriched-interested', 'yeasted-interested', 'gluten-free'];
   if (interestTags.some(t => tag.includes(t) || t.includes(tag))) return 'bg-blue-500/15 text-blue-700 border-blue-500/30 dark:text-blue-400';
 
   // Skill level → green
-  if (tag === 'beginner' || tag === 'advanced') return 'bg-emerald-500/15 text-emerald-700 border-emerald-500/30 dark:text-emerald-400';
+  if (tag === 'beginner' || tag === 'intermediate' || tag === 'advanced') return 'bg-emerald-500/15 text-emerald-700 border-emerald-500/30 dark:text-emerald-400';
 
   // Engagement negative → red/orange
   if (tag === 'never-engaged' || tag === 'at-risk') return 'bg-destructive/15 text-destructive border-destructive/30';
@@ -50,15 +50,19 @@ export function generateTagsFromText(text: string): string[] {
 
   // Skill-level tags
   if (/\b(new to|first time|learning|started|beginner|just start|never baked)\b/i.test(lower)) tags.push('beginner');
+  if (/\b(intermediate|some experience|been baking|couple years|few years)\b/i.test(lower)) tags.push('intermediate');
   if (/\b(improve|perfect|master|years|advanced|professional)\b/i.test(lower)) tags.push('advanced');
 
   // Interest tags
   if (/\b(sourdough|sour dough|sd|starter|levain|wild yeast)\b/i.test(lower)) tags.push('sourdough-interested');
-  if (/\b(shap|scor|presentation|ear|crumb)\b/i.test(lower)) tags.push('shaping-focused');
+  if (/\b(shaping|scoring|presentation|bread ear|crumb structure)\b/i.test(lower)) tags.push('shaping-focused');
   if (/\b(sell|market|farmers? market|cottage|business|income)\b/i.test(lower)) tags.push('business-builder');
   if (/\b(yeast water|fruit water|natural leaven)\b/i.test(lower)) tags.push('yeast-water');
   if (/\b(flavor|tang|sour|mild|ferment)/i.test(lower)) tags.push('flavor-explorer');
   if (/\b(focaccia|flatbread|pizza)\b/i.test(lower)) tags.push('focaccia-fan');
+  if (/\b(challah|brioche|babka|milk bread|enriched|cinnamon roll|danish)\b/i.test(lower)) tags.push('enriched-interested');
+  if (/\b(sandwich|loaf|yeasted|yeast bread|rolls|buns|hamburger)\b/i.test(lower)) tags.push('yeasted-interested');
+  if (/\b(gluten.?free|celiac|gluten intoleran)\b/i.test(lower)) tags.push('gluten-free');
 
   return [...new Set(tags)];
 }

@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 import { corsHeaders, handleCors } from '../_shared/cors.ts';
+import { loadAISettings, buildVoiceBlock } from '../_shared/ai-settings.ts';
 
 interface SearchResult {
   source: 'quick_response' | 'classroom' | 'module' | 'recipe';
@@ -215,10 +216,13 @@ serve(async (req) => {
           context += `RELEVANT RECIPE:\n- ${bestRecipe.title}${bestRecipe.url ? ` (URL: ${bestRecipe.url})` : ''}\n\n`;
         }
 
-        const systemPrompt = `You are helping Henry Hunter Jr. respond to a member's question in Crust & Crumb Academy.
+        // Load AI settings for composed response voice
+        const settings = await loadAISettings(supabase);
+        const voiceBlock = buildVoiceBlock(settings);
 
-VOICE: Clear, confident, practical. Use contractions. No em dashes.
-Avoid: "ensure", "dive", "delve", "enhance", "game changer", "tapestry", "don't hesitate", "embark", "journey", "excited", "crucial"
+        const systemPrompt = `You are helping ${settings.my_name} respond to a member's question in ${settings.community_name}.
+
+${voiceBlock}
 Be encouraging but not corny. Keep it concise (3-5 short paragraphs).
 
 RULES:
