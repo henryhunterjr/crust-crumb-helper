@@ -570,15 +570,14 @@ serve(async (req) => {
       aiSettings = await loadAISettings(supabase);
 
       // Fetch member tags and interest mappings in parallel with resources
-      const queries: Promise<any>[] = [
-        supabase.from('member_tags').select('tag, source').eq('member_id', member.id),
-        supabase.from('interest_mappings').select('*'),
-      ];
+      const tagsQuery = supabase.from('member_tags').select('tag, source').eq('member_id', member.id).then();
+      const mappingsQuery = supabase.from('interest_mappings').select('*').then();
+      const queries: Promise<any>[] = [tagsQuery, mappingsQuery];
       
       if (needsResources) {
         queries.push(
-          supabase.from('classroom_resources').select('*'),
-          supabase.from('recipes').select('*')
+          supabase.from('classroom_resources').select('*').then(),
+          supabase.from('recipes').select('*').then()
         );
       }
       
