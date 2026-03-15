@@ -3,17 +3,17 @@ import {
   format, addDays, addWeeks, subWeeks, startOfWeek, endOfWeek, startOfMonth, endOfMonth,
   eachDayOfInterval, isSameDay, isSameMonth, isToday, getDay, addMonths, subMonths,
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, Plus, Copy, Check, CheckCircle, Sparkles, Edit, Loader2, Filter } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Copy, Check, CheckCircle, Sparkles, Edit, Loader2, ExternalLink } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCalendarPosts, useCalendarTemplates, ScheduledPostSlot } from '@/hooks/useCalendarPosts';
 import { PLATFORMS, CONTENT_PILLARS, FRAMEWORKS } from '@/types/postIdea';
@@ -25,32 +25,45 @@ const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DAY_NAMES_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 const SLOT_CONFIG = [
-  { time: '12:30', label: '12:30 PM', type: 'value', icon: '📌', typeLabel: 'Value' },
-  { time: '19:00', label: '7:00 PM', type: 'engagement', icon: '💬', typeLabel: 'Engagement' },
+  { time: '11:00', label: '11:00 AM', type: 'reel', icon: '🎬', typeLabel: 'Reel / TikTok', defaultPlatform: 'instagram' },
+  { time: '12:30', label: '12:30 PM', type: 'value', icon: '📌', typeLabel: 'Skool Value', defaultPlatform: 'skool' },
+  { time: '19:00', label: '7:00 PM', type: 'engagement', icon: '💬', typeLabel: 'Skool Engagement', defaultPlatform: 'skool' },
 ];
 
-const PLATFORM_COLORS: Record<string, string> = {
-  skool: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-  instagram: 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
-  tiktok: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+const PILLAR_BADGE_STYLES: Record<string, { bg: string; text: string; dot: string; label: string }> = {
+  'why-it-works':          { bg: 'bg-blue-50 dark:bg-blue-950',   text: 'text-blue-700 dark:text-blue-300',     dot: 'bg-blue-500',    label: 'Science' },
+  'no-gatekeeping':        { bg: 'bg-orange-50 dark:bg-orange-950', text: 'text-orange-700 dark:text-orange-300', dot: 'bg-orange-500',  label: 'No Gatekeeping' },
+  'from-brick-to-beautiful': { bg: 'bg-green-50 dark:bg-green-950', text: 'text-green-700 dark:text-green-300',   dot: 'bg-green-500',   label: 'Transformation' },
+  'bread-is-ritual':       { bg: 'bg-purple-50 dark:bg-purple-950', text: 'text-purple-700 dark:text-purple-300', dot: 'bg-purple-500',  label: 'Ritual' },
 };
 
-const PILLAR_COLORS: Record<string, string> = {
-  'why-it-works': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
-  'no-gatekeeping': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
-  'from-brick-to-beautiful': 'bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200',
-  'bread-is-ritual': 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
+const PLATFORM_CONFIG: Record<string, { label: string; icon: string; url: string; buttonLabel: string }> = {
+  skool:     { label: 'Skool', icon: '🏫', url: 'https://www.skool.com/crust-crumb-academy-7621', buttonLabel: 'Copy & Open Skool' },
+  instagram: { label: 'Instagram', icon: '📸', url: 'https://www.instagram.com', buttonLabel: 'Copy & Open Instagram' },
+  tiktok:    { label: 'TikTok', icon: '🎵', url: 'https://www.tiktok.com', buttonLabel: 'Copy & Open TikTok' },
 };
+
+function PillarBadge({ pillar }: { pillar?: string | null }) {
+  if (!pillar || !PILLAR_BADGE_STYLES[pillar]) return null;
+  const style = PILLAR_BADGE_STYLES[pillar];
+  return (
+    <span className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium", style.bg, style.text)}>
+      <span className={cn("h-1.5 w-1.5 rounded-full", style.dot)} />
+      {style.label}
+    </span>
+  );
+}
+
+function PlatformIcon({ platform }: { platform?: string | null }) {
+  const cfg = PLATFORM_CONFIG[platform || 'skool'];
+  return <span className="text-[10px]">{cfg?.icon}</span>;
+}
 
 export default function Calendar() {
   const [view, setView] = useState<'week' | 'month'>('week');
   const [currentDate, setCurrentDate] = useState(new Date());
   const { posts, isLoading, createPost, updatePost, markPosted } = useCalendarPosts();
   const { getTemplateForSlot } = useCalendarTemplates();
-
-  // Filters
-  const [platformFilter, setPlatformFilter] = useState<string>('all');
-  const [pillarFilter, setPillarFilter] = useState<string>('all');
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<ScheduledPostSlot | null>(null);
@@ -62,17 +75,10 @@ export default function Calendar() {
   const [editorPillar, setEditorPillar] = useState('');
   const [editorFramework, setEditorFramework] = useState('');
   const [editorHashtags, setEditorHashtags] = useState('');
+  const [editorCaption, setEditorCaption] = useState('');
+  const [editorSourceMaterial, setEditorSourceMaterial] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-
-  // Filter posts
-  const filteredPosts = useMemo(() => {
-    return posts.filter(p => {
-      if (platformFilter !== 'all' && (p.platform || 'skool') !== platformFilter) return false;
-      if (pillarFilter !== 'all' && p.content_pillar !== pillarFilter) return false;
-      return true;
-    });
-  }, [posts, platformFilter, pillarFilter]);
 
   // Week boundaries
   const weekStart = startOfWeek(currentDate);
@@ -87,20 +93,30 @@ export default function Calendar() {
   const monthDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 
   const getPostsForSlot = (date: Date, slotTime: string): ScheduledPostSlot | undefined => {
-    return filteredPosts.find(p =>
+    return posts.find(p =>
       isSameDay(new Date(p.scheduled_date), date) &&
       p.time_slot === slotTime
     );
   };
 
-  // Stats for header
-  const weekPosts = filteredPosts.filter(p => {
+  // Stats
+  const weekPosts = useMemo(() => posts.filter(p => {
     const d = new Date(p.scheduled_date);
     return d >= weekStart && d <= weekEnd;
-  });
-  const draftedCount = weekPosts.filter(p => p.status === 'planned').length;
-  const postedCount = weekPosts.filter(p => p.status === 'posted').length;
-  const emptySlots = 14 - weekPosts.length;
+  }), [posts, weekStart, weekEnd]);
+
+  const stats = useMemo(() => {
+    const scheduled = weekPosts.length;
+    const completed = weekPosts.filter(p => p.status === 'posted').length;
+    const reelCount = weekPosts.filter(p => {
+      const plat = p.platform || 'skool';
+      return plat === 'instagram' || plat === 'tiktok';
+    }).length;
+    const skoolCount = weekPosts.filter(p => (p.platform || 'skool') === 'skool').length;
+    const totalSlots = 7 * 3;
+    const emptySlots = totalSlots - scheduled;
+    return { scheduled, completed, reelCount, skoolCount, emptySlots };
+  }, [weekPosts]);
 
   const openEditor = (date: Date, slot: typeof SLOT_CONFIG[0], existingPost?: ScheduledPostSlot) => {
     setEditorDate(date);
@@ -109,18 +125,29 @@ export default function Calendar() {
       setEditingPost(existingPost);
       setEditorTitle(existingPost.title);
       setEditorContent(existingPost.content);
-      setEditorPlatform(existingPost.platform || 'skool');
+      setEditorPlatform(existingPost.platform || slot.defaultPlatform);
       setEditorPillar(existingPost.content_pillar || '');
       setEditorFramework(existingPost.framework || '');
       setEditorHashtags(existingPost.hashtags || '');
+      setEditorCaption(existingPost.caption || '');
+      setEditorSourceMaterial(existingPost.source_material || '');
     } else {
       setEditingPost(null);
       setEditorTitle('');
       setEditorContent('');
-      setEditorPlatform(platformFilter !== 'all' ? platformFilter : 'skool');
-      setEditorPillar(pillarFilter !== 'all' ? pillarFilter : '');
+      setEditorPlatform(slot.defaultPlatform);
+      setEditorPillar('');
       setEditorFramework('');
       setEditorHashtags('');
+      setEditorCaption('');
+      setEditorSourceMaterial('');
+      // Auto-fill from template
+      const tmpl = getTemplateForSlot(date, slot.time);
+      if (tmpl) {
+        setEditorPillar(tmpl.content_pillar || '');
+        setEditorFramework(tmpl.framework || '');
+        setEditorSourceMaterial(tmpl.source_suggestion || '');
+      }
     }
     setEditorOpen(true);
   };
@@ -129,15 +156,17 @@ export default function Calendar() {
     if (!editorDate || !editorSlot || !editorTitle.trim()) return;
     const dateStr = format(editorDate, 'yyyy-MM-dd');
 
-    const extra = {
-      platform: editorPlatform || 'skool',
+    const fields = {
+      platform: editorPlatform || editorSlot.defaultPlatform,
       content_pillar: editorPillar || null,
       framework: editorFramework || null,
       hashtags: editorHashtags || null,
+      caption: editorCaption || null,
+      source_material: editorSourceMaterial || null,
     };
 
     if (editingPost) {
-      updatePost.mutate({ id: editingPost.id, title: editorTitle, content: editorContent, ...extra });
+      updatePost.mutate({ id: editingPost.id, title: editorTitle, content: editorContent, ...fields });
     } else {
       createPost.mutate({
         title: editorTitle,
@@ -146,7 +175,7 @@ export default function Calendar() {
         time_slot: editorSlot.time,
         post_type: editorSlot.type,
         status: 'planned',
-        ...extra,
+        ...fields,
       });
     }
     setEditorOpen(false);
@@ -162,7 +191,7 @@ export default function Calendar() {
       const { data, error } = await supabase.functions.invoke('generate-post', {
         body: {
           topic: suggestion,
-          postType: editorSlot.type === 'value' ? 'educational' : 'community-building',
+          postType: editorSlot.type === 'value' ? 'educational' : editorSlot.type === 'reel' ? 'educational' : 'community-building',
           targetAudience: 'all-members',
         },
       });
@@ -180,7 +209,10 @@ export default function Calendar() {
 
   const handleCopy = async (post: ScheduledPostSlot) => {
     try {
-      await navigator.clipboard.writeText(`${post.title}\n\n${post.content}`);
+      const text = post.caption
+        ? `${post.title}\n\n${post.content}\n\n---\nCaption:\n${post.caption}${post.hashtags ? '\n\n' + post.hashtags : ''}`
+        : `${post.title}\n\n${post.content}`;
+      await navigator.clipboard.writeText(text);
       setCopiedId(post.id);
       toast.success('Copied!');
       setTimeout(() => setCopiedId(null), 2000);
@@ -189,26 +221,21 @@ export default function Calendar() {
 
   const handleCopyAndPost = async (post: ScheduledPostSlot) => {
     await handleCopy(post);
-    window.open('https://www.skool.com/crust-crumb-academy-7621', '_blank');
+    const platform = post.platform || 'skool';
+    const cfg = PLATFORM_CONFIG[platform] || PLATFORM_CONFIG.skool;
+    window.open(cfg.url, '_blank');
     markPosted.mutate(post.id);
-  };
-
-  const getPlatformLabel = (platform?: string | null) => {
-    return PLATFORMS.find(p => p.value === (platform || 'skool'))?.label || '🏫 Skool';
-  };
-
-  const getPillarLabel = (pillar?: string | null) => {
-    return CONTENT_PILLARS.find(p => p.value === pillar)?.label || null;
   };
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header />
       <main className="container py-6 px-4 flex-1">
+        {/* Header Row */}
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-2xl font-bold">Content Calendar</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-2xl font-bold">Content Command Center</h1>
+            <p className="text-muted-foreground text-sm">
               {view === 'week'
                 ? `${format(weekStart, 'MMM d')} – ${format(weekEnd, 'MMM d, yyyy')}`
                 : format(currentDate, 'MMMM yyyy')}
@@ -231,118 +258,127 @@ export default function Calendar() {
           </div>
         </div>
 
-        {/* Platform & Pillar Filters */}
-        <div className="flex flex-wrap items-center gap-3 mb-4 p-3 bg-accent/30 rounded-lg border">
-          <Filter className="h-4 w-4 text-muted-foreground" />
-          <div className="flex items-center gap-2">
-            <Label className="text-xs font-medium text-muted-foreground">Platform:</Label>
-            <Select value={platformFilter} onValueChange={setPlatformFilter}>
-              <SelectTrigger className="h-7 w-[140px] text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Platforms</SelectItem>
-                {PLATFORMS.map(p => (
-                  <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-center gap-2">
-            <Label className="text-xs font-medium text-muted-foreground">Pillar:</Label>
-            <Select value={pillarFilter} onValueChange={setPillarFilter}>
-              <SelectTrigger className="h-7 w-[200px] text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Pillars</SelectItem>
-                {CONTENT_PILLARS.map(p => (
-                  <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          {(platformFilter !== 'all' || pillarFilter !== 'all') && (
-            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setPlatformFilter('all'); setPillarFilter('all'); }}>
-              Clear filters
-            </Button>
-          )}
+        {/* Stats Row */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+          <Card>
+            <CardContent className="p-3 text-center">
+              <p className="text-2xl font-bold">{stats.scheduled}</p>
+              <p className="text-[11px] text-muted-foreground">Scheduled This Week</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-3 text-center">
+              <p className="text-2xl font-bold text-green-600">{stats.completed}</p>
+              <p className="text-[11px] text-muted-foreground">Completed</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-3 text-center">
+              <p className="text-2xl font-bold text-pink-600">{stats.reelCount}</p>
+              <p className="text-[11px] text-muted-foreground">📸🎵 Reels / TikTok</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-3 text-center">
+              <p className="text-2xl font-bold text-blue-600">{stats.skoolCount}</p>
+              <p className="text-[11px] text-muted-foreground">🏫 Skool Posts</p>
+            </CardContent>
+          </Card>
         </div>
 
+        {/* WEEKLY VIEW */}
         {view === 'week' && (
-          <>
-            <div className="text-sm text-muted-foreground mb-4">
-              {draftedCount} drafted · {postedCount} posted · {emptySlots} empty
-              {platformFilter !== 'all' && ` · Showing: ${getPlatformLabel(platformFilter)}`}
-            </div>
-
-            {/* Weekly Grid */}
-            <div className="space-y-1">
-              {weekDays.map(day => {
-                const dayIdx = getDay(day);
-                return (
-                  <div key={day.toISOString()} className={cn(
-                    "grid grid-cols-[120px_1fr_1fr] gap-2 p-2 rounded-lg border",
-                    isToday(day) && "bg-primary/5 border-primary/20"
+          <div className="space-y-2">
+            {weekDays.map(day => {
+              const dayIdx = getDay(day);
+              return (
+                <div key={day.toISOString()} className={cn(
+                  "rounded-lg border overflow-hidden",
+                  isToday(day) && "ring-2 ring-primary/30"
+                )}>
+                  {/* Day header */}
+                  <div className={cn(
+                    "flex items-center gap-3 px-3 py-2 border-b",
+                    isToday(day) ? "bg-primary/5" : "bg-muted/30"
                   )}>
-                    {/* Day label */}
-                    <div className="flex flex-col justify-center">
-                      <span className={cn("text-sm font-medium", isToday(day) && "text-primary")}>
-                        {DAY_NAMES_FULL[dayIdx]}
-                      </span>
-                      <span className="text-xs text-muted-foreground">{format(day, 'MMM d')}</span>
-                    </div>
+                    <span className={cn(
+                      "text-sm font-semibold",
+                      isToday(day) && "text-primary"
+                    )}>
+                      {DAY_NAMES_FULL[dayIdx]}
+                    </span>
+                    <span className="text-xs text-muted-foreground">{format(day, 'MMM d')}</span>
+                    {isToday(day) && <Badge variant="default" className="text-[10px] h-4 px-1.5">Today</Badge>}
+                  </div>
 
-                    {/* Slots */}
+                  {/* Three slot columns */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x">
                     {SLOT_CONFIG.map(slot => {
                       const post = getPostsForSlot(day, slot.time);
                       const template = getTemplateForSlot(day, slot.time);
 
                       if (post) {
+                        const postPlatform = post.platform || slot.defaultPlatform;
+                        const platformCfg = PLATFORM_CONFIG[postPlatform] || PLATFORM_CONFIG.skool;
                         return (
                           <div key={slot.time} className={cn(
-                            "border rounded-md p-2 text-xs",
+                            "p-3 text-xs min-h-[120px]",
                             post.status === 'posted'
-                              ? "bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800 opacity-70"
-                              : "bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800"
+                              ? "bg-green-50/50 dark:bg-green-950/20"
+                              : "bg-card"
                           )}>
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="font-medium">{slot.icon} {slot.label}</span>
+                            {/* Slot header */}
+                            <div className="flex items-center justify-between mb-1.5">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-sm">{slot.icon}</span>
+                                <span className="font-medium text-[11px]">{slot.label}</span>
+                                <PlatformIcon platform={postPlatform} />
+                              </div>
                               <Badge variant="outline" className={cn("text-[10px] h-4",
-                                post.status === 'posted' ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                                post.status === 'posted'
+                                  ? "bg-green-100 text-green-700 border-green-200 dark:bg-green-900 dark:text-green-300 dark:border-green-700"
+                                  : "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900 dark:text-amber-300 dark:border-amber-700"
                               )}>
                                 {post.status === 'posted' ? '✓ Posted' : '⏳ Draft'}
                               </Badge>
                             </div>
-                            <p className={cn("font-medium mb-1 line-clamp-1", post.status === 'posted' && "line-through")}>
+
+                            {/* Title */}
+                            <p className={cn("font-semibold text-[12px] mb-1 line-clamp-1", post.status === 'posted' && "line-through opacity-60")}>
                               {post.title}
                             </p>
-                            {/* Platform & Pillar badges */}
-                            <div className="flex flex-wrap gap-1 mb-1">
-                              {post.platform && post.platform !== 'skool' && (
-                                <Badge variant="secondary" className={cn("text-[9px] h-3.5", PLATFORM_COLORS[post.platform])}>
-                                  {getPlatformLabel(post.platform)}
-                                </Badge>
-                              )}
-                              {post.content_pillar && (
-                                <Badge variant="secondary" className={cn("text-[9px] h-3.5", PILLAR_COLORS[post.content_pillar])}>
-                                  {post.content_pillar}
-                                </Badge>
-                              )}
-                              {post.campaign_id && (
-                                <Badge variant="secondary" className="text-[9px] h-3.5">Campaign</Badge>
+
+                            {/* Pillar badge */}
+                            <div className="flex flex-wrap gap-1 mb-1.5">
+                              <PillarBadge pillar={post.content_pillar} />
+                              {post.framework && (
+                                <span className="text-[10px] text-muted-foreground italic">{post.framework}</span>
                               )}
                             </div>
-                            <div className="flex gap-1 mt-1">
-                              <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1.5" onClick={() => openEditor(day, slot, post)}>
-                                <Edit className="h-2.5 w-2.5 mr-0.5" />View
+
+                            {/* Caption preview */}
+                            {post.caption && (
+                              <p className="text-[11px] text-muted-foreground line-clamp-2 mb-1.5 italic border-l-2 border-muted pl-2">
+                                {post.caption}
+                              </p>
+                            )}
+
+                            {/* Hashtags */}
+                            {post.hashtags && (
+                              <p className="text-[10px] text-blue-500 dark:text-blue-400 line-clamp-1 mb-1.5">{post.hashtags}</p>
+                            )}
+
+                            {/* Actions */}
+                            <div className="flex flex-wrap gap-1 mt-auto pt-1">
+                              <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2" onClick={() => openEditor(day, slot, post)}>
+                                <Edit className="h-2.5 w-2.5 mr-0.5" />Edit
                               </Button>
-                              <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1.5" onClick={() => handleCopy(post)}>
+                              <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2" onClick={() => handleCopy(post)}>
                                 {copiedId === post.id ? <Check className="h-2.5 w-2.5" /> : <Copy className="h-2.5 w-2.5" />}
                               </Button>
                               {post.status !== 'posted' && (
-                                <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1.5" onClick={() => handleCopyAndPost(post)}>
-                                  <CheckCircle className="h-2.5 w-2.5 mr-0.5" />Post
+                                <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2" onClick={() => handleCopyAndPost(post)}>
+                                  <ExternalLink className="h-2.5 w-2.5 mr-0.5" />{platformCfg.buttonLabel.replace('Copy & ', '')}
                                 </Button>
                               )}
                             </div>
@@ -350,38 +386,49 @@ export default function Calendar() {
                         );
                       }
 
-                      // Empty slot with template suggestion
+                      // EMPTY SLOT — show suggestion
                       return (
-                        <div key={slot.time} className="border border-dashed rounded-md p-2 text-xs text-muted-foreground hover:border-primary/50 hover:bg-accent/30 transition-colors cursor-pointer"
+                        <div
+                          key={slot.time}
+                          className="p-3 text-xs min-h-[120px] border-dashed cursor-pointer hover:bg-accent/20 transition-colors"
                           onClick={() => openEditor(day, slot)}
                         >
-                          <div className="flex items-center justify-between mb-1">
-                            <span>{slot.icon} {slot.label}</span>
-                            <Badge variant="outline" className="text-[10px] h-4 bg-destructive/10 text-destructive border-destructive/20">Empty</Badge>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-sm opacity-50">{slot.icon}</span>
+                              <span className="font-medium text-[11px] text-muted-foreground">{slot.label}</span>
+                            </div>
+                            <Badge variant="outline" className="text-[10px] h-4 bg-destructive/5 text-destructive/60 border-destructive/20">
+                              Empty
+                            </Badge>
                           </div>
+
                           {template && (
-                            <>
-                              <p className="text-[11px] italic line-clamp-2">💡 {template.template_text}</p>
-                              {template.platform && template.platform !== 'skool' && (
-                                <Badge variant="outline" className={cn("text-[9px] h-3.5 mt-1", PLATFORM_COLORS[template.platform])}>
-                                  {getPlatformLabel(template.platform)}
-                                </Badge>
+                            <div className="bg-muted/40 rounded p-2 mb-2 border border-dashed border-muted-foreground/20">
+                              <PillarBadge pillar={template.content_pillar} />
+                              <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+                                💡 {template.template_text}
+                              </p>
+                              {template.source_suggestion && (
+                                <p className="text-[10px] text-muted-foreground/70 mt-1">📚 {template.source_suggestion}</p>
                               )}
-                            </>
+                            </div>
                           )}
-                          <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1.5 mt-1">
-                            <Plus className="h-2.5 w-2.5 mr-0.5" />Draft Post
+
+                          <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 text-muted-foreground">
+                            <Plus className="h-2.5 w-2.5 mr-0.5" />Draft
                           </Button>
                         </div>
                       );
                     })}
                   </div>
-                );
-              })}
-            </div>
-          </>
+                </div>
+              );
+            })}
+          </div>
         )}
 
+        {/* MONTH VIEW */}
         {view === 'month' && (
           <Card>
             <CardContent className="p-4">
@@ -393,20 +440,21 @@ export default function Calendar() {
               <div className="grid grid-cols-7 gap-1">
                 {monthDays.map((day, i) => {
                   const isCurrentMonth = isSameMonth(day, currentDate);
-                  const slot1 = getPostsForSlot(day, '12:30');
-                  const slot2 = getPostsForSlot(day, '19:00');
+                  const slot1 = getPostsForSlot(day, '11:00');
+                  const slot2 = getPostsForSlot(day, '12:30');
+                  const slot3 = getPostsForSlot(day, '19:00');
 
                   const getDot = (post?: ScheduledPostSlot) => {
                     if (!post) return 'bg-destructive/30';
                     if (post.status === 'posted') return 'bg-green-500';
-                    return 'bg-yellow-500';
+                    return 'bg-amber-400';
                   };
 
                   return (
                     <div
                       key={i}
                       className={cn(
-                        "aspect-square p-1 rounded cursor-pointer hover:bg-accent/50 transition-colors flex flex-col items-center justify-center gap-1",
+                        "aspect-square p-1 rounded cursor-pointer hover:bg-accent/50 transition-colors flex flex-col items-center justify-center gap-0.5",
                         !isCurrentMonth && "opacity-30",
                         isToday(day) && "bg-primary/10 ring-1 ring-primary/30"
                       )}
@@ -419,8 +467,9 @@ export default function Calendar() {
                         {format(day, 'd')}
                       </span>
                       <div className="flex gap-0.5">
-                        <div className={cn("h-2 w-2 rounded-full", getDot(slot1))} />
-                        <div className={cn("h-2 w-2 rounded-full", getDot(slot2))} />
+                        <div className={cn("h-1.5 w-1.5 rounded-full", getDot(slot1))} title="11:00 Reel" />
+                        <div className={cn("h-1.5 w-1.5 rounded-full", getDot(slot2))} title="12:30 Value" />
+                        <div className={cn("h-1.5 w-1.5 rounded-full", getDot(slot3))} title="7:00 Engage" />
                       </div>
                     </div>
                   );
@@ -428,7 +477,7 @@ export default function Calendar() {
               </div>
               <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground justify-center">
                 <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-green-500 inline-block" /> Posted</span>
-                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-yellow-500 inline-block" /> Drafted</span>
+                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-400 inline-block" /> Drafted</span>
                 <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-destructive/30 inline-block" /> Empty</span>
               </div>
             </CardContent>
@@ -449,11 +498,12 @@ export default function Calendar() {
               )}
             </DialogHeader>
             <div className="space-y-4 py-2">
+              {/* Template hint */}
               {!editingPost && editorDate && editorSlot && (() => {
                 const tmpl = getTemplateForSlot(editorDate, editorSlot.time);
                 return tmpl ? (
-                  <div className="bg-accent/50 rounded-md p-3 text-sm">
-                    <span className="font-medium">💡 Template suggestion:</span> {tmpl.template_text}
+                  <div className="bg-muted/50 rounded-md p-3 text-sm border border-dashed border-muted-foreground/20">
+                    <span className="font-medium">💡 Suggestion:</span> {tmpl.template_text}
                     {tmpl.source_suggestion && (
                       <p className="text-xs text-muted-foreground mt-1">📚 Source: {tmpl.source_suggestion}</p>
                     )}
@@ -461,7 +511,7 @@ export default function Calendar() {
                 ) : null;
               })()}
 
-              {/* Platform, Pillar, Framework row */}
+              {/* Platform / Pillar / Framework */}
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs">Platform</Label>
@@ -494,7 +544,7 @@ export default function Calendar() {
                   <Label className="text-xs">Framework</Label>
                   <Select value={editorFramework || 'none'} onValueChange={v => setEditorFramework(v === 'none' ? '' : v)}>
                     <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="Select framework" />
+                      <SelectValue placeholder="Select" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">None</SelectItem>
@@ -506,23 +556,41 @@ export default function Calendar() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Title</Label>
+              {/* Title */}
+              <div className="space-y-1">
+                <Label className="text-xs">Title</Label>
                 <Input value={editorTitle} onChange={e => setEditorTitle(e.target.value)} placeholder="Post title" />
               </div>
-              <div className="space-y-2">
-                <Label>Content</Label>
-                <Textarea value={editorContent} onChange={e => setEditorContent(e.target.value)} className="min-h-[180px]" placeholder="Write your post content..." />
+
+              {/* Content */}
+              <div className="space-y-1">
+                <Label className="text-xs">Content</Label>
+                <Textarea value={editorContent} onChange={e => setEditorContent(e.target.value)} className="min-h-[140px]" placeholder="Write your post content..." />
               </div>
 
-              {/* Hashtags for Instagram/TikTok */}
+              {/* Caption — for Instagram/TikTok */}
               {editorPlatform !== 'skool' && (
-                <div className="space-y-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Caption (for {editorPlatform === 'instagram' ? 'Instagram' : 'TikTok'})</Label>
+                  <Textarea value={editorCaption} onChange={e => setEditorCaption(e.target.value)} className="min-h-[60px] text-xs" placeholder="Write caption for social media..." />
+                </div>
+              )}
+
+              {/* Hashtags — for Instagram/TikTok */}
+              {editorPlatform !== 'skool' && (
+                <div className="space-y-1">
                   <Label className="text-xs">Hashtags</Label>
                   <Input value={editorHashtags} onChange={e => setEditorHashtags(e.target.value)} placeholder="#sourdough #breadbaking #homemade" className="text-xs" />
                 </div>
               )}
 
+              {/* Source Material */}
+              <div className="space-y-1">
+                <Label className="text-xs">Source Material</Label>
+                <Input value={editorSourceMaterial} onChange={e => setEditorSourceMaterial(e.target.value)} placeholder="Course module, recipe, or reference" className="text-xs" />
+              </div>
+
+              {/* Action buttons */}
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={handleAIGenerate} disabled={isGenerating}>
                   {isGenerating ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1" />}
@@ -535,7 +603,8 @@ export default function Calendar() {
                     </Button>
                     {editingPost.status !== 'posted' && (
                       <Button variant="outline" size="sm" onClick={() => { handleCopyAndPost(editingPost); setEditorOpen(false); }}>
-                        <CheckCircle className="h-4 w-4 mr-1" />Copy & Post
+                        <ExternalLink className="h-4 w-4 mr-1" />
+                        {PLATFORM_CONFIG[editorPlatform]?.buttonLabel || 'Copy & Post'}
                       </Button>
                     )}
                   </>
