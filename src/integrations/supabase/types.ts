@@ -78,29 +78,41 @@ export type Database = {
       }
       calendar_templates: {
         Row: {
+          content_pillar: string | null
           created_at: string | null
           day_of_week: number
+          framework: string | null
           id: string
+          platform: string | null
           slot_time: string
           slot_type: string
+          source_suggestion: string | null
           template_text: string
           week_number: number
         }
         Insert: {
+          content_pillar?: string | null
           created_at?: string | null
           day_of_week: number
+          framework?: string | null
           id?: string
+          platform?: string | null
           slot_time: string
           slot_type: string
+          source_suggestion?: string | null
           template_text: string
           week_number: number
         }
         Update: {
+          content_pillar?: string | null
           created_at?: string | null
           day_of_week?: number
+          framework?: string | null
           id?: string
+          platform?: string | null
           slot_time?: string
           slot_type?: string
+          source_suggestion?: string | null
           template_text?: string
           week_number?: number
         }
@@ -902,39 +914,57 @@ export type Database = {
       scheduled_posts: {
         Row: {
           campaign_id: string | null
+          caption: string | null
           content: string
+          content_pillar: string | null
           created_at: string | null
           day_theme: string | null
+          framework: string | null
+          hashtags: string | null
           id: string
+          platform: string | null
           post_type: string | null
           posted_at: string | null
           scheduled_date: string
+          source_material: string | null
           status: string | null
           time_slot: string | null
           title: string
         }
         Insert: {
           campaign_id?: string | null
+          caption?: string | null
           content: string
+          content_pillar?: string | null
           created_at?: string | null
           day_theme?: string | null
+          framework?: string | null
+          hashtags?: string | null
           id?: string
+          platform?: string | null
           post_type?: string | null
           posted_at?: string | null
           scheduled_date: string
+          source_material?: string | null
           status?: string | null
           time_slot?: string | null
           title: string
         }
         Update: {
           campaign_id?: string | null
+          caption?: string | null
           content?: string
+          content_pillar?: string | null
           created_at?: string | null
           day_theme?: string | null
+          framework?: string | null
+          hashtags?: string | null
           id?: string
+          platform?: string | null
           post_type?: string | null
           posted_at?: string | null
           scheduled_date?: string
+          source_material?: string | null
           status?: string | null
           time_slot?: string | null
           title?: string
