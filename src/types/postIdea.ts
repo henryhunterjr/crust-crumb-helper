@@ -20,7 +20,34 @@ export interface ScheduledPost {
   status: string | null;
   posted_at: string | null;
   created_at: string;
+  platform?: string | null;
+  content_pillar?: string | null;
+  framework?: string | null;
+  source_material?: string | null;
+  hashtags?: string | null;
+  caption?: string | null;
 }
+
+export const PLATFORMS = [
+  { value: 'skool', label: '🏫 Skool' },
+  { value: 'instagram', label: '📸 Instagram' },
+  { value: 'tiktok', label: '🎵 TikTok' },
+] as const;
+
+export const CONTENT_PILLARS = [
+  { value: 'why-it-works', label: '🔬 Why It Works (Science)' },
+  { value: 'no-gatekeeping', label: '🚫 No Gatekeeping (The Stand)' },
+  { value: 'from-brick-to-beautiful', label: '✨ From Brick to Beautiful' },
+  { value: 'bread-is-ritual', label: '🕯️ Bread Is Ritual (The Soul)' },
+] as const;
+
+export const FRAMEWORKS = [
+  { value: 'quick-tip', label: 'Quick Tip' },
+  { value: 'myth-buster', label: 'Myth Buster' },
+  { value: 'before-after', label: 'Before/After' },
+  { value: 'saturday-teaser', label: 'Saturday Teaser' },
+  { value: 'breaking-bread-teaser', label: 'Breaking Bread Teaser' },
+] as const;
 
 export const POST_TYPES = [
   { value: 'new-member-welcome', label: 'New Member Welcome' },

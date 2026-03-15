@@ -10,6 +10,10 @@ export interface CalendarTemplate {
   slot_time: string;
   slot_type: string;
   template_text: string;
+  platform?: string;
+  content_pillar?: string;
+  framework?: string;
+  source_suggestion?: string;
 }
 
 export interface ScheduledPostSlot {
@@ -23,6 +27,12 @@ export interface ScheduledPostSlot {
   posted_at: string | null;
   campaign_id: string | null;
   day_theme: string | null;
+  platform?: string | null;
+  content_pillar?: string | null;
+  framework?: string | null;
+  source_material?: string | null;
+  hashtags?: string | null;
+  caption?: string | null;
 }
 
 export function useCalendarTemplates() {
@@ -75,6 +85,10 @@ export function useCalendarPosts() {
       time_slot?: string;
       post_type?: string;
       status?: string;
+      platform?: string;
+      content_pillar?: string | null;
+      framework?: string | null;
+      hashtags?: string | null;
     }) => {
       const { data, error } = await supabase
         .from('scheduled_posts')
@@ -85,6 +99,10 @@ export function useCalendarPosts() {
           time_slot: post.time_slot || null,
           post_type: post.post_type || null,
           status: post.status || 'planned',
+          platform: post.platform || 'skool',
+          content_pillar: post.content_pillar || null,
+          framework: post.framework || null,
+          hashtags: post.hashtags || null,
         })
         .select()
         .single();
