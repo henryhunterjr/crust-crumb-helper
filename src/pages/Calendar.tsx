@@ -3,7 +3,7 @@ import {
   format, addDays, addWeeks, subWeeks, startOfWeek, endOfWeek, startOfMonth, endOfMonth,
   eachDayOfInterval, isSameDay, isSameMonth, isToday, getDay, addMonths, subMonths,
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, Plus, Copy, Check, CheckCircle, Sparkles, Edit, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Copy, Check, CheckCircle, Sparkles, Edit, Loader2, Filter } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCalendarPosts, useCalendarTemplates, ScheduledPostSlot } from '@/hooks/useCalendarPosts';
+import { PLATFORMS, CONTENT_PILLARS, FRAMEWORKS } from '@/types/postIdea';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -27,11 +29,28 @@ const SLOT_CONFIG = [
   { time: '19:00', label: '7:00 PM', type: 'engagement', icon: '💬', typeLabel: 'Engagement' },
 ];
 
+const PLATFORM_COLORS: Record<string, string> = {
+  skool: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+  instagram: 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
+  tiktok: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+};
+
+const PILLAR_COLORS: Record<string, string> = {
+  'why-it-works': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
+  'no-gatekeeping': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+  'from-brick-to-beautiful': 'bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200',
+  'bread-is-ritual': 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
+};
+
 export default function Calendar() {
   const [view, setView] = useState<'week' | 'month'>('week');
   const [currentDate, setCurrentDate] = useState(new Date());
   const { posts, isLoading, createPost, updatePost, markPosted } = useCalendarPosts();
   const { getTemplateForSlot } = useCalendarTemplates();
+
+  // Filters
+  const [platformFilter, setPlatformFilter] = useState<string>('all');
+  const [pillarFilter, setPillarFilter] = useState<string>('all');
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<ScheduledPostSlot | null>(null);
@@ -39,8 +58,21 @@ export default function Calendar() {
   const [editorSlot, setEditorSlot] = useState<typeof SLOT_CONFIG[0] | null>(null);
   const [editorTitle, setEditorTitle] = useState('');
   const [editorContent, setEditorContent] = useState('');
+  const [editorPlatform, setEditorPlatform] = useState('skool');
+  const [editorPillar, setEditorPillar] = useState('');
+  const [editorFramework, setEditorFramework] = useState('');
+  const [editorHashtags, setEditorHashtags] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Filter posts
+  const filteredPosts = useMemo(() => {
+    return posts.filter(p => {
+      if (platformFilter !== 'all' && (p.platform || 'skool') !== platformFilter) return false;
+      if (pillarFilter !== 'all' && p.content_pillar !== pillarFilter) return false;
+      return true;
+    });
+  }, [posts, platformFilter, pillarFilter]);
 
   // Week boundaries
   const weekStart = startOfWeek(currentDate);
@@ -55,14 +87,14 @@ export default function Calendar() {
   const monthDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 
   const getPostsForSlot = (date: Date, slotTime: string): ScheduledPostSlot | undefined => {
-    return posts.find(p =>
+    return filteredPosts.find(p =>
       isSameDay(new Date(p.scheduled_date), date) &&
       p.time_slot === slotTime
     );
   };
 
   // Stats for header
-  const weekPosts = posts.filter(p => {
+  const weekPosts = filteredPosts.filter(p => {
     const d = new Date(p.scheduled_date);
     return d >= weekStart && d <= weekEnd;
   });
@@ -77,10 +109,18 @@ export default function Calendar() {
       setEditingPost(existingPost);
       setEditorTitle(existingPost.title);
       setEditorContent(existingPost.content);
+      setEditorPlatform(existingPost.platform || 'skool');
+      setEditorPillar(existingPost.content_pillar || '');
+      setEditorFramework(existingPost.framework || '');
+      setEditorHashtags(existingPost.hashtags || '');
     } else {
       setEditingPost(null);
       setEditorTitle('');
       setEditorContent('');
+      setEditorPlatform(platformFilter !== 'all' ? platformFilter : 'skool');
+      setEditorPillar(pillarFilter !== 'all' ? pillarFilter : '');
+      setEditorFramework('');
+      setEditorHashtags('');
     }
     setEditorOpen(true);
   };
@@ -89,8 +129,15 @@ export default function Calendar() {
     if (!editorDate || !editorSlot || !editorTitle.trim()) return;
     const dateStr = format(editorDate, 'yyyy-MM-dd');
 
+    const extra = {
+      platform: editorPlatform || 'skool',
+      content_pillar: editorPillar || null,
+      framework: editorFramework || null,
+      hashtags: editorHashtags || null,
+    };
+
     if (editingPost) {
-      updatePost.mutate({ id: editingPost.id, title: editorTitle, content: editorContent });
+      updatePost.mutate({ id: editingPost.id, title: editorTitle, content: editorContent, ...extra });
     } else {
       createPost.mutate({
         title: editorTitle,
@@ -99,6 +146,7 @@ export default function Calendar() {
         time_slot: editorSlot.time,
         post_type: editorSlot.type,
         status: 'planned',
+        ...extra,
       });
     }
     setEditorOpen(false);
@@ -145,11 +193,19 @@ export default function Calendar() {
     markPosted.mutate(post.id);
   };
 
+  const getPlatformLabel = (platform?: string | null) => {
+    return PLATFORMS.find(p => p.value === (platform || 'skool'))?.label || '🏫 Skool';
+  };
+
+  const getPillarLabel = (pillar?: string | null) => {
+    return CONTENT_PILLARS.find(p => p.value === pillar)?.label || null;
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header />
       <main className="container py-6 px-4 flex-1">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-2xl font-bold">Content Calendar</h1>
             <p className="text-muted-foreground">
@@ -175,10 +231,49 @@ export default function Calendar() {
           </div>
         </div>
 
+        {/* Platform & Pillar Filters */}
+        <div className="flex flex-wrap items-center gap-3 mb-4 p-3 bg-accent/30 rounded-lg border">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <div className="flex items-center gap-2">
+            <Label className="text-xs font-medium text-muted-foreground">Platform:</Label>
+            <Select value={platformFilter} onValueChange={setPlatformFilter}>
+              <SelectTrigger className="h-7 w-[140px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Platforms</SelectItem>
+                {PLATFORMS.map(p => (
+                  <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <Label className="text-xs font-medium text-muted-foreground">Pillar:</Label>
+            <Select value={pillarFilter} onValueChange={setPillarFilter}>
+              <SelectTrigger className="h-7 w-[200px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Pillars</SelectItem>
+                {CONTENT_PILLARS.map(p => (
+                  <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {(platformFilter !== 'all' || pillarFilter !== 'all') && (
+            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setPlatformFilter('all'); setPillarFilter('all'); }}>
+              Clear filters
+            </Button>
+          )}
+        </div>
+
         {view === 'week' && (
           <>
             <div className="text-sm text-muted-foreground mb-4">
               {draftedCount} drafted · {postedCount} posted · {emptySlots} empty
+              {platformFilter !== 'all' && ` · Showing: ${getPlatformLabel(platformFilter)}`}
             </div>
 
             {/* Weekly Grid */}
@@ -222,9 +317,22 @@ export default function Calendar() {
                             <p className={cn("font-medium mb-1 line-clamp-1", post.status === 'posted' && "line-through")}>
                               {post.title}
                             </p>
-                            {post.campaign_id && (
-                              <Badge variant="secondary" className="text-[9px] h-3.5 mb-1">Campaign</Badge>
-                            )}
+                            {/* Platform & Pillar badges */}
+                            <div className="flex flex-wrap gap-1 mb-1">
+                              {post.platform && post.platform !== 'skool' && (
+                                <Badge variant="secondary" className={cn("text-[9px] h-3.5", PLATFORM_COLORS[post.platform])}>
+                                  {getPlatformLabel(post.platform)}
+                                </Badge>
+                              )}
+                              {post.content_pillar && (
+                                <Badge variant="secondary" className={cn("text-[9px] h-3.5", PILLAR_COLORS[post.content_pillar])}>
+                                  {post.content_pillar}
+                                </Badge>
+                              )}
+                              {post.campaign_id && (
+                                <Badge variant="secondary" className="text-[9px] h-3.5">Campaign</Badge>
+                              )}
+                            </div>
                             <div className="flex gap-1 mt-1">
                               <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1.5" onClick={() => openEditor(day, slot, post)}>
                                 <Edit className="h-2.5 w-2.5 mr-0.5" />View
@@ -252,7 +360,14 @@ export default function Calendar() {
                             <Badge variant="outline" className="text-[10px] h-4 bg-destructive/10 text-destructive border-destructive/20">Empty</Badge>
                           </div>
                           {template && (
-                            <p className="text-[11px] italic line-clamp-2">💡 {template.template_text}</p>
+                            <>
+                              <p className="text-[11px] italic line-clamp-2">💡 {template.template_text}</p>
+                              {template.platform && template.platform !== 'skool' && (
+                                <Badge variant="outline" className={cn("text-[9px] h-3.5 mt-1", PLATFORM_COLORS[template.platform])}>
+                                  {getPlatformLabel(template.platform)}
+                                </Badge>
+                              )}
+                            </>
                           )}
                           <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1.5 mt-1">
                             <Plus className="h-2.5 w-2.5 mr-0.5" />Draft Post
@@ -322,7 +437,7 @@ export default function Calendar() {
 
         {/* Post Editor Dialog */}
         <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingPost ? 'Edit Post' : 'Draft Post'}
@@ -339,9 +454,58 @@ export default function Calendar() {
                 return tmpl ? (
                   <div className="bg-accent/50 rounded-md p-3 text-sm">
                     <span className="font-medium">💡 Template suggestion:</span> {tmpl.template_text}
+                    {tmpl.source_suggestion && (
+                      <p className="text-xs text-muted-foreground mt-1">📚 Source: {tmpl.source_suggestion}</p>
+                    )}
                   </div>
                 ) : null;
               })()}
+
+              {/* Platform, Pillar, Framework row */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Platform</Label>
+                  <Select value={editorPlatform} onValueChange={setEditorPlatform}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PLATFORMS.map(p => (
+                        <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Content Pillar</Label>
+                  <Select value={editorPillar || 'none'} onValueChange={v => setEditorPillar(v === 'none' ? '' : v)}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Select pillar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {CONTENT_PILLARS.map(p => (
+                        <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Framework</Label>
+                  <Select value={editorFramework || 'none'} onValueChange={v => setEditorFramework(v === 'none' ? '' : v)}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Select framework" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {FRAMEWORKS.map(f => (
+                        <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <Label>Title</Label>
                 <Input value={editorTitle} onChange={e => setEditorTitle(e.target.value)} placeholder="Post title" />
@@ -350,6 +514,15 @@ export default function Calendar() {
                 <Label>Content</Label>
                 <Textarea value={editorContent} onChange={e => setEditorContent(e.target.value)} className="min-h-[180px]" placeholder="Write your post content..." />
               </div>
+
+              {/* Hashtags for Instagram/TikTok */}
+              {editorPlatform !== 'skool' && (
+                <div className="space-y-2">
+                  <Label className="text-xs">Hashtags</Label>
+                  <Input value={editorHashtags} onChange={e => setEditorHashtags(e.target.value)} placeholder="#sourdough #breadbaking #homemade" className="text-xs" />
+                </div>
+              )}
+
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={handleAIGenerate} disabled={isGenerating}>
                   {isGenerating ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1" />}
