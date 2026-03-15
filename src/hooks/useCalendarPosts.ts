@@ -10,6 +10,10 @@ export interface CalendarTemplate {
   slot_time: string;
   slot_type: string;
   template_text: string;
+  platform?: string;
+  content_pillar?: string;
+  framework?: string;
+  source_suggestion?: string;
 }
 
 export interface ScheduledPostSlot {
@@ -23,6 +27,12 @@ export interface ScheduledPostSlot {
   posted_at: string | null;
   campaign_id: string | null;
   day_theme: string | null;
+  platform?: string | null;
+  content_pillar?: string | null;
+  framework?: string | null;
+  source_material?: string | null;
+  hashtags?: string | null;
+  caption?: string | null;
 }
 
 export function useCalendarTemplates() {
