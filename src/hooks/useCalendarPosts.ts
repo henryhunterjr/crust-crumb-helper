@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { format, startOfWeek, getWeek, getDay } from 'date-fns';
+import { getDay } from 'date-fns';
 
 export interface CalendarTemplate {
   id: string;
@@ -35,6 +35,35 @@ export interface ScheduledPostSlot {
   caption?: string | null;
 }
 
+// Fallback suggestions when no DB template exists
+const FALLBACK_SUGGESTIONS: Record<string, Record<number, { text: string; pillar?: string; framework?: string }>> = {
+  '11:00': {
+    1: { text: 'Science / Quick Tip — Clip from Reading Fermentation or Cold Kitchen module', pillar: 'why-it-works', framework: 'quick-tip' },
+    2: { text: 'No Gatekeeping / Myth Buster — Talking head: debunk equipment myth', pillar: 'no-gatekeeping', framework: 'myth-buster' },
+    3: { text: 'Transformation / Before & After — Member spotlight or your brick loaf story', pillar: 'from-brick-to-beautiful', framework: 'before-after' },
+    4: { text: 'Science / Process Demo — Hands-on clip: folding, shaping, scoring', pillar: 'why-it-works', framework: 'quick-tip' },
+    5: { text: 'Bread Is Ritual — Saturday bake-along teaser or Breaking Bread podcast clip', pillar: 'bread-is-ritual', framework: 'saturday-teaser' },
+  },
+  '12:30': {
+    1: { text: 'Teaching post — one technique explained' },
+    2: { text: 'Value post — recipe share or course highlight' },
+    3: { text: 'Value post — community win or progress showcase' },
+    4: { text: 'Value post — troubleshooting guide' },
+    5: { text: 'Value post — weekend bake prep or ingredient spotlight' },
+    6: { text: 'Saturday bake-along recipe and instructions' },
+    0: { text: 'Sunday reflection or weekly round-up' },
+  },
+  '19:00': {
+    1: { text: 'Engagement post — question or poll' },
+    2: { text: 'Engagement post — "what are you baking this week?"' },
+    3: { text: 'Engagement post — fill in the blank or this-or-that' },
+    4: { text: 'Engagement post — unpopular opinion or hot take' },
+    5: { text: 'Engagement post — share your weekend baking plans' },
+    6: { text: 'Engagement post — show us your Saturday bake results' },
+    0: { text: 'Engagement post — Sunday Q&A thread' },
+  },
+};
+
 export function useCalendarTemplates() {
   const { data: templates = [] } = useQuery({
     queryKey: ['calendar-templates'],
@@ -54,9 +83,30 @@ export function useCalendarTemplates() {
     const weekOfMonth = Math.ceil(date.getDate() / 7);
     const weekNum = ((weekOfMonth - 1) % 4) + 1;
     const dayOfWeek = getDay(date);
-    return templates.find(
+
+    // Try to find a DB template first
+    const dbTemplate = templates.find(
       t => t.week_number === weekNum && t.day_of_week === dayOfWeek && t.slot_time === slotTime
     );
+    if (dbTemplate) return dbTemplate;
+
+    // Fall back to hardcoded suggestions
+    const fallback = FALLBACK_SUGGESTIONS[slotTime]?.[dayOfWeek];
+    if (fallback) {
+      return {
+        id: `fallback-${slotTime}-${dayOfWeek}-${weekNum}`,
+        week_number: weekNum,
+        day_of_week: dayOfWeek,
+        slot_time: slotTime,
+        slot_type: slotTime === '11:00' ? 'reel' : slotTime === '12:30' ? 'value' : 'engagement',
+        template_text: fallback.text,
+        platform: slotTime === '11:00' ? 'instagram' : 'skool',
+        content_pillar: fallback.pillar,
+        framework: fallback.framework,
+      };
+    }
+
+    return undefined;
   };
 
   return { templates, getTemplateForSlot };
@@ -89,6 +139,8 @@ export function useCalendarPosts() {
       content_pillar?: string | null;
       framework?: string | null;
       hashtags?: string | null;
+      caption?: string | null;
+      source_material?: string | null;
     }) => {
       const { data, error } = await supabase
         .from('scheduled_posts')
@@ -103,6 +155,8 @@ export function useCalendarPosts() {
           content_pillar: post.content_pillar || null,
           framework: post.framework || null,
           hashtags: post.hashtags || null,
+          caption: post.caption || null,
+          source_material: post.source_material || null,
         })
         .select()
         .single();
