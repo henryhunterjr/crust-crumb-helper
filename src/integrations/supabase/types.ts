@@ -14,6 +14,62 @@ export type Database = {
   }
   public: {
     Tables: {
+      action_items: {
+        Row: {
+          brief_id: string | null
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          due_at: string | null
+          external_id: string | null
+          id: string
+          priority: string
+          related_skool_url: string | null
+          source: string | null
+          status: string
+          tags: string[] | null
+          title: string
+        }
+        Insert: {
+          brief_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_at?: string | null
+          external_id?: string | null
+          id?: string
+          priority?: string
+          related_skool_url?: string | null
+          source?: string | null
+          status?: string
+          tags?: string[] | null
+          title: string
+        }
+        Update: {
+          brief_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_at?: string | null
+          external_id?: string | null
+          id?: string
+          priority?: string
+          related_skool_url?: string | null
+          source?: string | null
+          status?: string
+          tags?: string[] | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "action_items_brief_id_fkey"
+            columns: ["brief_id"]
+            isOneToOne: false
+            referencedRelation: "brief_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       activity_feed: {
         Row: {
           activity_type: string
@@ -75,6 +131,98 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      brief_logs: {
+        Row: {
+          brief_date: string
+          brief_type: string
+          created_at: string
+          generated_at: string
+          id: string
+          items_created: Json | null
+          raw_payload: Json | null
+          run_id: string
+          status: string
+          time_window_hours: number
+        }
+        Insert: {
+          brief_date?: string
+          brief_type?: string
+          created_at?: string
+          generated_at?: string
+          id?: string
+          items_created?: Json | null
+          raw_payload?: Json | null
+          run_id: string
+          status?: string
+          time_window_hours?: number
+        }
+        Update: {
+          brief_date?: string
+          brief_type?: string
+          created_at?: string
+          generated_at?: string
+          id?: string
+          items_created?: Json | null
+          raw_payload?: Json | null
+          run_id?: string
+          status?: string
+          time_window_hours?: number
+        }
+        Relationships: []
+      }
+      calendar_entries: {
+        Row: {
+          all_day: boolean
+          brief_id: string | null
+          created_at: string
+          description: string | null
+          end_at: string | null
+          external_id: string | null
+          id: string
+          source: string | null
+          start_at: string
+          status: string
+          tags: string[] | null
+          title: string
+        }
+        Insert: {
+          all_day?: boolean
+          brief_id?: string | null
+          created_at?: string
+          description?: string | null
+          end_at?: string | null
+          external_id?: string | null
+          id?: string
+          source?: string | null
+          start_at: string
+          status?: string
+          tags?: string[] | null
+          title: string
+        }
+        Update: {
+          all_day?: boolean
+          brief_id?: string | null
+          created_at?: string
+          description?: string | null
+          end_at?: string | null
+          external_id?: string | null
+          id?: string
+          source?: string | null
+          start_at?: string
+          status?: string
+          tags?: string[] | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_entries_brief_id_fkey"
+            columns: ["brief_id"]
+            isOneToOne: false
+            referencedRelation: "brief_logs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       calendar_templates: {
         Row: {
@@ -260,6 +408,53 @@ export type Database = {
         }
         Relationships: []
       }
+      community_pulse_runs: {
+        Row: {
+          brief_id: string | null
+          created_at: string
+          emotional_temperature: string | null
+          id: string
+          leaderboard_movement: Json | null
+          open_loops: Json | null
+          recurring_questions: Json | null
+          secret_worry: string | null
+          who_is_showing_up: Json | null
+          win_of_the_day: Json | null
+        }
+        Insert: {
+          brief_id?: string | null
+          created_at?: string
+          emotional_temperature?: string | null
+          id?: string
+          leaderboard_movement?: Json | null
+          open_loops?: Json | null
+          recurring_questions?: Json | null
+          secret_worry?: string | null
+          who_is_showing_up?: Json | null
+          win_of_the_day?: Json | null
+        }
+        Update: {
+          brief_id?: string | null
+          created_at?: string
+          emotional_temperature?: string | null
+          id?: string
+          leaderboard_movement?: Json | null
+          open_loops?: Json | null
+          recurring_questions?: Json | null
+          secret_worry?: string | null
+          who_is_showing_up?: Json | null
+          win_of_the_day?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_pulse_runs_brief_id_fkey"
+            columns: ["brief_id"]
+            isOneToOne: false
+            referencedRelation: "brief_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       content_campaigns: {
         Row: {
           bread_name: string | null
@@ -295,6 +490,56 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      content_ideas: {
+        Row: {
+          brief_id: string | null
+          category: string
+          created_at: string
+          description: string | null
+          external_id: string | null
+          id: string
+          related_members: string[] | null
+          related_threads: string[] | null
+          status: string
+          suggested_format: string | null
+          title: string
+        }
+        Insert: {
+          brief_id?: string | null
+          category: string
+          created_at?: string
+          description?: string | null
+          external_id?: string | null
+          id?: string
+          related_members?: string[] | null
+          related_threads?: string[] | null
+          status?: string
+          suggested_format?: string | null
+          title: string
+        }
+        Update: {
+          brief_id?: string | null
+          category?: string
+          created_at?: string
+          description?: string | null
+          external_id?: string | null
+          id?: string
+          related_members?: string[] | null
+          related_threads?: string[] | null
+          status?: string
+          suggested_format?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_ideas_brief_id_fkey"
+            columns: ["brief_id"]
+            isOneToOne: false
+            referencedRelation: "brief_logs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       course_modules: {
         Row: {
@@ -378,6 +623,68 @@ export type Database = {
           use_count?: number | null
         }
         Relationships: []
+      }
+      draft_replies: {
+        Row: {
+          action_type: string
+          brief_id: string | null
+          created_at: string
+          draft_text: string
+          external_id: string | null
+          how_to_find: string | null
+          id: string
+          member_message: string | null
+          member_name: string | null
+          needs_review_flags: string[] | null
+          post_context: string | null
+          posted_ago: string | null
+          posted_at: string | null
+          priority: string
+          status: string
+        }
+        Insert: {
+          action_type: string
+          brief_id?: string | null
+          created_at?: string
+          draft_text: string
+          external_id?: string | null
+          how_to_find?: string | null
+          id?: string
+          member_message?: string | null
+          member_name?: string | null
+          needs_review_flags?: string[] | null
+          post_context?: string | null
+          posted_ago?: string | null
+          posted_at?: string | null
+          priority?: string
+          status?: string
+        }
+        Update: {
+          action_type?: string
+          brief_id?: string | null
+          created_at?: string
+          draft_text?: string
+          external_id?: string | null
+          how_to_find?: string | null
+          id?: string
+          member_message?: string | null
+          member_name?: string | null
+          needs_review_flags?: string[] | null
+          post_context?: string | null
+          posted_ago?: string | null
+          posted_at?: string | null
+          priority?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "draft_replies_brief_id_fkey"
+            columns: ["brief_id"]
+            isOneToOne: false
+            referencedRelation: "brief_logs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       email_campaigns: {
         Row: {
@@ -668,6 +975,56 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      morning_posts: {
+        Row: {
+          brief_id: string | null
+          call_to_action: string | null
+          created_at: string
+          draft_text: string
+          external_id: string | null
+          id: string
+          is_alternate: boolean
+          posted_at: string | null
+          slot: string
+          status: string
+          title: string
+        }
+        Insert: {
+          brief_id?: string | null
+          call_to_action?: string | null
+          created_at?: string
+          draft_text: string
+          external_id?: string | null
+          id?: string
+          is_alternate?: boolean
+          posted_at?: string | null
+          slot: string
+          status?: string
+          title: string
+        }
+        Update: {
+          brief_id?: string | null
+          call_to_action?: string | null
+          created_at?: string
+          draft_text?: string
+          external_id?: string | null
+          id?: string
+          is_alternate?: boolean
+          posted_at?: string | null
+          slot?: string
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "morning_posts_brief_id_fkey"
+            columns: ["brief_id"]
+            isOneToOne: false
+            referencedRelation: "brief_logs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       outreach_messages: {
         Row: {
