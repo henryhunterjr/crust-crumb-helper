@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.evaluate-rules]
 verify_jwt = false
+
+[functions.ingest-brief]
+verify_jwt = false
