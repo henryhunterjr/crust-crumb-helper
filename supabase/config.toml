@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.ingest-brief]
 verify_jwt = false
+
+[functions.get-brief]
+verify_jwt = false
