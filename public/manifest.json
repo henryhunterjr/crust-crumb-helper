@@ -1,0 +1,21 @@
+{
+  "name": "Crust & Crumb Academy",
+  "short_name": "C&C Academy",
+  "description": "Community management helper for Crust & Crumb Academy",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#c2652a",
+  "background_color": "#faf8f5",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
