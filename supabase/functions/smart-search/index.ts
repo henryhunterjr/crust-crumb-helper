@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-import { corsHeaders, handleCors } from '../_shared/cors.ts';
+import { getCorsHeaders, handleCors } from '../_shared/cors.ts';
 import { loadAISettings, buildVoiceBlock } from '../_shared/ai-settings.ts';
 
 interface SearchResult {
@@ -35,9 +35,10 @@ function scoreMatch(query: string, text: string): number {
 }
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflight = handleCors(req);
+  if (preflight) return preflight;
+
+  const corsHeaders = getCorsHeaders(req);
 
   try {
     const { query, compose_response = false } = await req.json();
@@ -177,15 +178,11 @@ serve(async (req) => {
     // Sort by score
     results.sort((a, b) => b.score - a.score);
 
-    // Increment search_hit_count for matched quick responses
+    // Increment search_hit_count atomically for matched quick responses.
     const matchedQRIds = results.filter(r => r.source === 'quick_response').map(r => r.id);
     if (matchedQRIds.length > 0) {
-      for (const qrId of matchedQRIds) {
-        const currentCount = qrResult.data?.find((q: any) => q.id === qrId)?.search_hit_count || 0;
-        await supabase.from('quick_responses')
-          .update({ search_hit_count: currentCount + 1 })
-          .eq('id', qrId);
-      }
+      const { error: incErr } = await supabase.rpc('increment_qr_search_hits', { _ids: matchedQRIds });
+      if (incErr) console.error('increment_qr_search_hits failed:', incErr.message);
     }
 
     // Group by source

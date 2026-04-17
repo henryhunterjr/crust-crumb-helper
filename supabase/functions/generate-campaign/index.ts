@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-import { corsHeaders, handleCors } from '../_shared/cors.ts';
+import { getCorsHeaders, handleCors } from '../_shared/cors.ts';
 import { loadAISettings, buildVoiceBlock } from '../_shared/ai-settings.ts';
 
 const DAY_THEMES = [
@@ -14,9 +14,10 @@ const DAY_THEMES = [
 ];
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflight = handleCors(req);
+  if (preflight) return preflight;
+
+  const corsHeaders = getCorsHeaders(req);
 
   try {
     const { bread_name, event_date, promotion_days = 7, special_notes, related_content, campaign_id } = await req.json();

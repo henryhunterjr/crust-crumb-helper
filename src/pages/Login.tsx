@@ -9,14 +9,18 @@ import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Login() {
-  const { user, loading } = useAuth();
+  const { user, isAdmin, loading, signOut } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user) {
+    if (loading) return;
+    if (user && isAdmin) {
       navigate('/', { replace: true });
+    } else if (user && !isAdmin) {
+      toast.error('That account does not have admin access to this console.');
+      void signOut();
     }
-  }, [user, navigate]);
+  }, [loading, user, isAdmin, navigate, signOut]);
 
   const handleGoogleSignIn = async () => {
     const { error } = await lovable.auth.signInWithOAuth('google', {

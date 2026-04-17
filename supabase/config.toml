@@ -1,34 +1,42 @@
 project_id = "anponqqhjugwflakydsf"
 
+# User-invoked functions require a valid Supabase JWT. Admin gating is
+# enforced separately via RLS (user_roles + has_role). Clients invoke these
+# via supabase.functions.invoke(), which attaches the signed-in user's JWT.
+#
+# ingest-brief and get-brief are webhook endpoints for external callers
+# (Perplexity / scheduled ingestors) and enforce their own INGEST_API_KEY
+# bearer-token check, so verify_jwt stays false for them.
+
 [functions.generate-post]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-dm]
-verify_jwt = false
+verify_jwt = true
 
 [functions.verify-url]
-verify_jwt = false
+verify_jwt = true
 
 [functions.sync-classroom]
-verify_jwt = false
+verify_jwt = true
 
 [functions.smart-search]
-verify_jwt = false
+verify_jwt = true
 
 [functions.cross-reference-emails]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-email]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-campaign]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-weekly-report]
-verify_jwt = false
+verify_jwt = true
 
 [functions.evaluate-rules]
-verify_jwt = false
+verify_jwt = true
 
 [functions.ingest-brief]
 verify_jwt = false

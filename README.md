@@ -1,73 +1,75 @@
-# Welcome to your Lovable project
+# Crust & Crumb Helper
 
-## Project info
+Community management console for Crust & Crumb Academy. Member tracking, AI DM
+generation, outreach queue, smart search, analytics, templates, campaigns, and
+logging.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Stack
 
-## How can I edit this code?
+- Vite + React 18 + TypeScript
+- Supabase (Postgres, Auth, Edge Functions)
+- Tailwind CSS + shadcn-ui
+- Deployed on Vercel (`crust-crumb-helper.vercel.app`)
+- Scaffolded and iterated via Lovable
 
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+## Local development
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+npm install
+cp .env.example .env     # fill in Supabase values
+npm run dev              # http://localhost:8080
 ```
 
-**Edit a file directly in GitHub**
+## Environment variables
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Required in every environment (local `.env`, Vercel preview, Vercel production):
 
-**Use GitHub Codespaces**
+| Var | Purpose |
+|---|---|
+| `VITE_SUPABASE_URL` | Supabase project URL |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Supabase anon key (safe to expose; RLS enforces access) |
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Required as Supabase **function secrets** (set via Supabase dashboard or `supabase secrets set`):
 
-## What technologies are used for this project?
+| Var | Used by |
+|---|---|
+| `LOVABLE_API_KEY` | `generate-dm`, `generate-post`, `generate-email`, `generate-campaign`, `generate-weekly-report`, `smart-search` |
+| `FIRECRAWL_API_KEY` | `sync-classroom` |
 
-This project is built with:
+`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are auto-injected by Supabase into every function.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Access control
 
-## How can I deploy this project?
+The app is admin-only. Access is gated by four layers:
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+1. **Google sign-in** via `@lovable.dev/cloud-auth-js` (issues a Supabase session).
+2. **`user_roles` table** — only users with `role = 'admin'` pass `ProtectedRoute`.
+3. **RLS policies** — every table grants access only to admins via `has_role(auth.uid(), 'admin')`.
+4. **`verify_jwt = true`** on every edge function.
 
-## Can I connect a custom domain to my Lovable project?
+To grant admin access to a new user, have them sign in once, then run:
 
-Yes, you can!
+```sql
+INSERT INTO public.user_roles (user_id, role)
+SELECT id, 'admin' FROM auth.users WHERE email = 'person@example.com'
+ON CONFLICT (user_id, role) DO NOTHING;
+```
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## Scripts
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+| Command | What it does |
+|---|---|
+| `npm run dev` | Vite dev server with HMR |
+| `npm run build` | Production build |
+| `npm run lint` | ESLint |
+| `npm test` | Vitest run |
+| `npm run preview` | Preview the built bundle |
+
+## Deployment
+
+- **Frontend**: Pushes to `main` auto-deploy to Vercel.
+- **Database migrations**: Apply via Lovable, `supabase db push`, or the Supabase dashboard SQL editor.
+- **Edge functions**: Deploy via Lovable or `supabase functions deploy <name>`.
+
+CI runs typecheck, lint, tests, and build on every PR and push to `main`
+([.github/workflows/ci.yml](.github/workflows/ci.yml)).
