@@ -5,7 +5,10 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist"] },
+  // supabase/functions runs on Deno with different globals and type conventions;
+  // tailwind.config.ts legitimately uses require() for a plugin. Both are
+  // outside the app's tsconfig and shouldn't be linted by the browser config.
+  { ignores: ["dist", "supabase/functions/**", "tailwind.config.ts"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
