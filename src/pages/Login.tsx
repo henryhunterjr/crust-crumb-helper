@@ -8,11 +8,18 @@ import logo from '@/assets/logo.png';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+// TEMP: Auth bypass enabled for development. Set to false to restore login.
+const DEV_BYPASS_AUTH = true;
+
 export default function Login() {
   const { user, isAdmin, loading, signOut } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (DEV_BYPASS_AUTH) {
+      navigate('/', { replace: true });
+      return;
+    }
     if (loading) return;
     if (user && isAdmin) {
       navigate('/', { replace: true });
