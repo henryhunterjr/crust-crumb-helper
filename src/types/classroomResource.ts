@@ -40,6 +40,8 @@ export const RESOURCE_CATEGORIES = [
   'Guest Content',
   'Books & Audiobooks',
   'Tools & Resources',
+  'YouTube',
+  'Blog Posts',
 ] as const;
 
 export const SKILL_LEVELS = ['beginner', 'intermediate', 'advanced'] as const;
