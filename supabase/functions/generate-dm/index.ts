@@ -791,6 +791,7 @@ Write a personalized DM for this member.`;
         outreach_type,
         matched_resources: matchedResources.map(r => r.title),
         matched_recipes: matchedRecipes.map(r => r.title),
+        matched_videos: matchedVideos.map(v => v.title),
         member_tags: memberTags,
         tag_recommendations: tagMappings.map(m => ({
           keywords: m.keywords,
