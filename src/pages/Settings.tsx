@@ -2,6 +2,7 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { ClassroomResourcesSection } from '@/components/settings/ClassroomResourcesSection';
 import { RecipePantrySection } from '@/components/settings/RecipePantrySection';
+import { YouTubeInventorySection } from '@/components/settings/YouTubeInventorySection';
 import { DMTemplatesSection } from '@/components/settings/DMTemplatesSection';
 import { InterestMappingsSection } from '@/components/settings/InterestMappingsSection';
 import { OutreachRulesSection } from '@/components/settings/OutreachRulesSection';
@@ -24,6 +25,7 @@ export default function Settings() {
         <DMTemplatesSection />
         <ClassroomResourcesSection />
         <RecipePantrySection />
+        <YouTubeInventorySection />
       </main>
 
       <Footer />

@@ -1483,6 +1483,57 @@ export type Database = {
         }
         Relationships: []
       }
+      youtube_videos: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration: string | null
+          id: string
+          keywords: string[] | null
+          last_checked_at: string | null
+          published_at: string | null
+          series: string | null
+          skill_level: string | null
+          thumbnail_url: string | null
+          title: string
+          updated_at: string
+          url_verified: boolean | null
+          video_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration?: string | null
+          id?: string
+          keywords?: string[] | null
+          last_checked_at?: string | null
+          published_at?: string | null
+          series?: string | null
+          skill_level?: string | null
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string
+          url_verified?: boolean | null
+          video_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration?: string | null
+          id?: string
+          keywords?: string[] | null
+          last_checked_at?: string | null
+          published_at?: string | null
+          series?: string | null
+          skill_level?: string | null
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string
+          url_verified?: boolean | null
+          video_url?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
