@@ -449,6 +449,7 @@ function getResourceRecommendationPrompt(
   hasApplicationAnswer: boolean,
   resourcesForPrompt: string,
   recipesForPrompt: string,
+  videosForPrompt: string,
   starterInterest: boolean,
   recipeInterest: boolean,
   tagRecommendations: string,
@@ -484,6 +485,9 @@ ${resourcesForPrompt}
 
 Available Recipes (recommend if they mention wanting to MAKE a specific bread):
 ${recipesForPrompt}
+
+Available YouTube Videos (recommend a video when watching helps more than reading):
+${videosForPrompt}
 ${tagRecommendations}
 
 Instructions:
