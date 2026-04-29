@@ -25,6 +25,17 @@ interface Recipe {
   skool_url: string | null;
 }
 
+interface YouTubeVideo {
+  id: string;
+  title: string;
+  description: string | null;
+  video_url: string | null;
+  series: string | null;
+  skill_level: string;
+  keywords: string[] | null;
+  duration: string | null;
+}
+
 interface InterestMapping {
   id: string;
   keywords: string[];
@@ -275,6 +286,54 @@ function formatRecipesForPrompt(recipes: Recipe[]): string {
   return recipes.map(r => {
     const safeUrl = getSafeUrl(r.skool_url || r.url);
     return `- "${r.title}" (${r.category}, ${r.skill_level}): ${r.description || 'No description'} | URL: ${safeUrl || '(none)'}`;
+  }).join('\n');
+}
+
+// Find matching YouTube videos
+function findMatchingVideos(
+  applicationAnswer: string | null,
+  videos: YouTubeVideo[],
+  tagMappings: InterestMapping[]
+): YouTubeVideo[] {
+  const memberKeywords = applicationAnswer ? extractKeywords(applicationAnswer) : [];
+  const mappingKeywords = tagMappings.flatMap(m => m.keywords.map(k => k.toLowerCase()));
+
+  const scored = videos.map(video => {
+    let score = 0;
+    if (video.keywords) {
+      for (const kw of video.keywords) {
+        const lk = kw.toLowerCase();
+        if (memberKeywords.includes(lk)) score += 3;
+        if (mappingKeywords.includes(lk)) score += 4;
+        for (const mk of memberKeywords) {
+          if (lk.includes(mk) || mk.includes(lk)) score += 1;
+        }
+      }
+    }
+    const titleWords = extractKeywords(video.title);
+    const descWords = video.description ? extractKeywords(video.description) : [];
+    for (const mk of memberKeywords) {
+      if (titleWords.includes(mk)) score += 2;
+      if (descWords.includes(mk)) score += 1;
+    }
+    if (video.skill_level === 'beginner') score += 0.5;
+    return { video, score };
+  });
+
+  const matches = scored.filter(s => s.score > 0).sort((a, b) => b.score - a.score).slice(0, 3).map(s => s.video);
+  if (matches.length === 0) {
+    return videos.filter(v => v.skill_level === 'beginner').slice(0, 2);
+  }
+  return matches;
+}
+
+// Format YouTube videos for the prompt
+function formatVideosForPrompt(videos: YouTubeVideo[]): string {
+  if (videos.length === 0) return 'No specific YouTube videos available.';
+  return videos.map(v => {
+    const safeUrl = getSafeUrl(v.video_url);
+    const meta = [v.series, v.skill_level, v.duration].filter(Boolean).join(', ');
+    return `- "${v.title}" (${meta}): ${v.description || 'No description'} | URL: ${safeUrl || '(none)'}`;
   }).join('\n');
 }
 
