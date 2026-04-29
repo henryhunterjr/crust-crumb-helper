@@ -636,7 +636,8 @@ serve(async (req) => {
       if (needsResources) {
         queries.push(
           Promise.resolve(supabase.from('classroom_resources').select('*')),
-          Promise.resolve(supabase.from('recipes').select('*'))
+          Promise.resolve(supabase.from('recipes').select('*')),
+          Promise.resolve(supabase.from('youtube_videos').select('*'))
         );
       }
       
@@ -659,6 +660,7 @@ serve(async (req) => {
       if (needsResources) {
         const resourcesResult = results[2];
         const recipesResult = results[3];
+        const videosResult = results[4];
         
         if (resourcesResult?.data && resourcesResult.data.length > 0) {
           matchedResources = findMatchingResources(member.application_answer, resourcesResult.data, tagMappings);
@@ -666,6 +668,10 @@ serve(async (req) => {
         
         if (recipesResult?.data && recipesResult.data.length > 0) {
           matchedRecipes = findMatchingRecipes(member.application_answer, recipesResult.data, tagMappings);
+        }
+
+        if (videosResult?.data && videosResult.data.length > 0) {
+          matchedVideos = findMatchingVideos(member.application_answer, videosResult.data, tagMappings);
         }
       }
     }
