@@ -382,6 +382,7 @@ function getWelcomeMessagePrompt(
   hasApplicationAnswer: boolean,
   resourcesForPrompt: string,
   recipesForPrompt: string,
+  videosForPrompt: string,
   starterInterest: boolean,
   recipeInterest: boolean,
   tagRecommendations: string,
@@ -422,6 +423,9 @@ ${resourcesForPrompt}
 
 Available Recipes (recommend easy starter recipes):
 ${recipesForPrompt}
+
+Available YouTube Videos (recommend a video if it directly matches what they want to learn or make):
+${videosForPrompt}
 ${tagRecommendations}
 
 Instructions:
