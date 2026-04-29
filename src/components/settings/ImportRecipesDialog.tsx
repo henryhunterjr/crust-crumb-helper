@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RecipeInsert, RECIPE_CATEGORIES } from '@/types/recipe';
 import { toast } from 'sonner';
+import { Download } from 'lucide-react';
 
 interface ImportRecipesDialogProps {
   open: boolean;
@@ -22,6 +23,27 @@ export function ImportRecipesDialog({
 }: ImportRecipesDialogProps) {
   const [csvData, setCsvData] = useState('');
   const [parsedRecipes, setParsedRecipes] = useState<RecipeInsert[]>([]);
+
+  const downloadTemplate = () => {
+    const header = 'title,description,category,skill_level,keywords,url';
+    const examples = [
+      'Classic Country Sourdough,Everyday open-crumb loaf with 75% hydration,Artisan Loaves,intermediate,country loaf;open crumb;75 hydration;everyday,https://example.com/country-loaf',
+      'Soft Sourdough Sandwich Bread,Tender sandwich loaf using a stiff levain,Sandwich Breads,beginner,sandwich;soft;tender;lunchbox,https://example.com/sandwich',
+      'Discard Cheddar Crackers,Crispy snack crackers from sourdough discard,Discard Recipes,beginner,discard;crackers;snack;cheddar,https://example.com/cheddar-crackers',
+      'Whole Wheat Boule,Hearty 100% whole wheat boule,Whole Grain,advanced,whole wheat;100 percent;boule;hearty,https://example.com/ww-boule',
+    ];
+    const csv = [header, ...examples].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'recipe-pantry-template.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('Template downloaded');
+  };
 
   const parseCSV = (text: string): RecipeInsert[] => {
     const lines = text.trim().split('\n');
@@ -116,8 +138,19 @@ export function ImportRecipesDialog({
         </DialogHeader>
         
         <div className="space-y-4">
+          <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/30">
+            <div className="text-sm">
+              <p className="font-medium">Step 1: Download the template</p>
+              <p className="text-xs text-muted-foreground">CSV with the right columns and example recipes</p>
+            </div>
+            <Button type="button" variant="outline" size="sm" onClick={downloadTemplate}>
+              <Download className="h-4 w-4 mr-2" />
+              Template
+            </Button>
+          </div>
+
           <div className="space-y-2">
-            <Label>Upload CSV File</Label>
+            <Label>Step 2: Upload your filled-out CSV</Label>
             <Input
               type="file"
               accept=".csv"
