@@ -614,6 +614,7 @@ serve(async (req) => {
     let systemPrompt: string;
     let matchedResources: ClassroomResource[] = [];
     let matchedRecipes: Recipe[] = [];
+    let matchedVideos: YouTubeVideo[] = [];
     let memberTags: string[] = [];
     let tagMappings: InterestMapping[] = [];
     let tagRecommendations = '';
@@ -678,6 +679,7 @@ serve(async (req) => {
 
     const resourcesForPrompt = formatResourcesForPrompt(matchedResources);
     const recipesForPrompt = formatRecipesForPrompt(matchedRecipes);
+    const videosForPrompt = formatVideosForPrompt(matchedVideos);
 
     // Detect interest type for link recommendations
     const { starterInterest, recipeInterest } = detectInterestType(member.application_answer);
@@ -685,7 +687,7 @@ serve(async (req) => {
     // Select the appropriate prompt based on outreach type
     switch (outreach_type) {
       case 'welcome_message':
-        systemPrompt = getWelcomeMessagePrompt(hasApplicationAnswer, resourcesForPrompt, recipesForPrompt, starterInterest, recipeInterest, tagRecommendations, memberTags, aiSettings);
+        systemPrompt = getWelcomeMessagePrompt(hasApplicationAnswer, resourcesForPrompt, recipesForPrompt, videosForPrompt, starterInterest, recipeInterest, tagRecommendations, memberTags, aiSettings);
         break;
       case 'feedback_request':
         systemPrompt = getFeedbackRequestPrompt(hasApplicationAnswer, memberTags, aiSettings);
@@ -701,7 +703,7 @@ serve(async (req) => {
         break;
       case 'resource_recommendation':
       default:
-        systemPrompt = getResourceRecommendationPrompt(hasApplicationAnswer, resourcesForPrompt, recipesForPrompt, starterInterest, recipeInterest, tagRecommendations, memberTags, aiSettings);
+        systemPrompt = getResourceRecommendationPrompt(hasApplicationAnswer, resourcesForPrompt, recipesForPrompt, videosForPrompt, starterInterest, recipeInterest, tagRecommendations, memberTags, aiSettings);
         break;
     }
 
