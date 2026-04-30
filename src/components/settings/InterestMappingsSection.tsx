@@ -285,6 +285,7 @@ function InterestMappingFormDialog({
   const [recipe, setRecipe] = useState('');
   const [quickWin, setQuickWin] = useState('');
   const [bookLink, setBookLink] = useState('');
+  const [isHidden, setIsHidden] = useState(false);
 
   // Reset form when dialog opens
   const handleOpenChange = (o: boolean) => {
@@ -294,12 +295,14 @@ function InterestMappingFormDialog({
       setRecipe(mapping.recommended_recipe || '');
       setQuickWin(mapping.quick_win || '');
       setBookLink(mapping.book_link || '');
+      setIsHidden(mapping.is_hidden ?? false);
     } else if (o) {
       setKeywords('');
       setCourse('');
       setRecipe('');
       setQuickWin('');
       setBookLink('');
+      setIsHidden(false);
     }
     onOpenChange(o);
   };
@@ -312,6 +315,7 @@ function InterestMappingFormDialog({
       recommended_recipe: recipe || null,
       quick_win: quickWin || null,
       book_link: bookLink || null,
+      is_hidden: isHidden,
     });
   };
 
