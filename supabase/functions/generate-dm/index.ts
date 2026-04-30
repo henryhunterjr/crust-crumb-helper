@@ -691,6 +691,7 @@ serve(async (req) => {
     let matchedResources: ClassroomResource[] = [];
     let matchedRecipes: Recipe[] = [];
     let matchedVideos: YouTubeVideo[] = [];
+    let matchedBlogPosts: BlogPost[] = [];
     let memberTags: string[] = [];
     let tagMappings: InterestMapping[] = [];
     let tagRecommendations = '';
@@ -714,7 +715,8 @@ serve(async (req) => {
         queries.push(
           Promise.resolve(supabase.from('classroom_resources').select('*')),
           Promise.resolve(supabase.from('recipes').select('*')),
-          Promise.resolve(supabase.from('youtube_videos').select('*'))
+          Promise.resolve(supabase.from('youtube_videos').select('*')),
+          Promise.resolve(supabase.from('blog_posts').select('*'))
         );
       }
       
@@ -738,6 +740,7 @@ serve(async (req) => {
         const resourcesResult = results[2];
         const recipesResult = results[3];
         const videosResult = results[4];
+        const blogPostsResult = results[5];
         
         if (resourcesResult?.data && resourcesResult.data.length > 0) {
           matchedResources = findMatchingResources(member.application_answer, resourcesResult.data, tagMappings);
@@ -750,12 +753,17 @@ serve(async (req) => {
         if (videosResult?.data && videosResult.data.length > 0) {
           matchedVideos = findMatchingVideos(member.application_answer, videosResult.data, tagMappings);
         }
+
+        if (blogPostsResult?.data && blogPostsResult.data.length > 0) {
+          matchedBlogPosts = findMatchingBlogPosts(member.application_answer, blogPostsResult.data, tagMappings);
+        }
       }
     }
 
     const resourcesForPrompt = formatResourcesForPrompt(matchedResources);
     const recipesForPrompt = formatRecipesForPrompt(matchedRecipes);
     const videosForPrompt = formatVideosForPrompt(matchedVideos);
+    const blogPostsForPrompt = formatBlogPostsForPrompt(matchedBlogPosts);
 
     // Detect interest type for link recommendations
     const { starterInterest, recipeInterest } = detectInterestType(member.application_answer);
@@ -763,7 +771,7 @@ serve(async (req) => {
     // Select the appropriate prompt based on outreach type
     switch (outreach_type) {
       case 'welcome_message':
-        systemPrompt = getWelcomeMessagePrompt(hasApplicationAnswer, resourcesForPrompt, recipesForPrompt, videosForPrompt, starterInterest, recipeInterest, tagRecommendations, memberTags, aiSettings);
+        systemPrompt = getWelcomeMessagePrompt(hasApplicationAnswer, resourcesForPrompt, recipesForPrompt, videosForPrompt, blogPostsForPrompt, starterInterest, recipeInterest, tagRecommendations, memberTags, aiSettings);
         break;
       case 'feedback_request':
         systemPrompt = getFeedbackRequestPrompt(hasApplicationAnswer, memberTags, aiSettings);
@@ -779,7 +787,7 @@ serve(async (req) => {
         break;
       case 'resource_recommendation':
       default:
-        systemPrompt = getResourceRecommendationPrompt(hasApplicationAnswer, resourcesForPrompt, recipesForPrompt, videosForPrompt, starterInterest, recipeInterest, tagRecommendations, memberTags, aiSettings);
+        systemPrompt = getResourceRecommendationPrompt(hasApplicationAnswer, resourcesForPrompt, recipesForPrompt, videosForPrompt, blogPostsForPrompt, starterInterest, recipeInterest, tagRecommendations, memberTags, aiSettings);
         break;
     }
 
@@ -860,6 +868,7 @@ Write a personalized DM for this member.`;
         matched_resources: matchedResources.map(r => r.title),
         matched_recipes: matchedRecipes.map(r => r.title),
         matched_videos: matchedVideos.map(v => v.title),
+        matched_blog_posts: matchedBlogPosts.map(p => p.title),
         member_tags: memberTags,
         tag_recommendations: tagMappings.map(m => ({
           keywords: m.keywords,
