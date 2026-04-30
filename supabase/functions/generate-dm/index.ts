@@ -36,6 +36,18 @@ interface YouTubeVideo {
   duration: string | null;
 }
 
+interface BlogPost {
+  id: string;
+  title: string;
+  description: string | null;
+  post_url: string | null;
+  category: string | null;
+  skill_level: string;
+  keywords: string[] | null;
+  author: string | null;
+  reading_time: string | null;
+}
+
 interface InterestMapping {
   id: string;
   keywords: string[];
