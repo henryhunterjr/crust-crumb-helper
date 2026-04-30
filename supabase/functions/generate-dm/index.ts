@@ -443,6 +443,7 @@ function getWelcomeMessagePrompt(
   resourcesForPrompt: string,
   recipesForPrompt: string,
   videosForPrompt: string,
+  blogPostsForPrompt: string,
   starterInterest: boolean,
   recipeInterest: boolean,
   tagRecommendations: string,
@@ -486,6 +487,9 @@ ${recipesForPrompt}
 
 Available YouTube Videos (recommend a video if it directly matches what they want to learn or make):
 ${videosForPrompt}
+
+Available Blog Posts (recommend an article if reading would help more than a course or video):
+${blogPostsForPrompt}
 ${tagRecommendations}
 
 Instructions:
