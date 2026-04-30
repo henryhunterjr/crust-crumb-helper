@@ -813,8 +813,24 @@ serve(async (req) => {
       // Process interest mappings
       const mappingsResult = results[1];
       if (mappingsResult.data) {
-        // Find mappings that match member's interest tags
-        tagMappings = findMappingsForTags(memberTags, mappingsResult.data);
+        // Tag-based mappings (existing behavior)
+        const fromTags = findMappingsForTags(memberTags, mappingsResult.data);
+
+        // Hybrid cluster match from join answer (skill override → keywords → tiebreaker → fallback)
+        const { primary, secondary } = findPrimaryAndSecondaryClusters(
+          member.application_answer,
+          mappingsResult.data
+        );
+
+        // Combine, dedupe, drop hidden, primary first
+        const combined: InterestMapping[] = [];
+        const seen = new Set<string>();
+        for (const m of [primary, secondary, ...fromTags]) {
+          if (!m || m.is_hidden || seen.has(m.id)) continue;
+          seen.add(m.id);
+          combined.push(m);
+        }
+        tagMappings = combined;
         tagRecommendations = formatTagRecommendations(tagMappings);
       }
       
