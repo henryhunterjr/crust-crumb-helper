@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Plus, Trash2, Pencil, ExternalLink, Link2 } from 'lucide-react';
+import { Plus, Trash2, Pencil, ExternalLink, Link2, Eye, EyeOff } from 'lucide-react';
 import { useInterestMappings, InterestMapping } from '@/hooks/useMemberTags';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -143,12 +144,13 @@ export function InterestMappingsSection() {
                     <TableHead>Recommended Course</TableHead>
                     <TableHead>Recipe</TableHead>
                     <TableHead>Quick Win</TableHead>
+                    <TableHead className="w-[90px]">Live</TableHead>
                     <TableHead className="w-[80px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {mappings.map((mapping) => (
-                    <TableRow key={mapping.id}>
+                    <TableRow key={mapping.id} className={mapping.is_hidden ? 'opacity-60' : ''}>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
                           {mapping.keywords.map((kw) => (
@@ -189,6 +191,26 @@ export function InterestMappingsSection() {
                               <ExternalLink className="h-3 w-3" />
                               Book link
                             </a>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={!mapping.is_hidden}
+                            onCheckedChange={async (checked) => {
+                              try {
+                                await updateMapping.mutateAsync({ id: mapping.id, is_hidden: !checked });
+                                toast.success(checked ? 'Mapping is now live' : 'Mapping hidden from matching');
+                              } catch {
+                                toast.error('Failed to update');
+                              }
+                            }}
+                          />
+                          {mapping.is_hidden ? (
+                            <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
+                          ) : (
+                            <Eye className="h-3.5 w-3.5 text-emerald-600" />
                           )}
                         </div>
                       </TableCell>
