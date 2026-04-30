@@ -514,6 +514,7 @@ function getResourceRecommendationPrompt(
   resourcesForPrompt: string,
   recipesForPrompt: string,
   videosForPrompt: string,
+  blogPostsForPrompt: string,
   starterInterest: boolean,
   recipeInterest: boolean,
   tagRecommendations: string,
@@ -552,6 +553,9 @@ ${recipesForPrompt}
 
 Available YouTube Videos (recommend a video when watching helps more than reading):
 ${videosForPrompt}
+
+Available Blog Posts (recommend an article for deeper reading or context):
+${blogPostsForPrompt}
 ${tagRecommendations}
 
 Instructions:
