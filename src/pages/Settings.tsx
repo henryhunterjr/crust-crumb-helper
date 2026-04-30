@@ -3,6 +3,7 @@ import { Footer } from '@/components/Footer';
 import { ClassroomResourcesSection } from '@/components/settings/ClassroomResourcesSection';
 import { RecipePantrySection } from '@/components/settings/RecipePantrySection';
 import { YouTubeInventorySection } from '@/components/settings/YouTubeInventorySection';
+import { BlogPostsSection } from '@/components/settings/BlogPostsSection';
 import { DMTemplatesSection } from '@/components/settings/DMTemplatesSection';
 import { InterestMappingsSection } from '@/components/settings/InterestMappingsSection';
 import { OutreachRulesSection } from '@/components/settings/OutreachRulesSection';
@@ -26,6 +27,7 @@ export default function Settings() {
         <ClassroomResourcesSection />
         <RecipePantrySection />
         <YouTubeInventorySection />
+        <BlogPostsSection />
       </main>
 
       <Footer />

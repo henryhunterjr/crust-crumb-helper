@@ -132,6 +132,57 @@ export type Database = {
         }
         Relationships: []
       }
+      blog_posts: {
+        Row: {
+          author: string | null
+          category: string | null
+          created_at: string
+          description: string | null
+          id: string
+          keywords: string[] | null
+          last_checked_at: string | null
+          post_url: string | null
+          published_at: string | null
+          reading_time: string | null
+          skill_level: string | null
+          title: string
+          updated_at: string
+          url_verified: boolean | null
+        }
+        Insert: {
+          author?: string | null
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          keywords?: string[] | null
+          last_checked_at?: string | null
+          post_url?: string | null
+          published_at?: string | null
+          reading_time?: string | null
+          skill_level?: string | null
+          title: string
+          updated_at?: string
+          url_verified?: boolean | null
+        }
+        Update: {
+          author?: string | null
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          keywords?: string[] | null
+          last_checked_at?: string | null
+          post_url?: string | null
+          published_at?: string | null
+          reading_time?: string | null
+          skill_level?: string | null
+          title?: string
+          updated_at?: string
+          url_verified?: boolean | null
+        }
+        Relationships: []
+      }
       brief_logs: {
         Row: {
           brief_date: string
