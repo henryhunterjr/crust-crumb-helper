@@ -349,6 +349,54 @@ function formatVideosForPrompt(videos: YouTubeVideo[]): string {
   }).join('\n');
 }
 
+// Find matching Blog Posts
+function findMatchingBlogPosts(
+  applicationAnswer: string | null,
+  posts: BlogPost[],
+  tagMappings: InterestMapping[]
+): BlogPost[] {
+  const memberKeywords = applicationAnswer ? extractKeywords(applicationAnswer) : [];
+  const mappingKeywords = tagMappings.flatMap(m => m.keywords.map(k => k.toLowerCase()));
+
+  const scored = posts.map(post => {
+    let score = 0;
+    if (post.keywords) {
+      for (const kw of post.keywords) {
+        const lk = kw.toLowerCase();
+        if (memberKeywords.includes(lk)) score += 3;
+        if (mappingKeywords.includes(lk)) score += 4;
+        for (const mk of memberKeywords) {
+          if (lk.includes(mk) || mk.includes(lk)) score += 1;
+        }
+      }
+    }
+    const titleWords = extractKeywords(post.title);
+    const descWords = post.description ? extractKeywords(post.description) : [];
+    for (const mk of memberKeywords) {
+      if (titleWords.includes(mk)) score += 2;
+      if (descWords.includes(mk)) score += 1;
+    }
+    if (post.skill_level === 'beginner') score += 0.5;
+    return { post, score };
+  });
+
+  const matches = scored.filter(s => s.score > 0).sort((a, b) => b.score - a.score).slice(0, 3).map(s => s.post);
+  if (matches.length === 0) {
+    return posts.filter(p => p.skill_level === 'beginner').slice(0, 2);
+  }
+  return matches;
+}
+
+// Format Blog Posts for the prompt
+function formatBlogPostsForPrompt(posts: BlogPost[]): string {
+  if (posts.length === 0) return 'No specific blog posts available.';
+  return posts.map(p => {
+    const safeUrl = getSafeUrl(p.post_url);
+    const meta = [p.category, p.skill_level, p.reading_time].filter(Boolean).join(', ');
+    return `- "${p.title}" (${meta}): ${p.description || 'No description'} | URL: ${safeUrl || '(none)'}`;
+  }).join('\n');
+}
+
 // Format tag-based recommendations for the prompt
 function formatTagRecommendations(tagMappings: InterestMapping[]): string {
   if (tagMappings.length === 0) return '';
