@@ -901,6 +901,7 @@ export type Database = {
           book_link: string | null
           created_at: string
           id: string
+          is_hidden: boolean
           keywords: string[]
           quick_win: string | null
           recommended_course: string | null
@@ -911,6 +912,7 @@ export type Database = {
           book_link?: string | null
           created_at?: string
           id?: string
+          is_hidden?: boolean
           keywords?: string[]
           quick_win?: string | null
           recommended_course?: string | null
@@ -921,6 +923,7 @@ export type Database = {
           book_link?: string | null
           created_at?: string
           id?: string
+          is_hidden?: boolean
           keywords?: string[]
           quick_win?: string | null
           recommended_course?: string | null

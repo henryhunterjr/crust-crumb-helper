@@ -55,6 +55,7 @@ interface InterestMapping {
   recommended_recipe: string | null;
   quick_win: string | null;
   book_link: string | null;
+  is_hidden?: boolean;
 }
 
 interface MemberTag {
@@ -114,12 +115,13 @@ const tagToKeywordMap: Record<string, string[]> = {
 // Find interest mappings that match member tags
 function findMappingsForTags(tags: string[], mappings: InterestMapping[]): InterestMapping[] {
   const matched: InterestMapping[] = [];
-  
+  const visible = mappings.filter(m => !m.is_hidden);
+
   for (const tag of tags) {
     const searchKeywords = tagToKeywordMap[tag];
     if (!searchKeywords) continue;
-    
-    for (const mapping of mappings) {
+
+    for (const mapping of visible) {
       if (matched.includes(mapping)) continue;
       
       const hasOverlap = mapping.keywords.some(mk => 
@@ -135,6 +137,86 @@ function findMappingsForTags(tags: string[], mappings: InterestMapping[]): Inter
   }
   
   return matched;
+}
+
+// Beginner signal phrases — if any are present in the join answer, the
+// "Beginner / First Loaf" cluster is forced as the primary match.
+const BEGINNER_SIGNAL_PHRASES = [
+  'new to', 'first', 'just starting', 'never made', 'never baked',
+  'learning', 'overwhelmed', 'where do i begin', 'where to start',
+  'complete beginner', 'total beginner',
+];
+
+function hasBeginnerSignal(text: string | null): boolean {
+  if (!text) return false;
+  const lower = text.toLowerCase();
+  return BEGINNER_SIGNAL_PHRASES.some(p => lower.includes(p));
+}
+
+function findBeginnerCluster(mappings: InterestMapping[]): InterestMapping | null {
+  const visible = mappings.filter(m => !m.is_hidden);
+  return (
+    visible.find(m =>
+      (m.recommended_course || '').toLowerCase().includes('beginner') ||
+      (m.recommended_course || '').toLowerCase().includes('first loaf') ||
+      m.keywords.some(k => /beginner|first loaf/i.test(k))
+    ) || null
+  );
+}
+
+// Hybrid cluster matcher: skill-override → keyword score → tiebreaker → fallback.
+// Returns up to two clusters: a primary, plus an optional secondary when a
+// second cluster scores strongly on non-overlapping topic keywords.
+function findPrimaryAndSecondaryClusters(
+  applicationAnswer: string | null,
+  mappings: InterestMapping[]
+): { primary: InterestMapping | null; secondary: InterestMapping | null } {
+  const visible = mappings.filter(m => !m.is_hidden);
+  const beginner = findBeginnerCluster(visible);
+  const lower = (applicationAnswer || '').toLowerCase();
+
+  // 1. SKILL OVERRIDE
+  const beginnerForced = hasBeginnerSignal(applicationAnswer);
+
+  // 2. KEYWORD MATCH — score each cluster by matched keyword count
+  const scored = visible.map(m => {
+    const matched = m.keywords.filter(k => k && lower.includes(k.toLowerCase()));
+    return { mapping: m, score: matched.length, matched };
+  });
+  const ranked = scored
+    .filter(s => s.score > 0)
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      // 3. TIEBREAKER — populated quick_win wins
+      const aWin = a.mapping.quick_win ? 1 : 0;
+      const bWin = b.mapping.quick_win ? 1 : 0;
+      return bWin - aWin;
+    });
+
+  let primary: InterestMapping | null = null;
+  let secondary: InterestMapping | null = null;
+
+  if (beginnerForced && beginner) {
+    primary = beginner;
+    // Secondary: highest-scoring non-beginner topic cluster (if any)
+    const topNonBeginner = ranked.find(r => r.mapping.id !== beginner.id);
+    if (topNonBeginner && topNonBeginner.score > 0) {
+      secondary = topNonBeginner.mapping;
+    }
+  } else if (ranked.length > 0) {
+    primary = ranked[0].mapping;
+    // Secondary: next cluster if its matched keywords don't overlap primary's
+    if (ranked.length > 1) {
+      const primaryKws = new Set(ranked[0].matched.map(k => k.toLowerCase()));
+      const next = ranked.find((r, i) => i > 0 && r.matched.every(k => !primaryKws.has(k.toLowerCase())));
+      if (next) secondary = next.mapping;
+    }
+  } else {
+    // 4. FALLBACK — Beginner / First Loaf
+    primary = beginner;
+  }
+
+  return { primary, secondary };
 }
 
 // Find matching resources based on member tags + interest mappings + application answer
@@ -731,8 +813,24 @@ serve(async (req) => {
       // Process interest mappings
       const mappingsResult = results[1];
       if (mappingsResult.data) {
-        // Find mappings that match member's interest tags
-        tagMappings = findMappingsForTags(memberTags, mappingsResult.data);
+        // Tag-based mappings (existing behavior)
+        const fromTags = findMappingsForTags(memberTags, mappingsResult.data);
+
+        // Hybrid cluster match from join answer (skill override → keywords → tiebreaker → fallback)
+        const { primary, secondary } = findPrimaryAndSecondaryClusters(
+          member.application_answer,
+          mappingsResult.data
+        );
+
+        // Combine, dedupe, drop hidden, primary first
+        const combined: InterestMapping[] = [];
+        const seen = new Set<string>();
+        for (const m of [primary, secondary, ...fromTags]) {
+          if (!m || m.is_hidden || seen.has(m.id)) continue;
+          seen.add(m.id);
+          combined.push(m);
+        }
+        tagMappings = combined;
         tagRecommendations = formatTagRecommendations(tagMappings);
       }
       

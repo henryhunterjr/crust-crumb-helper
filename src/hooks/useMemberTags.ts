@@ -16,6 +16,7 @@ export interface InterestMapping {
   recommended_recipe: string | null;
   quick_win: string | null;
   book_link: string | null;
+  is_hidden: boolean;
   created_at: string;
   updated_at: string;
 }
