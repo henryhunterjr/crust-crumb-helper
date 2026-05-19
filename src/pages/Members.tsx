@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useDebounce } from '@/hooks/useDebounce';
-import { Upload, Search, ArrowUpDown, UserPlus, RefreshCw, ChevronLeft, ChevronRight, Tags, AtSign } from 'lucide-react';
+import { Upload, Search, ArrowUpDown, UserPlus, RefreshCw, ChevronLeft, ChevronRight, Tags, AtSign, Puzzle } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -26,6 +26,7 @@ import { BulkDMQueueDialog } from '@/components/members/BulkDMQueueDialog';
 import { AddMemberDialog } from '@/components/members/AddMemberDialog';
 import { NewMemberDigest } from '@/components/members/NewMemberDigest';
 import { NewMemberWelcomeExportDialog } from '@/components/members/NewMemberWelcomeExportDialog';
+import { BrowserExtensionDialog } from '@/components/members/BrowserExtensionDialog';
 import { TagFilterDropdown } from '@/components/members/TagFilterDropdown';
 import { useMembers } from '@/hooks/useMembers';
 import { useMemberTags } from '@/hooks/useMemberTags';
@@ -59,6 +60,7 @@ export default function Members() {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [addMemberDialogOpen, setAddMemberDialogOpen] = useState(false);
   const [welcomeExportOpen, setWelcomeExportOpen] = useState(false);
+  const [extensionDialogOpen, setExtensionDialogOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<MemberFilter>('all');
   const [sortField, setSortField] = useState<MemberSortField>('join_date');
   const [searchQuery, setSearchQuery] = useState('');
@@ -496,6 +498,10 @@ export default function Members() {
               <AtSign className="h-4 w-4 mr-2" />
               Welcome Post Tags
             </Button>
+            <Button variant="outline" onClick={() => setExtensionDialogOpen(true)}>
+              <Puzzle className="h-4 w-4 mr-2" />
+              Browser Extension
+            </Button>
             <Button onClick={() => setImportDialogOpen(true)}>
               <Upload className="h-4 w-4 mr-2" />
               Import Members
@@ -708,6 +714,11 @@ export default function Members() {
           open={welcomeExportOpen}
           onOpenChange={setWelcomeExportOpen}
           members={members}
+        />
+
+        <BrowserExtensionDialog
+          open={extensionDialogOpen}
+          onOpenChange={setExtensionDialogOpen}
         />
       </main>
 

@@ -1,0 +1,43 @@
+#krusty-paste-btn {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 2147483647;
+  display: flex;
+  gap: 8px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+#krusty-paste-btn button {
+  background: #e8852a;
+  color: white;
+  border: none;
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+  cursor: pointer;
+  transition: transform .1s, background .15s;
+}
+#krusty-paste-btn button:hover { background: #c66f1c; }
+#krusty-paste-btn button:active { transform: translateY(1px); }
+#krusty-paste-btn button[data-krusty="paste"] { background: #555; }
+#krusty-paste-btn button[data-krusty="paste"]:hover { background: #333; }
+
+#krusty-flash {
+  position: fixed;
+  right: 16px;
+  bottom: 70px;
+  z-index: 2147483647;
+  background: rgba(0,0,0,0.85);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  opacity: 0;
+  transform: translateY(6px);
+  pointer-events: none;
+  transition: opacity .15s, transform .15s;
+}
+#krusty-flash.show { opacity: 1; transform: translateY(0); }
