@@ -9,7 +9,9 @@ const SKOOL_COMMUNITY_SLUG = 'crust-crumb-academy-7621';
 /** Opens the member's Skool profile in a new tab. */
 export function getSkoolProfileUrl(username: string | null | undefined): string | null {
   if (!username) return null;
-  return `https://www.skool.com/u/${username}`;
+  // Skool profile URLs are skool.com/@username (the /u/ path returns 404).
+  const handle = username.replace(/^@/, '');
+  return `https://www.skool.com/@${handle}`;
 }
 
 /** Opens the Skool chat page in a new tab. */
