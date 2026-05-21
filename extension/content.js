@@ -1,6 +1,7 @@
-// Krusty Skool Helper — content script v1.1
-// Robust paste+send for Skool's React-controlled composer.
-// Logs every step under the [Krusty] prefix so failures are screenshot-able.
+// Krusty Skool Helper — content script v1.2
+// Skool's DM composer is a <textarea> with NO Send button.
+// Submit happens by pressing Enter inside the textarea.
+// All steps logged under [Krusty] for screenshot-able debugging.
 
 (function () {
   const TAG = '[Krusty]';
@@ -20,20 +21,40 @@
     return r.width > 80 && r.height > 20 && r.bottom > 0 && r.top < innerHeight;
   }
   function findComposer() {
+    // 1. Skool DM composer is a textarea with placeholder "Message <Name>".
+    const skoolDM = document.querySelector('textarea[placeholder^="Message "]');
+    if (skoolDM && visible(skoolDM)) return skoolDM;
+    // 2. Currently focused editable.
     const active = document.activeElement;
     if (isEditable(active) && visible(active)) return active;
+    // 3. Last focused editable.
     if (STATE.lastEditable && document.contains(STATE.lastEditable) && isEditable(STATE.lastEditable)) {
       return STATE.lastEditable;
     }
+    // 4. Biggest visible editable on the page.
     const cands = [
-      ...document.querySelectorAll('[contenteditable="true"]'),
       ...document.querySelectorAll('textarea'),
+      ...document.querySelectorAll('[contenteditable="true"]'),
     ].filter(visible);
     cands.sort((a, b) => {
       const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
       return rb.width * rb.height - ra.width * ra.height;
     });
     return cands[0] || null;
+  }
+
+  function waitForComposer(timeoutMs = 4000) {
+    return new Promise((resolve) => {
+      const existing = findComposer();
+      if (existing) return resolve(existing);
+      const start = Date.now();
+      const obs = new MutationObserver(() => {
+        const ta = findComposer();
+        if (ta) { obs.disconnect(); resolve(ta); }
+        else if (Date.now() - start > timeoutMs) { obs.disconnect(); resolve(null); }
+      });
+      obs.observe(document.body, { childList: true, subtree: true });
+    });
   }
 
   // React-aware text injection
@@ -66,44 +87,33 @@
     }
   }
 
-  function findSendButton(near) {
-    const scopes = [];
-    if (near) { let p = near; for (let i = 0; i < 6 && p; i++) { scopes.push(p); p = p.parentElement; } }
-    scopes.push(document.body);
-    for (const root of scopes) {
-      const btns = [...root.querySelectorAll('button, [role="button"]')];
-      const hit = btns.find((b) => {
-        const t = (b.textContent || '').trim().toLowerCase();
-        const aria = (b.getAttribute('aria-label') || '').toLowerCase();
-        const test = (b.getAttribute('data-testid') || '').toLowerCase();
-        return t === 'send' || aria === 'send' || aria.includes('send message') || test.includes('send');
-      });
-      if (hit) return hit;
-    }
-    return null;
+  // Skool's DM composer submits on Enter (Shift+Enter = newline). No Send button exists.
+  function pressEnter(el) {
+    el.focus();
+    const init = {
+      key: 'Enter', code: 'Enter', keyCode: 13, which: 13,
+      bubbles: true, cancelable: true, composed: true,
+    };
+    el.dispatchEvent(new KeyboardEvent('keydown', init));
+    el.dispatchEvent(new KeyboardEvent('keypress', init));
+    el.dispatchEvent(new KeyboardEvent('keyup', init));
   }
-  function isEnabled(btn) {
-    if (!btn) return false;
-    if (btn.disabled) return false;
-    if (btn.getAttribute('aria-disabled') === 'true') return false;
-    if (btn.hasAttribute('disabled')) return false;
-    return true;
-  }
-  function waitForEnabledSend(near, timeoutMs = 4000) {
+
+  function waitForMessageEcho(container, text, timeoutMs = 6000) {
     return new Promise((resolve) => {
-      const start = Date.now();
-      const tick = () => {
-        const btn = findSendButton(near);
-        if (btn && isEnabled(btn)) return resolve(btn);
-        if (Date.now() - start > timeoutMs) return resolve(btn || null);
-        requestAnimationFrame(tick);
+      const needle = text.trim().slice(0, 40);
+      if (!needle) return resolve(false);
+      const check = () => {
+        if ((container.innerText || '').includes(needle)) return true;
+        return false;
       };
-      tick();
-    });
-  }
-  function realClick(el) {
-    ['mousedown', 'mouseup', 'click'].forEach((type) => {
-      el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window, button: 0 }));
+      if (check()) return resolve(true);
+      const start = Date.now();
+      const obs = new MutationObserver(() => {
+        if (check()) { obs.disconnect(); resolve(true); }
+        else if (Date.now() - start > timeoutMs) { obs.disconnect(); resolve(false); }
+      });
+      obs.observe(container, { childList: true, subtree: true, characterData: true });
     });
   }
 
@@ -117,21 +127,31 @@
       if (!text) { flash('Clipboard is empty.'); return; }
       log('clipboard length', text.length);
 
-      const target = findComposer();
-      if (!target) { warn('no composer found'); flash('No message box found. Click in the composer first.'); return; }
+      const target = await waitForComposer(4000);
+      if (!target) { warn('no composer found'); flash('No message box found. Open a DM first.'); return; }
       log('composer found', target.tagName, target);
 
+      // Let React attach handlers on freshly-mounted composers.
+      await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 60)));
       injectText(target, text);
       log('text injected');
       flash(`Pasted ${text.length} chars`);
       if (!autoSend) return;
 
-      const btn = await waitForEnabledSend(target, 4000);
-      if (!btn) { warn('send button not found'); flash('Pasted. Send button not found — hit Enter.'); return; }
-      if (!isEnabled(btn)) { warn('send still disabled', btn); flash('Pasted. Send still disabled — hit Enter.'); return; }
-      log('send enabled, clicking', btn);
-      realClick(btn);
-      flash('Sent.');
+      // Wait one tick for React to commit controlled state.
+      await new Promise((r) => setTimeout(r, 80));
+      pressEnter(target);
+      log('Enter dispatched');
+
+      // Verify by watching for the message echo in the conversation pane.
+      const scroller = target.closest('[role="dialog"]') || target.parentElement?.parentElement || document.body;
+      const ok = await waitForMessageEcho(scroller, text, 5000);
+      if (ok) {
+        flash('Sent.');
+      } else {
+        warn('no echo detected — Skool may have ignored synthetic Enter');
+        flash('Pasted. Press Enter to send (Skool blocked auto-send).');
+      }
     } finally {
       STATE.sending = false;
     }
@@ -170,5 +190,5 @@
   const obs = new MutationObserver(() => mountButton());
   obs.observe(document.documentElement, { childList: true, subtree: true });
   mountButton();
-  log('content script v1.1 loaded on', location.href);
+  log('content script v1.2 loaded on', location.href);
 })();
