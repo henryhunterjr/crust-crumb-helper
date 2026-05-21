@@ -1,126 +1,154 @@
-// Krusty Skool Helper — content script
-// Injects a floating "Paste DM" button on skool.com chat & post composers.
-// One click: reads clipboard, fills the composer, focuses Send.
+// Krusty Skool Helper — content script v1.1
+// Robust paste+send for Skool's React-controlled composer.
+// Logs every step under the [Krusty] prefix so failures are screenshot-able.
 
 (function () {
+  const TAG = '[Krusty]';
   const BTN_ID = 'krusty-paste-btn';
-  const STATE = { lastTarget: null };
+  const STATE = { lastEditable: null, sending: false };
 
-  // ---- helpers --------------------------------------------------------------
-
-  function findComposer() {
-    // Prefer focused editable, then any visible contenteditable / textarea on page.
-    const active = document.activeElement;
-    if (isEditable(active)) return active;
-
-    const candidates = [
-      ...document.querySelectorAll('[contenteditable="true"]'),
-      ...document.querySelectorAll('textarea'),
-    ];
-    // Score by area (largest visible wins — Skool's composer is the big one).
-    let best = null;
-    let bestArea = 0;
-    for (const el of candidates) {
-      const rect = el.getBoundingClientRect();
-      if (rect.width < 100 || rect.height < 24) continue;
-      const area = rect.width * rect.height;
-      if (area > bestArea) {
-        best = el;
-        bestArea = area;
-      }
-    }
-    return best;
-  }
+  const log = (...a) => console.log(TAG, ...a);
+  const warn = (...a) => console.warn(TAG, ...a);
 
   function isEditable(el) {
-    if (!el) return false;
-    if (el.tagName === 'TEXTAREA') return true;
-    if (el.getAttribute && el.getAttribute('contenteditable') === 'true') return true;
-    return false;
+    if (!el || !el.tagName) return false;
+    if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') return true;
+    return el.getAttribute && el.getAttribute('contenteditable') === 'true';
+  }
+  function visible(el) {
+    const r = el.getBoundingClientRect();
+    return r.width > 80 && r.height > 20 && r.bottom > 0 && r.top < innerHeight;
+  }
+  function findComposer() {
+    const active = document.activeElement;
+    if (isEditable(active) && visible(active)) return active;
+    if (STATE.lastEditable && document.contains(STATE.lastEditable) && isEditable(STATE.lastEditable)) {
+      return STATE.lastEditable;
+    }
+    const cands = [
+      ...document.querySelectorAll('[contenteditable="true"]'),
+      ...document.querySelectorAll('textarea'),
+    ].filter(visible);
+    cands.sort((a, b) => {
+      const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+      return rb.width * rb.height - ra.width * ra.height;
+    });
+    return cands[0] || null;
   }
 
-  function setText(el, text) {
+  // React-aware text injection
+  function setNativeValue(el, value) {
+    const proto = el.tagName === 'TEXTAREA'
+      ? window.HTMLTextAreaElement.prototype
+      : window.HTMLInputElement.prototype;
+    const setter = Object.getOwnPropertyDescriptor(proto, 'value').set;
+    setter.call(el, value);
+  }
+  function injectText(el, text) {
     el.focus();
-    if (el.tagName === 'TEXTAREA') {
-      // React-friendly value setter
-      const proto = Object.getPrototypeOf(el);
-      const setter = Object.getOwnPropertyDescriptor(proto, 'value').set;
-      setter.call(el, text);
+    if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') {
+      setNativeValue(el, text);
       el.dispatchEvent(new Event('input', { bubbles: true }));
       el.dispatchEvent(new Event('change', { bubbles: true }));
       return;
     }
-    // contenteditable: clear, then insert
-    el.innerHTML = '';
-    // execCommand still works for most editors and triggers proper events
-    const ok = document.execCommand && document.execCommand('insertText', false, text);
+    const sel = window.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    sel.removeAllRanges();
+    sel.addRange(range);
+    document.execCommand('delete', false);
+    const ok = document.execCommand('insertText', false, text);
     if (!ok) {
       el.textContent = text;
-      el.dispatchEvent(new InputEvent('input', { bubbles: true, data: text, inputType: 'insertText' }));
+      el.dispatchEvent(new InputEvent('beforeinput', { bubbles: true, cancelable: true, inputType: 'insertText', data: text }));
+      el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: text }));
     }
   }
 
   function findSendButton(near) {
-    const root = (near && near.closest('form,div[role="dialog"],section,main')) || document.body;
-    const buttons = [...root.querySelectorAll('button, [role="button"]')];
-    return buttons.find((b) => {
-      const t = (b.textContent || '').trim().toLowerCase();
-      const aria = (b.getAttribute('aria-label') || '').toLowerCase();
-      return t === 'send' || aria.includes('send');
+    const scopes = [];
+    if (near) { let p = near; for (let i = 0; i < 6 && p; i++) { scopes.push(p); p = p.parentElement; } }
+    scopes.push(document.body);
+    for (const root of scopes) {
+      const btns = [...root.querySelectorAll('button, [role="button"]')];
+      const hit = btns.find((b) => {
+        const t = (b.textContent || '').trim().toLowerCase();
+        const aria = (b.getAttribute('aria-label') || '').toLowerCase();
+        const test = (b.getAttribute('data-testid') || '').toLowerCase();
+        return t === 'send' || aria === 'send' || aria.includes('send message') || test.includes('send');
+      });
+      if (hit) return hit;
+    }
+    return null;
+  }
+  function isEnabled(btn) {
+    if (!btn) return false;
+    if (btn.disabled) return false;
+    if (btn.getAttribute('aria-disabled') === 'true') return false;
+    if (btn.hasAttribute('disabled')) return false;
+    return true;
+  }
+  function waitForEnabledSend(near, timeoutMs = 4000) {
+    return new Promise((resolve) => {
+      const start = Date.now();
+      const tick = () => {
+        const btn = findSendButton(near);
+        if (btn && isEnabled(btn)) return resolve(btn);
+        if (Date.now() - start > timeoutMs) return resolve(btn || null);
+        requestAnimationFrame(tick);
+      };
+      tick();
+    });
+  }
+  function realClick(el) {
+    ['mousedown', 'mouseup', 'click'].forEach((type) => {
+      el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window, button: 0 }));
     });
   }
 
   async function pasteAndOptionallySend(autoSend) {
-    let text = '';
+    if (STATE.sending) { log('already sending'); return; }
+    STATE.sending = true;
     try {
-      text = await navigator.clipboard.readText();
-    } catch (e) {
-      flash('Allow clipboard access, then try again.');
-      return;
-    }
-    if (!text) {
-      flash('Clipboard is empty.');
-      return;
-    }
-    const target = STATE.lastTarget && document.contains(STATE.lastTarget) && isEditable(STATE.lastTarget)
-      ? STATE.lastTarget
-      : findComposer();
-    if (!target) {
-      flash('No message box found. Click in the composer first.');
-      return;
-    }
-    setText(target, text);
-    flash(`Pasted ${text.length} chars`);
-    if (autoSend) {
-      const send = findSendButton(target);
-      if (send) {
-        // small delay so React updates state before click
-        setTimeout(() => send.click(), 120);
-      } else {
-        flash('Pasted. Send button not found — hit Enter to send.');
-      }
+      let text = '';
+      try { text = await navigator.clipboard.readText(); }
+      catch (e) { warn('clipboard read failed', e); flash('Allow clipboard access, then try again.'); return; }
+      if (!text) { flash('Clipboard is empty.'); return; }
+      log('clipboard length', text.length);
+
+      const target = findComposer();
+      if (!target) { warn('no composer found'); flash('No message box found. Click in the composer first.'); return; }
+      log('composer found', target.tagName, target);
+
+      injectText(target, text);
+      log('text injected');
+      flash(`Pasted ${text.length} chars`);
+      if (!autoSend) return;
+
+      const btn = await waitForEnabledSend(target, 4000);
+      if (!btn) { warn('send button not found'); flash('Pasted. Send button not found — hit Enter.'); return; }
+      if (!isEnabled(btn)) { warn('send still disabled', btn); flash('Pasted. Send still disabled — hit Enter.'); return; }
+      log('send enabled, clicking', btn);
+      realClick(btn);
+      flash('Sent.');
+    } finally {
+      STATE.sending = false;
     }
   }
 
   function flash(msg) {
     let el = document.getElementById('krusty-flash');
-    if (!el) {
-      el = document.createElement('div');
-      el.id = 'krusty-flash';
-      document.body.appendChild(el);
-    }
+    if (!el) { el = document.createElement('div'); el.id = 'krusty-flash'; document.body.appendChild(el); }
     el.textContent = msg;
     el.classList.add('show');
     clearTimeout(flash._t);
-    flash._t = setTimeout(() => el.classList.remove('show'), 2200);
+    flash._t = setTimeout(() => el.classList.remove('show'), 2400);
   }
 
-  // Remember last focused editable so we know where to paste even if focus moves.
   document.addEventListener('focusin', (e) => {
-    if (isEditable(e.target)) STATE.lastTarget = e.target;
-  });
-
-  // ---- floating button ------------------------------------------------------
+    if (isEditable(e.target)) STATE.lastEditable = e.target;
+  }, true);
 
   function mountButton() {
     if (document.getElementById(BTN_ID)) return;
@@ -134,12 +162,13 @@
     wrap.addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-krusty]');
       if (!btn) return;
-      pasteAndOptionallySend(btn.dataset.krusty === 'send');
+      pasteAndOptionallySend(btn.dataset.krusty === 'send').catch((err) => warn('flow error', err));
     });
+    log('buttons mounted');
   }
 
-  // Skool is a SPA — re-check after navigations.
   const obs = new MutationObserver(() => mountButton());
   obs.observe(document.documentElement, { childList: true, subtree: true });
   mountButton();
+  log('content script v1.1 loaded on', location.href);
 })();
