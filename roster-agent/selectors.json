@@ -1,28 +1,14 @@
 {
-  "_note": "Skool's DOM is undocumented and changes. These selectors are the ONE place to fix when a read breaks. Run `npm run probe` to see what the page actually exposes, then update these. Every value here is a best-guess starting point and MUST be confirmed on the first live run.",
+  "_note": "Confirmed against the live Skool members directory on 2026-06-14. Card matching keys off the styled-component name prefix (the -sc-xxxx hash suffix changes on Skool rebuilds, the prefix is stable). Fields are parsed from each card's visible text in read-roster.mjs, which survives class-hash churn better than per-field selectors. Run `npm run probe` if a read breaks.",
 
-  "loggedOutMarker": "a[href*='/login'], input[type='password']",
+  "loggedOutMarker": "input[type='password'], a[href*='/login']:not([href*='crust-crumb'])",
 
-  "memberCard": "[data-testid='member-card'], div[class*='MemberItem'], a[href*='/-/'][class*='member']",
+  "memberCard": "div[class*='MemberItemWrapper']",
 
-  "card": {
-    "name": "[class*='name'], [data-testid='member-name'], span[class*='Name']",
-    "profileLink": "a[href*='skool.com']",
-    "joinDate": "[class*='joined'], time",
-    "lastActive": "[class*='active'], [class*='last-seen']",
-    "posts": "[class*='posts']",
-    "comments": "[class*='comments']"
-  },
+  "profileLink": "a[href^='/@']",
 
   "pagination": {
-    "mode": "scroll",
-    "nextButton": "button[aria-label='Next'], a[rel='next']",
-    "loadMoreButton": "button:has-text('Load more'), button:has-text('Show more')",
-    "scrollContainer": "main, [role='main']"
-  },
-
-  "applicationAnswer": {
-    "_note": "Application answers usually are NOT on the directory list. They show in a member's profile or in the pending/approval view. Confirm where they live before enabling captureAnswers.",
-    "profileAnswerBlock": "[class*='application'], [class*='answer'], [data-testid='application-answer']"
+    "mode": "numbered-next",
+    "nextButtonName": "Next"
   }
 }
