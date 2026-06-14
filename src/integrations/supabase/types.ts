@@ -982,6 +982,8 @@ export type Database = {
           post_count: number | null
           priority_level: string | null
           priority_score: number | null
+          roster_last_seen_at: string | null
+          roster_status: string | null
           skool_name: string
           skool_username: string | null
           updated_at: string | null
@@ -1003,6 +1005,8 @@ export type Database = {
           post_count?: number | null
           priority_level?: string | null
           priority_score?: number | null
+          roster_last_seen_at?: string | null
+          roster_status?: string | null
           skool_name: string
           skool_username?: string | null
           updated_at?: string | null
@@ -1024,6 +1028,8 @@ export type Database = {
           post_count?: number | null
           priority_level?: string | null
           priority_score?: number | null
+          roster_last_seen_at?: string | null
+          roster_status?: string | null
           skool_name?: string
           skool_username?: string | null
           updated_at?: string | null
@@ -1319,6 +1325,57 @@ export type Database = {
           url?: string | null
           url_verified?: boolean | null
           uses_discard?: boolean | null
+        }
+        Relationships: []
+      }
+      roster_sync_runs: {
+        Row: {
+          captured_at: string | null
+          created_at: string | null
+          error: string | null
+          full_roster: boolean | null
+          id: string
+          inserted: number | null
+          missing_flagged: number | null
+          raw_payload: Json | null
+          run_id: string | null
+          skipped: number | null
+          source: string | null
+          status: string | null
+          total_seen: number | null
+          updated: number | null
+        }
+        Insert: {
+          captured_at?: string | null
+          created_at?: string | null
+          error?: string | null
+          full_roster?: boolean | null
+          id?: string
+          inserted?: number | null
+          missing_flagged?: number | null
+          raw_payload?: Json | null
+          run_id?: string | null
+          skipped?: number | null
+          source?: string | null
+          status?: string | null
+          total_seen?: number | null
+          updated?: number | null
+        }
+        Update: {
+          captured_at?: string | null
+          created_at?: string | null
+          error?: string | null
+          full_roster?: boolean | null
+          id?: string
+          inserted?: number | null
+          missing_flagged?: number | null
+          raw_payload?: Json | null
+          run_id?: string | null
+          skipped?: number | null
+          source?: string | null
+          status?: string | null
+          total_seen?: number | null
+          updated?: number | null
         }
         Relationships: []
       }
