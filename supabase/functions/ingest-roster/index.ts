@@ -102,13 +102,12 @@ serve(async (req) => {
   const fullRoster = payload.fullRoster === true;
 
   try {
-    // Existing members for matching.
-    const { data: existing, error: fetchError } = await supabase
-      .from("members")
-      .select("id, skool_name, skool_username");
-    if (fetchError) throw fetchError;
+    // Existing members for matching. PostgREST caps a select at ~1000 rows by
+    // default, so we MUST page through all of them. Matching against a partial
+    // set would treat already-known members as new and insert duplicates.
+    const existing = await fetchAllExisting();
 
-    const plan = planRosterSync(rows, (existing || []) as ExistingMember[], now, {
+    const plan = planRosterSync(rows, existing, now, {
       fullRoster,
     });
 
@@ -189,6 +188,23 @@ serve(async (req) => {
     return jsonResponse({ error: "Roster sync failed", detail: message }, 500);
   }
 });
+
+// Page through every member row, since a single select is capped at ~1000.
+async function fetchAllExisting(): Promise<ExistingMember[]> {
+  const all: ExistingMember[] = [];
+  const pageSize = 1000;
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from("members")
+      .select("id, skool_name, skool_username")
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    const batch = (data || []) as ExistingMember[];
+    all.push(...batch);
+    if (batch.length < pageSize) break;
+  }
+  return all;
+}
 
 async function logRun(
   payload: { runId?: string; capturedAt?: string; fullRoster?: boolean },
