@@ -100,7 +100,10 @@ function present(v: unknown): boolean {
 }
 
 function norm(s?: string | null): string {
-  return (s || "").toLowerCase().trim();
+  // Collapse all whitespace (incl. non-breaking spaces, which Skool uses
+  // between first and last name) to single regular spaces, so a name read
+  // from the directory matches the same name stored with regular spaces.
+  return (s || "").replace(/\s+/g, " ").trim().toLowerCase();
 }
 
 /**

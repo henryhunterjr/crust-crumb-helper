@@ -160,7 +160,10 @@ async function extractVisible(page) {
 
 function normalize(raw) {
   return {
-    name: raw.name || "",
+    // Skool renders the gap between first and last name as a non-breaking
+    // space (char 160). Collapse all whitespace to regular single spaces so
+    // names match the regular-space names already in the table.
+    name: (raw.name || "").replace(/\s+/g, " ").trim(),
     skoolUsername: raw.skoolUsername || null,
     profileUrl: raw.profileUrl
       ? (raw.profileUrl.startsWith("http") ? raw.profileUrl : "https://www.skool.com" + raw.profileUrl)
