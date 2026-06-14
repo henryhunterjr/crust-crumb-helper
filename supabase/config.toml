@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.get-brief]
 verify_jwt = false
+
+[functions.ingest-roster]
+verify_jwt = false

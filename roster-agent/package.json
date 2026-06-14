@@ -1,0 +1,18 @@
+{
+  "name": "crust-crumb-roster-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Scheduled browser agent that reads the Crust & Crumb Academy Skool roster from Henry's logged-in Chrome and posts it to the Helper's ingest-roster endpoint.",
+  "bin": {
+    "roster-agent": "read-roster.mjs"
+  },
+  "scripts": {
+    "probe": "node read-roster.mjs --probe",
+    "dry-run": "node read-roster.mjs --dry-run",
+    "run": "node read-roster.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.49.0"
+  }
+}
