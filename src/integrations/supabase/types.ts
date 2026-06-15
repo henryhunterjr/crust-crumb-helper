@@ -145,6 +145,7 @@ export type Database = {
           published_at: string | null
           reading_time: string | null
           skill_level: string | null
+          source: string | null
           title: string
           updated_at: string
           url_verified: boolean | null
@@ -161,6 +162,7 @@ export type Database = {
           published_at?: string | null
           reading_time?: string | null
           skill_level?: string | null
+          source?: string | null
           title: string
           updated_at?: string
           url_verified?: boolean | null
@@ -177,6 +179,7 @@ export type Database = {
           published_at?: string | null
           reading_time?: string | null
           skill_level?: string | null
+          source?: string | null
           title?: string
           updated_at?: string
           url_verified?: boolean | null
@@ -425,6 +428,7 @@ export type Database = {
           last_synced_at: string | null
           parent_course_url: string | null
           skill_level: string | null
+          source: string | null
           title: string
           url: string | null
           url_verified: boolean | null
@@ -439,6 +443,7 @@ export type Database = {
           last_synced_at?: string | null
           parent_course_url?: string | null
           skill_level?: string | null
+          source?: string | null
           title: string
           url?: string | null
           url_verified?: boolean | null
@@ -453,6 +458,7 @@ export type Database = {
           last_synced_at?: string | null
           parent_course_url?: string | null
           skill_level?: string | null
+          source?: string | null
           title?: string
           url?: string | null
           url_verified?: boolean | null
@@ -1286,6 +1292,7 @@ export type Database = {
           share_url: string | null
           skill_level: string | null
           skool_url: string | null
+          source: string | null
           tags: string[] | null
           title: string
           url: string | null
@@ -1303,6 +1310,7 @@ export type Database = {
           share_url?: string | null
           skill_level?: string | null
           skool_url?: string | null
+          source?: string | null
           tags?: string[] | null
           title: string
           url?: string | null
@@ -1320,6 +1328,7 @@ export type Database = {
           share_url?: string | null
           skill_level?: string | null
           skool_url?: string | null
+          source?: string | null
           tags?: string[] | null
           title?: string
           url?: string | null
@@ -1605,6 +1614,7 @@ export type Database = {
           published_at: string | null
           series: string | null
           skill_level: string | null
+          source: string | null
           thumbnail_url: string | null
           title: string
           updated_at: string
@@ -1621,6 +1631,7 @@ export type Database = {
           published_at?: string | null
           series?: string | null
           skill_level?: string | null
+          source?: string | null
           thumbnail_url?: string | null
           title: string
           updated_at?: string
@@ -1637,6 +1648,7 @@ export type Database = {
           published_at?: string | null
           series?: string | null
           skill_level?: string | null
+          source?: string | null
           thumbnail_url?: string | null
           title?: string
           updated_at?: string
