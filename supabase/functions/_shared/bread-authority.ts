@@ -46,13 +46,16 @@ export function entryToRow(entry: CacheEntry, topic: Topic): MappedRow | null {
 }
 export function buildSyncBatches(entries: Array<{ entry: CacheEntry; topic: Topic }>): Record<ContentTable, Record<string, unknown>[]> {
   const out: Record<ContentTable, Record<string, unknown>[]> = { youtube_videos: [], recipes: [], blog_posts: [], classroom_resources: [] };
-  const seen: Record<ContentTable, Set<string>> = { youtube_videos: new Set(), recipes: new Set(), blog_posts: new Set(), classroom_resources: new Set() };
+  const seenUrl: Record<ContentTable, Set<string>> = { youtube_videos: new Set(), recipes: new Set(), blog_posts: new Set(), classroom_resources: new Set() };
+  const seenTitle: Record<ContentTable, Set<string>> = { youtube_videos: new Set(), recipes: new Set(), blog_posts: new Set(), classroom_resources: new Set() };
   for (const { entry, topic } of entries) {
     const mapped = entryToRow(entry, topic);
     if (!mapped) continue;
     const urlKey = String(mapped.row.video_url || mapped.row.post_url || mapped.row.url).toLowerCase().trim();
-    if (seen[mapped.table].has(urlKey)) continue;
-    seen[mapped.table].add(urlKey);
+    const titleKey = String(mapped.row.title || "").toLowerCase().trim();
+    if (seenUrl[mapped.table].has(urlKey) || seenTitle[mapped.table].has(titleKey)) continue;
+    seenUrl[mapped.table].add(urlKey);
+    seenTitle[mapped.table].add(titleKey);
     out[mapped.table].push(mapped.row);
   }
   return out;
