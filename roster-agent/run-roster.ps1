@@ -28,7 +28,7 @@ $chromeArgs = @(
   "--no-first-run", "--no-default-browser-check",
   "--disable-background-timer-throttling", "--disable-backgrounding-occluded-windows"
 )
-if ($Headless) { $chromeArgs += "--headless=new" }
+if ($Headless) { $chromeArgs += @("--headless=new", "--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage") }
 else { $chromeArgs += @("--window-position=-32000,-32000", "--window-size=1280,900") }
 $chromeArgs += "about:blank"
 
@@ -42,8 +42,17 @@ try {
   }
   if (-not $up) { Log "ERROR: Chrome debug port never came up"; exit 1 }
 
+  # Resolve node by full path. Prefer the real install; the task environment can
+  # surface a bogus System32 app-execution-alias stub via PATH/Get-Command.
+  $node = "C:\Program Files\nodejs\node.exe"
+  if (-not (Test-Path $node)) {
+    $node = (Get-Command node -ErrorAction SilentlyContinue).Source
+  }
+  if (-not $node -or -not (Test-Path $node)) { Log "ERROR: node not found"; exit 1 }
+  Log "using node: $node"
+
   Push-Location $AgentDir
-  & node --env-file=.env read-roster.mjs $Mode *>> $Log
+  & $node --env-file=.env read-roster.mjs $Mode *>> $Log
   $code = $LASTEXITCODE
   Pop-Location
   Log "agent exit code: $code"
