@@ -202,7 +202,10 @@ async function readAll(page) {
       if (!seen.has(key)) { seen.set(key, m); added++; }
     }
     log(`page ${i + 1}: ${raw.length} cards, +${added} new, ${seen.size} total`);
-    if (added === 0) { if (++stagnant >= 2) break; } else stagnant = 0;
+    // The authoritative "end" signal is the Next button going away (below).
+    // A higher stagnant threshold tolerates a transient duplicate read
+    // (seen occasionally in headless) without stopping the walk early.
+    if (added === 0) { if (++stagnant >= 4) break; } else stagnant = 0;
 
     const next = page.getByRole("button", { name: selectors.pagination.nextButtonName, exact: true });
     const count = await next.count();
