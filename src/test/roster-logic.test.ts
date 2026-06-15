@@ -165,6 +165,19 @@ describe("planRosterSync inserts, updates, and reconciles", () => {
     expect(plan.missingIds).toEqual([]);
   });
 
+  it("matches a non-breaking-space name against a regular-space row", () => {
+    // Skool renders "Bob" then a non-breaking space; the stored row uses a
+    // regular space. They must still be treated as the same person.
+    const plan = planRosterSync(
+      [{ name: "Bob Smith", posts: 1 }],
+      [{ id: "id-bob-smith", skool_name: "Bob Smith", skool_username: null }],
+      NOW,
+      {},
+    );
+    expect(plan.toUpdate.map((u) => u.id)).toEqual(["id-bob-smith"]);
+    expect(plan.toInsert).toHaveLength(0);
+  });
+
   it("skips nameless rows", () => {
     const plan = planRosterSync(
       [{ name: "" }, { name: "  " }, { name: "Real" }],
