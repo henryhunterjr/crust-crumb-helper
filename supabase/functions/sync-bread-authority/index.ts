@@ -83,12 +83,31 @@ serve(async (req) => {
     // 2. Replace this source's rows table by table. Empty batch is treated as a
     //    failed pull and skipped, so a bad fetch never wipes a table.
     const tables: ContentTable[] = ["youtube_videos", "recipes", "blog_posts", "classroom_resources"];
+    // recipes and classroom_resources have a UNIQUE(title) constraint, so a
+    // Bread Authority title that already exists as a hand-added row must be
+    // skipped rather than inserted.
+    const TITLE_UNIQUE = new Set<ContentTable>(["recipes", "classroom_resources"]);
     const counts: Record<string, number> = {};
+    const skipped: Record<string, number> = {};
     for (const table of tables) {
-      const rows = batches[table];
+      let rows = batches[table];
       if (rows.length === 0) { counts[table] = 0; continue; }
       const { error: delErr } = await supabase.from(table).delete().eq("source", "bread-authority");
       if (delErr) throw new Error(`delete ${table}: ${delErr.message}`);
+
+      if (TITLE_UNIQUE.has(table)) {
+        const existing = new Set<string>();
+        for (let from = 0; ; from += 1000) {
+          const { data, error } = await supabase.from(table).select("title").range(from, from + 999);
+          if (error) throw new Error(`titles ${table}: ${error.message}`);
+          for (const r of (data || [])) existing.add(String((r as Record<string, unknown>).title || "").toLowerCase().trim());
+          if (!data || data.length < 1000) break;
+        }
+        const before = rows.length;
+        rows = rows.filter((r) => !existing.has(String(r.title || "").toLowerCase().trim()));
+        skipped[table] = before - rows.length;
+      }
+
       let inserted = 0;
       for (let i = 0; i < rows.length; i += 500) {
         const chunk = rows.slice(i, i + 500);
@@ -104,6 +123,7 @@ serve(async (req) => {
       topics: manifest.length,
       entriesSeen: pairs.length,
       inserted: counts,
+      skippedExistingTitle: skipped,
       topicErrors,
     });
   } catch (err) {

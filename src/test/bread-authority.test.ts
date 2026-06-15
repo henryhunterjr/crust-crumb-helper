@@ -84,4 +84,15 @@ describe("buildSyncBatches groups by table and de-dupes by URL", () => {
     expect(batches.classroom_resources).toHaveLength(0);
     expect(batches.youtube_videos.every((r) => r.source === "bread-authority")).toBe(true);
   });
+
+  it("dedupes repeated TITLES within a table (recipes have UNIQUE(title))", () => {
+    const t2: Topic = { slug: "rolls", name: "Rolls", subtitle: "", description: "" };
+    const entries = [
+      { entry: { title: "Henry's Foolproof Sourdough Loaf", url: "https://pantry/a", content_type: "recipe" }, topic },
+      // same recipe title surfaced under another topic, different URL -> must collapse to one
+      { entry: { title: "Henry's Foolproof Sourdough Loaf", url: "https://pantry/b", content_type: "recipe" }, topic: t2 },
+    ];
+    const batches = buildSyncBatches(entries);
+    expect(batches.recipes).toHaveLength(1);
+  });
 });
