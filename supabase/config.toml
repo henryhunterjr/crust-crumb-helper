@@ -38,3 +38,9 @@ verify_jwt = false
 
 [functions.ingest-roster]
 verify_jwt = false
+
+[functions.sync-bread-authority]
+verify_jwt = false
+
+[functions.auto-welcome]
+verify_jwt = false
