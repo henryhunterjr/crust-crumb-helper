@@ -56,6 +56,27 @@ try {
   $code = $LASTEXITCODE
   Pop-Location
   Log "agent exit code: $code"
+
+  # Step 2: after a successful full roster read, draft auto-welcomes for review.
+  # Small batches keep each call well under the gateway's response window; the
+  # candidate filter means batches never re-draft the same member.
+  if ($code -eq 0 -and $Mode -eq "--full") {
+    $envFile = Join-Path $AgentDir ".env"
+    $ingestKey = ((Get-Content $envFile | Where-Object { $_ -match "^INGEST_API_KEY=" }) -replace "^INGEST_API_KEY=", "").Trim()
+    if ($ingestKey) {
+      for ($b = 1; $b -le 2; $b++) {
+        try {
+          $resp = Invoke-RestMethod -Method Post -TimeoutSec 120 `
+            -Uri "https://anponqqhjugwflakydsf.supabase.co/functions/v1/auto-welcome" `
+            -Headers @{ Authorization = "Bearer $ingestKey" } -ContentType "application/json" `
+            -Body '{"backlogLimit":10}'
+          Log "auto-welcome batch ${b}: drafted=$($resp.drafted) welcomed=$($resp.welcomed) checkedIn=$($resp.checkedIn)"
+          if ($resp.drafted -eq 0) { break }  # backlog caught up
+        } catch { Log "auto-welcome batch ${b} error: $($_.Exception.Message)" }
+      }
+    } else { Log "auto-welcome skipped: INGEST_API_KEY not found in .env" }
+  }
+
   exit $code
 }
 finally {
