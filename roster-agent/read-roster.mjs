@@ -176,23 +176,35 @@ function normalize(raw) {
 }
 
 // ---- pagination ----------------------------------------------------------
-async function firstHandle(page) {
-  return page.$eval(
-    CARD,
-    (el, profileSel) => {
-      const link = el.querySelector(profileSel);
-      return link ? link.getAttribute("href") : "";
-    },
-    selectors.profileLink,
-  ).catch(() => "");
+function pageUrl(n) {
+  if (n <= 1) return cfg.communityUrl;
+  const sep = cfg.communityUrl.includes("?") ? "&" : "?";
+  return `${cfg.communityUrl}${sep}t=active&p=${n}`;
 }
 
 async function readAll(page) {
   const seen = new Map();
-  let stagnant = 0;
 
-  for (let i = 0; i < cfg.maxPages; i++) {
-    await page.waitForSelector(CARD, { timeout: cfg.navTimeoutMs }).catch(() => {});
+  // The directory is paged with numbered pages. Navigating by URL (?p=N) is
+  // deterministic, which avoids the skipped or duplicated pages that clicking
+  // "Next" can cause under headless timing. Page 1 is already loaded.
+  const lastPage = await page.evaluate(() => {
+    const inCard = (e) => !!e.closest("div[class*='MemberItemWrapper']");
+    const nums = [...document.querySelectorAll("button")]
+      .filter((e) => !inCard(e) && /^\d{1,3}$/.test((e.textContent || "").trim()))
+      .map((e) => +e.textContent.trim());
+    return nums.length ? Math.max(...nums) : 1;
+  }).catch(() => 1);
+
+  const total = Math.min(lastPage, cfg.maxPages);
+  log(`directory reports ${lastPage} page(s)`);
+
+  for (let n = 1; n <= total; n++) {
+    if (n > 1) {
+      await page.goto(pageUrl(n), { waitUntil: "domcontentloaded" });
+      await page.waitForSelector(CARD, { timeout: cfg.navTimeoutMs }).catch(() => {});
+      await page.waitForTimeout(400);
+    }
     const raw = await extractVisible(page);
     let added = 0;
     for (const r of raw) {
@@ -201,29 +213,8 @@ async function readAll(page) {
       if (!key) continue;
       if (!seen.has(key)) { seen.set(key, m); added++; }
     }
-    log(`page ${i + 1}: ${raw.length} cards, +${added} new, ${seen.size} total`);
-    if (added === 0) { if (++stagnant >= 2) break; } else stagnant = 0;
-
-    const next = page.getByRole("button", { name: selectors.pagination.nextButtonName, exact: true });
-    const count = await next.count();
-    if (count === 0) break;
-    if (await next.first().isDisabled().catch(() => false)) break;
-
-    const prev = await firstHandle(page);
+    log(`page ${n}/${total}: ${raw.length} cards, +${added} new, ${seen.size} total`);
     await humanDelay();
-    await next.first().click().catch(() => {});
-    // Wait until the first card changes (new page rendered).
-    await page.waitForFunction(
-      (sel, profileSel, prevHref) => {
-        const el = document.querySelector(sel);
-        if (!el) return false;
-        const link = el.querySelector(profileSel);
-        const h = link ? link.getAttribute("href") : "";
-        return h && h !== prevHref;
-      },
-      [CARD, selectors.profileLink, prev],
-      { timeout: cfg.navTimeoutMs },
-    ).catch(() => {});
   }
 
   return [...seen.values()];
