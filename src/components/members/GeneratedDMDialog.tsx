@@ -205,7 +205,9 @@ export function GeneratedDMDialog({
           break;
         case 'pasted':
           setAutoStep('pasting');
-          // brief delay before promoting to 'sending' if no further event
+          window.setTimeout(() => {
+            setAutoStep((s) => (s === 'pasting' ? 'sending' : s));
+          }, 250);
           break;
         case 'sent':
           setAutoStep('done');
@@ -263,7 +265,7 @@ export function GeneratedDMDialog({
       setAutoStep('idle');
       return;
     }
-    toast.success('Copied. Profile opened in a new tab.');
+    toast.success('Copied. Members page opened in a new tab.');
   };
 
   const handleCopy = async () => {
