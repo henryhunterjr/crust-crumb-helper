@@ -761,7 +761,7 @@ export function GeneratedDMDialog({
                 title={
                   !member?.skool_username
                     ? 'Member has no Skool username on file'
-                    : 'Requires Krusty Chrome extension v1.4+ installed'
+                    : 'Requires Krusty Chrome extension v1.5+ installed'
                 }
               >
                 <Sparkles className="h-4 w-4 mr-2" />
@@ -773,11 +773,11 @@ export function GeneratedDMDialog({
                 variant="outline"
                 onClick={startFallback}
                 disabled={isGenerating || !message}
-                aria-label="Copy DM and open the member's profile (manual send)"
-                title="No extension? Copy the message and open the profile, then click Message and paste."
+                aria-label="Copy DM and open the Members page (manual send)"
+                title="No extension? Copy the message and open the Members page, then search the member and paste."
               >
                 <ExternalLink className="h-4 w-4 mr-2" />
-                Copy & Open Profile
+                Copy & Open Members
               </Button>
 
               <Button
@@ -797,8 +797,8 @@ export function GeneratedDMDialog({
                   <div className="text-sm">
                     <p className="font-medium text-foreground mb-2">Manual send mode</p>
                     <ol className="list-decimal list-inside text-xs text-muted-foreground space-y-1">
-                      <li>The Skool profile is open in a new tab.</li>
-                      <li>Click the <span className="font-medium text-foreground">Message</span> button on the profile.</li>
+                      <li>The Skool Members page is open in a new tab.</li>
+                      <li>Search for <span className="font-medium text-foreground">{member.skool_name}</span>, then click the member's Message button.</li>
                       <li>Paste with <span className="font-mono">Ctrl/Cmd + V</span> — the DM is already on your clipboard.</li>
                       <li>Press <span className="font-mono">Enter</span> to send.</li>
                     </ol>
@@ -856,7 +856,7 @@ export function GeneratedDMDialog({
                   <div className="mt-3">
                     <Button size="sm" variant="outline" onClick={startFallback}>
                       <ExternalLink className="h-3.5 w-3.5 mr-2" />
-                      Open profile and paste manually
+                      Open Members and paste manually
                     </Button>
                   </div>
                 )}
