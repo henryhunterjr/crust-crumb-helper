@@ -19,6 +19,11 @@ export function getSkoolChatUrl(): string {
   return `https://www.skool.com/${SKOOL_COMMUNITY_SLUG}/chat`;
 }
 
+/** Opens the Skool community feed (where you post a welcome post). */
+export function getSkoolCommunityUrl(): string {
+  return `https://www.skool.com/${SKOOL_COMMUNITY_SLUG}`;
+}
+
 /**
  * Copy message to clipboard and open the member's Skool profile
  * so Henry can start a chat from there.
