@@ -18,6 +18,7 @@ const navItems = [
   { href: '/analytics', label: 'Analytics' },
   { href: '/responses', label: 'Responses' },
   { href: '/outreach-log', label: 'Log' },
+  { href: '/admin', label: 'Admin' },
 ];
 
 export function Header() {
