@@ -25,6 +25,30 @@ export function getSkoolCommunityUrl(): string {
 }
 
 /**
+ * One-click DM: copies the message, then opens the member's Skool profile
+ * with a hash signal (#krusty=autosend) that the Krusty Chrome extension
+ * watches for. When the DM composer mounts on the profile, the extension
+ * pastes the clipboard text and presses Enter automatically.
+ *
+ * Requires the Krusty extension v1.3+ installed.
+ */
+export async function sendSkoolDmAuto(
+  message: string,
+  username: string | null | undefined,
+): Promise<boolean> {
+  const base = username ? getSkoolProfileUrl(username) : getSkoolChatUrl();
+  if (!base) return false;
+  // window.open MUST be the first action to dodge pop-up blockers.
+  const win = window.open(`${base}#krusty=autosend`, '_blank', 'noopener');
+  try {
+    await navigator.clipboard.writeText(message);
+  } catch {
+    return false;
+  }
+  return !!win;
+}
+
+/**
  * Copy message to clipboard and open the member's Skool profile
  * so Henry can start a chat from there.
  */

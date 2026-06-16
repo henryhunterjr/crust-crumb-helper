@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Copy, RefreshCw, CheckCircle, Loader2, BookOpen, ChefHat, MessageCircle, Sparkles, Pencil, FileText, Save, ChevronDown, ExternalLink, Link } from 'lucide-react';
-import { copyAndOpenSkool } from '@/lib/skoolLinks';
+import { copyAndOpenSkool, sendSkoolDmAuto } from '@/lib/skoolLinks';
 import {
   Dialog,
   DialogContent,
@@ -600,6 +600,28 @@ export function GeneratedDMDialog({
               >
                 <ExternalLink className="h-4 w-4 mr-2" />
                 Copy & Open Skool
+              </Button>
+
+              <Button
+                size="sm"
+                onClick={async () => {
+                  const ok = await sendSkoolDmAuto(localMessage, member?.skool_username);
+                  if (ok) {
+                    toast.success('Opening Skool — extension will paste and send automatically');
+                  } else {
+                    toast.error('Could not open Skool or copy message');
+                  }
+                }}
+                disabled={isGenerating || !message || !member?.skool_username}
+                aria-label="Send DM automatically via Krusty extension"
+                title={
+                  !member?.skool_username
+                    ? 'Member has no Skool username on file'
+                    : 'Requires Krusty Chrome extension v1.3+ installed'
+                }
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                Send via Skool
               </Button>
 
               <Button
