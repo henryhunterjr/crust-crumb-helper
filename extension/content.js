@@ -341,21 +341,32 @@
     if (h.includes('krusty=autopaste')) return 'paste';
     return null;
   }
+  function readMemberQuery() {
+    try {
+      const raw = (location.hash || '').replace(/^#/, '');
+      return new URLSearchParams(raw).get('member') || '';
+    } catch {
+      return '';
+    }
+  }
   function armAutoFire() {
     const mode = readAutoMode();
     if (!mode || STATE.autoFired) return;
+    const memberQuery = readMemberQuery();
     log('auto mode armed:', mode);
-    postProgress('opened', { mode });
+    postProgress('opened', { mode, member: memberQuery || null });
     const tryFire = async () => {
       if (STATE.autoFired) return true;
-      // Either the composer is already there, or we're on a profile with a Message button.
+      // Either the composer is already there, we're on the Members directory,
+      // or we're on a profile with a Message button.
       const target = findComposer();
-      const msgBtn = target ? null : findMessageButton();
-      if (!target && !msgBtn) return false;
+      const onMembersPage = location.pathname.includes('/-/members');
+      const msgBtn = target || onMembersPage ? null : findMessageButton();
+      if (!target && !onMembersPage && !msgBtn) return false;
       STATE.autoFired = true;
       // Strip the hash so a manual refresh doesn't re-fire.
       try { history.replaceState(null, '', location.pathname + location.search); } catch {}
-      await pasteAndOptionallySend(mode === 'send');
+      await pasteAndOptionallySend(mode === 'send', memberQuery);
       return true;
     };
     // Try immediately, then watch for the composer to mount.
