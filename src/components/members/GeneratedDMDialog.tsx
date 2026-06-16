@@ -102,6 +102,8 @@ export function GeneratedDMDialog({
   type AutoStep =
     | 'idle'
     | 'opening'
+    | 'searching'
+    | 'member-selected'
     | 'message-button'
     | 'composer'
     | 'pasting'
@@ -186,6 +188,12 @@ export function GeneratedDMDialog({
         case 'opened':
           // already showing 'opening'; no-op
           break;
+        case 'searching-member':
+          setAutoStep('searching');
+          break;
+        case 'member-selected':
+          setAutoStep('member-selected');
+          break;
         case 'message-button-clicked':
           setAutoStep('message-button');
           break;
@@ -197,7 +205,9 @@ export function GeneratedDMDialog({
           break;
         case 'pasted':
           setAutoStep('pasting');
-          // brief delay before promoting to 'sending' if no further event
+          window.setTimeout(() => {
+            setAutoStep((s) => (s === 'pasting' ? 'sending' : s));
+          }, 250);
           break;
         case 'sent':
           setAutoStep('done');
@@ -224,7 +234,7 @@ export function GeneratedDMDialog({
       } else if (result.reason === 'clipboard-failed') {
         setAutoError('Could not copy the message to your clipboard.');
       } else if (result.reason === 'no-username') {
-        setAutoError('Member has no Skool username on file.');
+        setAutoError('Member has no searchable Skool name on file.');
       }
       setAutoStep('idle');
       return;
@@ -235,7 +245,7 @@ export function GeneratedDMDialog({
       setAutoStep((s) => {
         if (s === 'done' || s === 'blocked' || s === 'fallback' || s === 'idle') return s;
         setAutoError(
-          'No response from the Krusty extension. Make sure it is installed (v1.4+) and the Skool tab is open. The message is already on your clipboard, so you can paste it manually.',
+          'No response from the Krusty extension. Make sure it is installed (v1.5+) and the Skool tab is open. The message is already on your clipboard, so you can paste it manually.',
         );
         return 'timeout';
       });
@@ -251,11 +261,11 @@ export function GeneratedDMDialog({
       member?.skool_name,
     );
     if (!r.ok) {
-      setAutoError('Could not copy the message or open the profile.');
+      setAutoError('Could not copy the message or open the Members page.');
       setAutoStep('idle');
       return;
     }
-    toast.success('Copied. Profile opened in a new tab.');
+    toast.success('Copied. Members page opened in a new tab.');
   };
 
   const handleCopy = async () => {
@@ -344,7 +354,9 @@ export function GeneratedDMDialog({
 
   // ---- Auto-send stepper ----
   const stepOrder: { key: AutoStep; label: string }[] = [
-    { key: 'opening', label: 'Opening profile' },
+    { key: 'opening', label: 'Opening Members page' },
+    { key: 'searching', label: 'Searching member' },
+    { key: 'member-selected', label: 'Opening member chat' },
     { key: 'message-button', label: 'Clicking Message' },
     { key: 'composer', label: 'Waiting for DM composer' },
     { key: 'pasting', label: 'Pasting message' },
@@ -746,12 +758,12 @@ export function GeneratedDMDialog({
                 onClick={async () => {
                   await startAutoSend();
                 }}
-                disabled={isGenerating || !message || !member?.skool_username || autoActive}
+                disabled={isGenerating || !message || !(member?.skool_name || member?.skool_username) || autoActive}
                 aria-label="Send DM automatically via Krusty extension"
                 title={
-                  !member?.skool_username
-                    ? 'Member has no Skool username on file'
-                    : 'Requires Krusty Chrome extension v1.4+ installed'
+                  !(member?.skool_name || member?.skool_username)
+                    ? 'Member has no searchable Skool name on file'
+                    : 'Requires Krusty Chrome extension v1.5+ installed'
                 }
               >
                 <Sparkles className="h-4 w-4 mr-2" />
@@ -763,11 +775,11 @@ export function GeneratedDMDialog({
                 variant="outline"
                 onClick={startFallback}
                 disabled={isGenerating || !message}
-                aria-label="Copy DM and open the member's profile (manual send)"
-                title="No extension? Copy the message and open the profile, then click Message and paste."
+                aria-label="Copy DM and open the Members page (manual send)"
+                title="No extension? Copy the message and open the Members page, then search the member and paste."
               >
                 <ExternalLink className="h-4 w-4 mr-2" />
-                Copy & Open Profile
+                Copy & Open Members
               </Button>
 
               <Button
@@ -787,8 +799,8 @@ export function GeneratedDMDialog({
                   <div className="text-sm">
                     <p className="font-medium text-foreground mb-2">Manual send mode</p>
                     <ol className="list-decimal list-inside text-xs text-muted-foreground space-y-1">
-                      <li>The Skool profile is open in a new tab.</li>
-                      <li>Click the <span className="font-medium text-foreground">Message</span> button on the profile.</li>
+                      <li>The Skool Members page is open in a new tab.</li>
+                      <li>Search for <span className="font-medium text-foreground">{member.skool_name}</span>, then click the member's Message button.</li>
                       <li>Paste with <span className="font-mono">Ctrl/Cmd + V</span> — the DM is already on your clipboard.</li>
                       <li>Press <span className="font-mono">Enter</span> to send.</li>
                     </ol>
@@ -846,7 +858,7 @@ export function GeneratedDMDialog({
                   <div className="mt-3">
                     <Button size="sm" variant="outline" onClick={startFallback}>
                       <ExternalLink className="h-3.5 w-3.5 mr-2" />
-                      Open profile and paste manually
+                      Open Members and paste manually
                     </Button>
                   </div>
                 )}

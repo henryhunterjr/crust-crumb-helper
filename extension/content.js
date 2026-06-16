@@ -1,4 +1,4 @@
-// Krusty Skool Helper — content script v1.4
+// Krusty Skool Helper — content script v1.5
 // Skool's DM composer is a <textarea> with NO Send button.
 // Submit happens by pressing Enter inside the textarea.
 // All steps logged under [Krusty] for screenshot-able debugging.
@@ -70,6 +70,115 @@
       if (txt === 'message' || txt === 'chat' || txt === 'send message') return b;
     }
     return null;
+  }
+
+  function normalizeText(value) {
+    return (value || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  }
+
+  function findMembersSearchInput() {
+    const inputs = [...document.querySelectorAll('input')].filter(visible);
+    return inputs.find((input) => {
+      const haystack = normalizeText(`${input.type || ''} ${input.placeholder || ''} ${input.getAttribute('aria-label') || ''}`);
+      return haystack.includes('search') || haystack.includes('member') || input.type === 'search';
+    }) || inputs[0] || null;
+  }
+
+  function searchMembersDirectory(memberQuery) {
+    if (!memberQuery) return false;
+    const input = findMembersSearchInput();
+    if (!input) return false;
+    log('searching members directory for', memberQuery);
+    postProgress('searching-member', { member: memberQuery });
+    input.focus();
+    setNativeValue(input, memberQuery);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
+    return true;
+  }
+
+  function closestTextContainer(el) {
+    let node = el;
+    for (let i = 0; i < 7 && node && node !== document.body; i += 1) {
+      const text = normalizeText(node.innerText || node.textContent || '');
+      if (text.length > 0 && text.length < 1200) return node;
+      node = node.parentElement;
+    }
+    return el;
+  }
+
+  function findMessageButtonForMember(memberQuery) {
+    const needle = normalizeText(memberQuery);
+    const buttons = [
+      ...document.querySelectorAll('button'),
+      ...document.querySelectorAll('[role="button"]'),
+      ...document.querySelectorAll('a'),
+    ].filter(visible).filter((b) => {
+      const txt = normalizeText(b.innerText || b.textContent || '');
+      return txt === 'message' || txt === 'chat' || txt === 'send message';
+    });
+    if (!needle) return buttons[0] || null;
+    const scoped = buttons.find((b) => {
+      let node = b.parentElement;
+      for (let i = 0; i < 8 && node && node !== document.body; i += 1) {
+        const text = normalizeText(node.innerText || node.textContent || '');
+        if (text.includes(needle) && text.length < 1400) return true;
+        node = node.parentElement;
+      }
+      return false;
+    });
+    return scoped || (buttons.length === 1 ? buttons[0] : null);
+  }
+
+  function findMemberResult(memberQuery) {
+    const needle = normalizeText(memberQuery);
+    if (!needle) return null;
+    const pieces = needle.split(' ').filter(Boolean);
+    const cands = [
+      ...document.querySelectorAll('a'),
+      ...document.querySelectorAll('button'),
+      ...document.querySelectorAll('[role="button"]'),
+      ...document.querySelectorAll('[role="listitem"]'),
+      ...document.querySelectorAll('li'),
+      ...document.querySelectorAll('[data-testid]'),
+    ].filter(visible);
+    return cands.find((el) => {
+      const text = normalizeText(el.innerText || el.textContent || '');
+      if (!text || text.length > 900) return false;
+      return text.includes(needle) || pieces.every((part) => text.includes(part));
+    }) || null;
+  }
+
+  async function openMemberChatFromDirectory(memberQuery) {
+    if (!memberQuery) return false;
+    let searched = false;
+    const start = Date.now();
+    let clickedResult = false;
+
+    while (Date.now() - start < 8000) {
+      if (!searched) searched = searchMembersDirectory(memberQuery);
+
+      let msgBtn = findMessageButtonForMember(memberQuery);
+      if (msgBtn) {
+        postProgress('message-button-clicked');
+        msgBtn.click();
+        return true;
+      }
+
+      if (!clickedResult) {
+        const memberResult = findMemberResult(memberQuery);
+        if (memberResult) {
+          clickedResult = true;
+          log('clicking member result for', memberQuery);
+          postProgress('member-selected', { member: memberQuery });
+          memberResult.click();
+        }
+      }
+
+      await new Promise((r) => setTimeout(r, 350));
+    }
+    return false;
   }
 
   function waitForMessageButton(timeoutMs = 6000) {
@@ -160,7 +269,7 @@
     });
   }
 
-  async function pasteAndOptionallySend(autoSend) {
+  async function pasteAndOptionallySend(autoSend, memberQuery) {
     if (STATE.sending) { log('already sending'); return; }
     STATE.sending = true;
     try {
@@ -170,8 +279,14 @@
       if (!text) { flash('Clipboard is empty.'); return; }
       log('clipboard length', text.length);
 
-      // If we're on a profile page and no composer is open yet, click "Message" first.
+      // If we're on the Members directory, search for the member first, then click Message.
       let composer = findComposer();
+      if (!composer && memberQuery && location.pathname.includes('/-/members')) {
+        await openMemberChatFromDirectory(memberQuery);
+        composer = findComposer();
+      }
+
+      // If we're on a profile page and no composer is open yet, click "Message" first.
       if (!composer) {
         const msgBtn = await waitForMessageButton(2500);
         if (msgBtn) {
@@ -237,21 +352,32 @@
     if (h.includes('krusty=autopaste')) return 'paste';
     return null;
   }
+  function readMemberQuery() {
+    try {
+      const raw = (location.hash || '').replace(/^#/, '');
+      return new URLSearchParams(raw).get('member') || '';
+    } catch {
+      return '';
+    }
+  }
   function armAutoFire() {
     const mode = readAutoMode();
     if (!mode || STATE.autoFired) return;
+    const memberQuery = readMemberQuery();
     log('auto mode armed:', mode);
-    postProgress('opened', { mode });
+    postProgress('opened', { mode, member: memberQuery || null });
     const tryFire = async () => {
       if (STATE.autoFired) return true;
-      // Either the composer is already there, or we're on a profile with a Message button.
+      // Either the composer is already there, we're on the Members directory,
+      // or we're on a profile with a Message button.
       const target = findComposer();
-      const msgBtn = target ? null : findMessageButton();
-      if (!target && !msgBtn) return false;
+      const onMembersPage = location.pathname.includes('/-/members');
+      const msgBtn = target || onMembersPage ? null : findMessageButton();
+      if (!target && !onMembersPage && !msgBtn) return false;
       STATE.autoFired = true;
       // Strip the hash so a manual refresh doesn't re-fire.
       try { history.replaceState(null, '', location.pathname + location.search); } catch {}
-      await pasteAndOptionallySend(mode === 'send');
+      await pasteAndOptionallySend(mode === 'send', memberQuery);
       return true;
     };
     // Try immediately, then watch for the composer to mount.
@@ -286,5 +412,5 @@
   const obs = new MutationObserver(() => mountButton());
   obs.observe(document.documentElement, { childList: true, subtree: true });
   mountButton();
-  log('content script v1.4 loaded on', location.href);
+  log('content script v1.5 loaded on', location.href);
 })();

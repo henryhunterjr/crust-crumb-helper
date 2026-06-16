@@ -44,7 +44,7 @@ export function BrowserExtensionDialog({ open, onOpenChange }: Props) {
           </DialogTitle>
           <DialogDescription>
             Adds a floating <b>Paste</b> and <b>Paste &amp; Send</b> button to every skool.com page so
-            you can ship a generated DM in one click instead of copy → switch tabs → paste → click send.
+            you can ship a generated DM from the Members page without copy → switch tabs → paste → click send.
           </DialogDescription>
         </DialogHeader>
 
@@ -63,9 +63,9 @@ export function BrowserExtensionDialog({ open, onOpenChange }: Props) {
           <div className="bg-muted/50 rounded-md p-3">
             <h4 className="font-semibold mb-1">How to use</h4>
             <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
-              <li>Generate a DM here, hit <b>Copy &amp; Open Skool</b>.</li>
-              <li>On the member's chat page, click in the message box once.</li>
-              <li>Hit the orange <b>🥖 Paste &amp; Send</b> button bottom-right.</li>
+              <li>Generate a DM here, hit <b>Send via Skool</b>.</li>
+              <li>The extension opens the Members page, searches the member, and clicks <b>Message</b>.</li>
+              <li>It pastes the DM and sends it from the chat composer.</li>
             </ol>
             <p className="text-xs text-muted-foreground mt-2">
               Use plain <b>Paste</b> if you want to review before sending. Works for welcome posts too — paste your

@@ -24,25 +24,25 @@ export function getSkoolCommunityUrl(): string {
   return `https://www.skool.com/${SKOOL_COMMUNITY_SLUG}`;
 }
 
-/**
- * Opens the community Members directory, pre-filtered with a search query.
- * This is the page where Henry can click the member and then "Message" — the
- * global /@username profile doesn't expose a Message button for community DMs.
- */
-export function getCommunityMembersSearchUrl(query?: string | null): string {
-  const base = `https://www.skool.com/${SKOOL_COMMUNITY_SLUG}/-/members`;
-  const q = (query || '').trim();
-  if (!q) return base;
-  return `${base}?t=${encodeURIComponent(q)}`;
+/** Opens the community Members directory. */
+export function getCommunityMembersUrl(): string {
+  return `https://www.skool.com/${SKOOL_COMMUNITY_SLUG}/-/members`;
+}
+
+function buildKrustyHash(mode: 'autosend' | 'autopaste', memberQuery?: string | null): string {
+  const params = new URLSearchParams({ krusty: mode });
+  const q = (memberQuery || '').trim();
+  if (q) params.set('member', q);
+  return `#${params.toString()}`;
 }
 
 /**
- * One-click DM: copies the message, then opens the member's Skool profile
+ * One-click DM: opens the community Members page, then copies the message
  * with a hash signal (#krusty=autosend) that the Krusty Chrome extension
- * watches for. When the DM composer mounts on the profile, the extension
- * pastes the clipboard text and presses Enter automatically.
+ * watches for. The extension searches the member, opens their DM composer,
+ * pastes the clipboard text, and presses Enter automatically.
  *
- * Requires the Krusty extension v1.3+ installed.
+ * Requires the Krusty extension v1.5+ installed.
  */
 export interface SendSkoolDmResult {
   ok: boolean;
@@ -57,15 +57,15 @@ export async function sendSkoolDmAuto(
   username: string | null | undefined,
   memberName?: string | null,
 ): Promise<SendSkoolDmResult> {
-  // Route to the community Members directory pre-filtered to this person.
-  // The extension watches for the Message button on the member card / profile
-  // panel inside the community and auto-clicks it.
+  // Route to the plain community Members directory. Skool 404s when the search
+  // query is placed in the URL, so the extension receives the member name in
+  // the hash and performs the search after the page loads.
   const query = (memberName || username || '').trim();
   if (!query) return { ok: false, win: null, reason: 'no-username' };
-  const base = getCommunityMembersSearchUrl(query);
+  const base = getCommunityMembersUrl();
   // window.open MUST be the first action to dodge pop-up blockers.
   // NOTE: omit `noopener` so the extension can postMessage progress back to us.
-  const win = window.open(`${base}#krusty=autosend`, '_blank');
+  const win = window.open(`${base}${buildKrustyHash('autosend', query)}`, '_blank');
   if (!win) return { ok: false, win: null, reason: 'popup-blocked' };
   try {
     await navigator.clipboard.writeText(message);
@@ -76,20 +76,15 @@ export async function sendSkoolDmAuto(
 }
 
 /**
- * Fallback when the extension isn't installed: copy the DM, open the
- * member's profile (no autosend hash), and leave the user to click
- * Message + paste manually. Returns the opened window or null.
+ * Fallback when the extension isn't installed: open the Members page, copy the
+ * DM, and leave the user to search the member + paste manually.
  */
 export async function copyAndOpenProfileFallback(
   message: string,
   username: string | null | undefined,
   memberName?: string | null,
 ): Promise<{ ok: boolean; win: Window | null }> {
-  const query = (memberName || username || '').trim();
-  const base = query
-    ? getCommunityMembersSearchUrl(query)
-    : getCommunityMembersSearchUrl();
-  const win = window.open(base, '_blank');
+  const win = window.open(getCommunityMembersUrl(), '_blank');
   try {
     await navigator.clipboard.writeText(message);
   } catch {
@@ -99,21 +94,16 @@ export async function copyAndOpenProfileFallback(
 }
 
 /**
- * Copy message to clipboard and open the member's Skool profile
- * so Henry can start a chat from there.
+ * Copy message to clipboard and open the Skool Members page.
  */
 export async function copyAndOpenSkool(
   message: string,
   username: string | null | undefined
 ): Promise<boolean> {
+  const win = window.open(getCommunityMembersUrl(), '_blank', 'noopener');
+  if (!win) return false;
   try {
     await navigator.clipboard.writeText(message);
-    const url = username
-      ? getSkoolProfileUrl(username)
-      : getSkoolChatUrl();
-    if (url) {
-      window.open(url, '_blank', 'noopener');
-    }
     return true;
   } catch {
     return false;
