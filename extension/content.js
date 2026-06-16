@@ -1,4 +1,4 @@
-// Krusty Skool Helper — content script v1.5
+// Krusty Skool Helper — content script v1.6
 // Skool's DM composer is a <textarea> with NO Send button.
 // Submit happens by pressing Enter inside the textarea.
 // All steps logged under [Krusty] for screenshot-able debugging.
@@ -6,6 +6,7 @@
 (function () {
   const TAG = '[Krusty]';
   const BTN_ID = 'krusty-paste-btn';
+  const AUTO_KEY = 'krusty:auto-flow';
   const STATE = { lastEditable: null, sending: false, autoFired: false };
 
   const log = (...a) => console.log(TAG, ...a);
@@ -135,49 +136,177 @@
     const needle = normalizeText(memberQuery);
     if (!needle) return null;
     const pieces = needle.split(' ').filter(Boolean);
-    const cands = [
-      ...document.querySelectorAll('a'),
+    const cands = [...document.querySelectorAll('a, button, [role="button"], [role="listitem"], li, [data-testid], div')]
+      .filter(visible)
+      .map((el) => {
+        const text = normalizeText(el.innerText || el.textContent || '');
+        const rect = el.getBoundingClientRect();
+        return { el, text, area: rect.width * rect.height };
+      })
+      .filter(({ text, area }) => {
+        if (!text || text.length > 1200) return false;
+        if (area < 500) return false;
+        return text.includes(needle) || pieces.every((part) => text.includes(part));
+      })
+      .sort((a, b) => a.area - b.area);
+    return cands[0]?.el || null;
+  }
+
+  function findMemberClickable(memberQuery) {
+    const result = findMemberResult(memberQuery);
+    if (!result) return null;
+    const needle = normalizeText(memberQuery);
+    const messageLike = (el) => {
+      const txt = normalizeText(el.innerText || el.textContent || '');
+      return txt === 'message' || txt === 'chat' || txt === 'send message';
+    };
+    const anchors = [...result.querySelectorAll?.('a[href]') || []].filter(visible).filter((a) => !messageLike(a));
+    const namedAnchor = anchors.find((a) => normalizeText(a.innerText || a.textContent || '').includes(needle));
+    if (namedAnchor) return namedAnchor;
+    const profileAnchor = anchors.find((a) => {
+      const href = a.getAttribute('href') || '';
+      return href.includes('/@') || href.includes('/members') || href.includes('/-/members');
+    });
+    if (profileAnchor) return profileAnchor;
+    const buttons = [...result.querySelectorAll?.('button, [role="button"]') || []].filter(visible).filter((b) => !messageLike(b));
+    return buttons[0] || (messageLike(result) ? null : result);
+  }
+
+  function waitForLocationChange(previousHref, timeoutMs = 5000) {
+    return new Promise((resolve) => {
+      if (location.href !== previousHref) return resolve(true);
+      const start = Date.now();
+      const tick = () => {
+        if (location.href !== previousHref) return resolve(true);
+        if (Date.now() - start > timeoutMs) return resolve(false);
+        setTimeout(tick, 150);
+      };
+      tick();
+    });
+  }
+
+  async function waitForMemberClickable(memberQuery, timeoutMs = 8000) {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      const clickable = findMemberClickable(memberQuery);
+      if (clickable) return clickable;
+      await new Promise((r) => setTimeout(r, 300));
+    }
+    return null;
+  }
+
+  function storeAutoFlow(mode, memberQuery) {
+    try {
+      sessionStorage.setItem(AUTO_KEY, JSON.stringify({ mode, member: memberQuery || '', ts: Date.now() }));
+    } catch {}
+  }
+
+  function clearAutoFlow() {
+    try { sessionStorage.removeItem(AUTO_KEY); } catch {}
+  }
+
+  function readStoredAutoFlow() {
+    try {
+      const raw = sessionStorage.getItem(AUTO_KEY);
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      if (!data?.mode || Date.now() - Number(data.ts || 0) > 120_000) {
+        clearAutoFlow();
+        return null;
+      }
+      return data;
+    } catch {
+      return null;
+    }
+  }
+
+  function clickElement(el) {
+    if (!el) return;
+    el.scrollIntoView?.({ block: 'center', inline: 'center' });
+    const rect = el.getBoundingClientRect();
+    const init = {
+      bubbles: true,
+      cancelable: true,
+      view: window,
+      clientX: rect.left + Math.min(rect.width / 2, 24),
+      clientY: rect.top + Math.min(rect.height / 2, 16),
+    };
+    el.dispatchEvent(new PointerEvent('pointerdown', init));
+    el.dispatchEvent(new MouseEvent('mousedown', init));
+    el.dispatchEvent(new PointerEvent('pointerup', init));
+    el.dispatchEvent(new MouseEvent('mouseup', init));
+    el.dispatchEvent(new MouseEvent('click', init));
+  }
+
+  async function openProfileThenMessage(memberQuery) {
+    const clickable = await waitForMemberClickable(memberQuery, 7000);
+    if (!clickable) return false;
+    const before = location.href;
+    log('opening member profile/card for', memberQuery, clickable);
+    postProgress('member-selected', { member: memberQuery });
+    clickElement(clickable);
+
+    // If this navigates to a profile/detail page, sessionStorage keeps the automation alive.
+    await waitForLocationChange(before, 2500);
+    const msgBtn = await waitForMessageButton(7000);
+    if (!msgBtn) return false;
+    postProgress('message-button-clicked');
+    clickElement(msgBtn);
+    return true;
+  }
+
+  function isMemberMatch(el, memberQuery) {
+    const needle = normalizeText(memberQuery);
+    if (!needle) return false;
+    const pieces = needle.split(' ').filter(Boolean);
+    const text = normalizeText(el.innerText || el.textContent || '');
+    if (!text || text.length > 1400) return false;
+    return text.includes(needle) || pieces.every((part) => text.includes(part));
+  }
+
+  function findMessageButtonForMember(memberQuery) {
+    const needle = normalizeText(memberQuery);
+    const buttons = [
       ...document.querySelectorAll('button'),
       ...document.querySelectorAll('[role="button"]'),
-      ...document.querySelectorAll('[role="listitem"]'),
-      ...document.querySelectorAll('li'),
-      ...document.querySelectorAll('[data-testid]'),
-    ].filter(visible);
-    return cands.find((el) => {
+      ...document.querySelectorAll('a'),
+    ].filter(visible).filter((b) => {
       const text = normalizeText(el.innerText || el.textContent || '');
-      if (!text || text.length > 900) return false;
-      return text.includes(needle) || pieces.every((part) => text.includes(part));
-    }) || null;
+      return txt === 'message' || txt === 'chat' || txt === 'send message';
+    });
+    if (!needle) return buttons[0] || null;
+    const scoped = buttons.find((b) => {
+      let node = b.parentElement;
+      for (let i = 0; i < 8 && node && node !== document.body; i += 1) {
+        if (isMemberMatch(node, memberQuery)) return true;
+        node = node.parentElement;
+      }
+      return false;
+    });
+    return scoped || (buttons.length === 1 ? buttons[0] : null);
   }
 
   async function openMemberChatFromDirectory(memberQuery) {
     if (!memberQuery) return false;
     let searched = false;
     const start = Date.now();
-    let clickedResult = false;
 
-    while (Date.now() - start < 8000) {
+    while (Date.now() - start < 10_000) {
       if (!searched) searched = searchMembersDirectory(memberQuery);
 
-      let msgBtn = findMessageButtonForMember(memberQuery);
+      const msgBtn = findMessageButtonForMember(memberQuery);
       if (msgBtn) {
         postProgress('message-button-clicked');
-        msgBtn.click();
+        clickElement(msgBtn);
         return true;
       }
 
-      if (!clickedResult) {
-        const memberResult = findMemberResult(memberQuery);
-        if (memberResult) {
-          clickedResult = true;
-          log('clicking member result for', memberQuery);
-          postProgress('member-selected', { member: memberQuery });
-          memberResult.click();
-        }
-      }
+      const opened = await openProfileThenMessage(memberQuery);
+      if (opened) return true;
 
       await new Promise((r) => setTimeout(r, 350));
     }
+    postProgress('member-not-found', { member: memberQuery });
     return false;
   }
 
