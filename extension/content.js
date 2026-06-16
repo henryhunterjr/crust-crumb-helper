@@ -1,4 +1,4 @@
-// Krusty Skool Helper — content script v1.2
+// Krusty Skool Helper — content script v1.3
 // Skool's DM composer is a <textarea> with NO Send button.
 // Submit happens by pressing Enter inside the textarea.
 // All steps logged under [Krusty] for screenshot-able debugging.
@@ -6,7 +6,7 @@
 (function () {
   const TAG = '[Krusty]';
   const BTN_ID = 'krusty-paste-btn';
-  const STATE = { lastEditable: null, sending: false };
+  const STATE = { lastEditable: null, sending: false, autoFired: false };
 
   const log = (...a) => console.log(TAG, ...a);
   const warn = (...a) => console.warn(TAG, ...a);
@@ -170,6 +170,40 @@
     if (isEditable(e.target)) STATE.lastEditable = e.target;
   }, true);
 
+  // Auto-mode: if the web app opened this tab with #krusty=autosend or
+  // #krusty=autopaste, fire once as soon as the DM composer appears.
+  function readAutoMode() {
+    const h = (location.hash || '').toLowerCase();
+    if (h.includes('krusty=autosend')) return 'send';
+    if (h.includes('krusty=autopaste')) return 'paste';
+    return null;
+  }
+  function armAutoFire() {
+    const mode = readAutoMode();
+    if (!mode || STATE.autoFired) return;
+    log('auto mode armed:', mode);
+    const tryFire = async () => {
+      if (STATE.autoFired) return true;
+      const target = findComposer();
+      if (!target) return false;
+      STATE.autoFired = true;
+      // Strip the hash so a manual refresh doesn't re-fire.
+      try { history.replaceState(null, '', location.pathname + location.search); } catch {}
+      await pasteAndOptionallySend(mode === 'send');
+      return true;
+    };
+    // Try immediately, then watch for the composer to mount.
+    void tryFire();
+    const start = Date.now();
+    const obs = new MutationObserver(async () => {
+      if (await tryFire()) obs.disconnect();
+      else if (Date.now() - start > 60_000) obs.disconnect();
+    });
+    obs.observe(document.documentElement, { childList: true, subtree: true });
+  }
+  window.addEventListener('hashchange', armAutoFire);
+  armAutoFire();
+
   function mountButton() {
     if (document.getElementById(BTN_ID)) return;
     const wrap = document.createElement('div');
@@ -190,5 +224,5 @@
   const obs = new MutationObserver(() => mountButton());
   obs.observe(document.documentElement, { childList: true, subtree: true });
   mountButton();
-  log('content script v1.2 loaded on', location.href);
+  log('content script v1.3 loaded on', location.href);
 })();
