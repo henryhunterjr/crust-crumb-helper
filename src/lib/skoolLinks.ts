@@ -24,16 +24,16 @@ export function getSkoolCommunityUrl(): string {
   return `https://www.skool.com/${SKOOL_COMMUNITY_SLUG}`;
 }
 
-/**
- * Opens the community Members directory, pre-filtered with a search query.
- * This is the page where Henry can click the member and then "Message" — the
- * global /@username profile doesn't expose a Message button for community DMs.
- */
-export function getCommunityMembersSearchUrl(query?: string | null): string {
-  const base = `https://www.skool.com/${SKOOL_COMMUNITY_SLUG}/-/members`;
-  const q = (query || '').trim();
-  if (!q) return base;
-  return `${base}?t=${encodeURIComponent(q)}`;
+/** Opens the community Members directory. */
+export function getCommunityMembersUrl(): string {
+  return `https://www.skool.com/${SKOOL_COMMUNITY_SLUG}/-/members`;
+}
+
+function buildKrustyHash(mode: 'autosend' | 'autopaste', memberQuery?: string | null): string {
+  const params = new URLSearchParams({ krusty: mode });
+  const q = (memberQuery || '').trim();
+  if (q) params.set('member', q);
+  return `#${params.toString()}`;
 }
 
 /**
@@ -57,15 +57,15 @@ export async function sendSkoolDmAuto(
   username: string | null | undefined,
   memberName?: string | null,
 ): Promise<SendSkoolDmResult> {
-  // Route to the community Members directory pre-filtered to this person.
-  // The extension watches for the Message button on the member card / profile
-  // panel inside the community and auto-clicks it.
+  // Route to the plain community Members directory. Skool 404s when the search
+  // query is placed in the URL, so the extension receives the member name in
+  // the hash and performs the search after the page loads.
   const query = (memberName || username || '').trim();
   if (!query) return { ok: false, win: null, reason: 'no-username' };
-  const base = getCommunityMembersSearchUrl(query);
+  const base = getCommunityMembersUrl();
   // window.open MUST be the first action to dodge pop-up blockers.
   // NOTE: omit `noopener` so the extension can postMessage progress back to us.
-  const win = window.open(`${base}#krusty=autosend`, '_blank');
+  const win = window.open(`${base}${buildKrustyHash('autosend', query)}`, '_blank');
   if (!win) return { ok: false, win: null, reason: 'popup-blocked' };
   try {
     await navigator.clipboard.writeText(message);
@@ -85,11 +85,7 @@ export async function copyAndOpenProfileFallback(
   username: string | null | undefined,
   memberName?: string | null,
 ): Promise<{ ok: boolean; win: Window | null }> {
-  const query = (memberName || username || '').trim();
-  const base = query
-    ? getCommunityMembersSearchUrl(query)
-    : getCommunityMembersSearchUrl();
-  const win = window.open(base, '_blank');
+  const win = window.open(getCommunityMembersUrl(), '_blank');
   try {
     await navigator.clipboard.writeText(message);
   } catch {
@@ -108,12 +104,7 @@ export async function copyAndOpenSkool(
 ): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(message);
-    const url = username
-      ? getSkoolProfileUrl(username)
-      : getSkoolChatUrl();
-    if (url) {
-      window.open(url, '_blank', 'noopener');
-    }
+    window.open(getCommunityMembersUrl(), '_blank', 'noopener');
     return true;
   } catch {
     return false;
