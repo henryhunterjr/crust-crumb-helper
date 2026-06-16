@@ -32,20 +32,50 @@ export function getSkoolCommunityUrl(): string {
  *
  * Requires the Krusty extension v1.3+ installed.
  */
+export interface SendSkoolDmResult {
+  ok: boolean;
+  /** Window ref for the opened Skool tab (null if pop-up blocked). */
+  win: Window | null;
+  /** Reason for failure when ok is false. */
+  reason?: 'no-username' | 'popup-blocked' | 'clipboard-failed';
+}
+
 export async function sendSkoolDmAuto(
   message: string,
   username: string | null | undefined,
-): Promise<boolean> {
+): Promise<SendSkoolDmResult> {
   const base = username ? getSkoolProfileUrl(username) : getSkoolChatUrl();
-  if (!base) return false;
+  if (!base) return { ok: false, win: null, reason: 'no-username' };
   // window.open MUST be the first action to dodge pop-up blockers.
-  const win = window.open(`${base}#krusty=autosend`, '_blank', 'noopener');
+  // NOTE: omit `noopener` so the extension can postMessage progress back to us.
+  const win = window.open(`${base}#krusty=autosend`, '_blank');
+  if (!win) return { ok: false, win: null, reason: 'popup-blocked' };
   try {
     await navigator.clipboard.writeText(message);
   } catch {
-    return false;
+    return { ok: false, win, reason: 'clipboard-failed' };
   }
-  return !!win;
+  return { ok: true, win };
+}
+
+/**
+ * Fallback when the extension isn't installed: copy the DM, open the
+ * member's profile (no autosend hash), and leave the user to click
+ * Message + paste manually. Returns the opened window or null.
+ */
+export async function copyAndOpenProfileFallback(
+  message: string,
+  username: string | null | undefined,
+): Promise<{ ok: boolean; win: Window | null }> {
+  const base = username ? getSkoolProfileUrl(username) : getSkoolChatUrl();
+  if (!base) return { ok: false, win: null };
+  const win = window.open(base, '_blank');
+  try {
+    await navigator.clipboard.writeText(message);
+  } catch {
+    return { ok: false, win };
+  }
+  return { ok: true, win };
 }
 
 /**

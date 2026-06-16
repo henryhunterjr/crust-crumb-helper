@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { Copy, RefreshCw, CheckCircle, Loader2, BookOpen, ChefHat, MessageCircle, Sparkles, Pencil, FileText, Save, ChevronDown, ExternalLink, Link } from 'lucide-react';
-import { copyAndOpenSkool, sendSkoolDmAuto } from '@/lib/skoolLinks';
+import { useState, useEffect, useRef } from 'react';
+import { Copy, RefreshCw, CheckCircle, Loader2, BookOpen, ChefHat, MessageCircle, Sparkles, Pencil, FileText, Save, ChevronDown, ExternalLink, Link, Circle, AlertTriangle } from 'lucide-react';
+import { copyAndOpenSkool, sendSkoolDmAuto, copyAndOpenProfileFallback } from '@/lib/skoolLinks';
 import {
   Dialog,
   DialogContent,
@@ -96,6 +96,24 @@ export function GeneratedDMDialog({
   const [localCustomTopic, setLocalCustomTopic] = useState(customTopic);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [templateName, setTemplateName] = useState('');
+
+  // Auto-send progress tracking. Steps:
+  //   opening → message-button → composer → pasting → sending → done | blocked | timeout
+  type AutoStep =
+    | 'idle'
+    | 'opening'
+    | 'message-button'
+    | 'composer'
+    | 'pasting'
+    | 'sending'
+    | 'done'
+    | 'blocked'
+    | 'timeout'
+    | 'fallback';
+  const [autoStep, setAutoStep] = useState<AutoStep>('idle');
+  const [autoError, setAutoError] = useState<string | null>(null);
+  const timeoutRef = useRef<number | null>(null);
+  const cleanupRef = useRef<(() => void) | null>(null);
   
   const { templates, createTemplate, incrementUseCount } = useDMTemplates();
   const { resources: allResources } = useClassroomResources();
@@ -139,6 +157,98 @@ export function GeneratedDMDialog({
   useEffect(() => {
     setLocalCustomTopic(customTopic);
   }, [customTopic]);
+
+  // Reset auto-send progress when the dialog closes or message changes.
+  useEffect(() => {
+    if (!open) {
+      cleanupRef.current?.();
+      cleanupRef.current = null;
+      setAutoStep('idle');
+      setAutoError(null);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    return () => {
+      cleanupRef.current?.();
+      if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
+  const startAutoSend = async () => {
+    setAutoError(null);
+    setAutoStep('opening');
+    // Set up listener BEFORE opening, so we don't miss early events.
+    const onMessage = (e: MessageEvent) => {
+      const data = e.data;
+      if (!data || data.source !== 'krusty-ext') return;
+      switch (data.step) {
+        case 'opened':
+          // already showing 'opening'; no-op
+          break;
+        case 'message-button-clicked':
+          setAutoStep('message-button');
+          break;
+        case 'waiting-for-composer':
+          setAutoStep((s) => (s === 'message-button' ? 'message-button' : 'composer'));
+          break;
+        case 'composer-mounted':
+          setAutoStep('composer');
+          break;
+        case 'pasted':
+          setAutoStep('pasting');
+          // brief delay before promoting to 'sending' if no further event
+          break;
+        case 'sent':
+          setAutoStep('done');
+          toast.success('DM sent via Skool');
+          break;
+        case 'send-blocked':
+          setAutoStep('blocked');
+          break;
+      }
+    };
+    window.addEventListener('message', onMessage);
+    cleanupRef.current = () => window.removeEventListener('message', onMessage);
+
+    const result = await sendSkoolDmAuto(localMessage, member?.skool_username);
+    if (!result.ok) {
+      cleanupRef.current?.();
+      cleanupRef.current = null;
+      if (result.reason === 'popup-blocked') {
+        setAutoError('Pop-up blocked. Allow pop-ups for this site and try again.');
+      } else if (result.reason === 'clipboard-failed') {
+        setAutoError('Could not copy the message to your clipboard.');
+      } else if (result.reason === 'no-username') {
+        setAutoError('Member has no Skool username on file.');
+      }
+      setAutoStep('idle');
+      return;
+    }
+    // Promote 'opening' → 'sending' eventually; if no events arrive in 12s, time out.
+    if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
+    timeoutRef.current = window.setTimeout(() => {
+      setAutoStep((s) => {
+        if (s === 'done' || s === 'blocked' || s === 'fallback' || s === 'idle') return s;
+        setAutoError(
+          'No response from the Krusty extension. Make sure it is installed (v1.4+) and the Skool tab is open. The message is already on your clipboard, so you can paste it manually.',
+        );
+        return 'timeout';
+      });
+    }, 12000);
+  };
+
+  const startFallback = async () => {
+    setAutoError(null);
+    setAutoStep('fallback');
+    const r = await copyAndOpenProfileFallback(localMessage, member?.skool_username);
+    if (!r.ok) {
+      setAutoError('Could not copy the message or open the profile.');
+      setAutoStep('idle');
+      return;
+    }
+    toast.success('Copied. Profile opened in a new tab.');
+  };
 
   const handleCopy = async () => {
     try {
@@ -223,6 +333,27 @@ export function GeneratedDMDialog({
 
   const hasResources = matchedResources.length > 0 || matchedRecipes.length > 0;
   const showResources = outreachType === 'resource_recommendation' || outreachType === 'welcome_message';
+
+  // ---- Auto-send stepper ----
+  const stepOrder: { key: AutoStep; label: string }[] = [
+    { key: 'opening', label: 'Opening profile' },
+    { key: 'message-button', label: 'Clicking Message' },
+    { key: 'composer', label: 'Waiting for DM composer' },
+    { key: 'pasting', label: 'Pasting message' },
+    { key: 'sending', label: 'Sending' },
+  ];
+  const stepIndex = (s: AutoStep) => {
+    const i = stepOrder.findIndex((x) => x.key === s);
+    if (s === 'done') return stepOrder.length;
+    return i;
+  };
+  const currentIdx = stepIndex(autoStep);
+  const autoActive =
+    autoStep !== 'idle' &&
+    autoStep !== 'fallback' &&
+    autoStep !== 'done' &&
+    autoStep !== 'blocked' &&
+    autoStep !== 'timeout';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -605,23 +736,30 @@ export function GeneratedDMDialog({
               <Button
                 size="sm"
                 onClick={async () => {
-                  const ok = await sendSkoolDmAuto(localMessage, member?.skool_username);
-                  if (ok) {
-                    toast.success('Opening Skool — extension will paste and send automatically');
-                  } else {
-                    toast.error('Could not open Skool or copy message');
-                  }
+                  await startAutoSend();
                 }}
-                disabled={isGenerating || !message || !member?.skool_username}
+                disabled={isGenerating || !message || !member?.skool_username || autoActive}
                 aria-label="Send DM automatically via Krusty extension"
                 title={
                   !member?.skool_username
                     ? 'Member has no Skool username on file'
-                    : 'Requires Krusty Chrome extension v1.3+ installed'
+                    : 'Requires Krusty Chrome extension v1.4+ installed'
                 }
               >
                 <Sparkles className="h-4 w-4 mr-2" />
                 Send via Skool
+              </Button>
+
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={startFallback}
+                disabled={isGenerating || !message}
+                aria-label="Copy DM and open the member's profile (manual send)"
+                title="No extension? Copy the message and open the profile, then click Message and paste."
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Copy & Open Profile
               </Button>
 
               <Button
@@ -633,6 +771,79 @@ export function GeneratedDMDialog({
                 Mark as Sent
               </Button>
             </div>
+
+            {/* Auto-send progress stepper */}
+            {(autoStep !== 'idle' || autoError) && (
+              <div className="mt-4 p-3 rounded-lg border border-border/60 bg-muted/40">
+                {autoStep === 'fallback' ? (
+                  <div className="text-sm">
+                    <p className="font-medium text-foreground mb-2">Manual send mode</p>
+                    <ol className="list-decimal list-inside text-xs text-muted-foreground space-y-1">
+                      <li>The Skool profile is open in a new tab.</li>
+                      <li>Click the <span className="font-medium text-foreground">Message</span> button on the profile.</li>
+                      <li>Paste with <span className="font-mono">Ctrl/Cmd + V</span> — the DM is already on your clipboard.</li>
+                      <li>Press <span className="font-mono">Enter</span> to send.</li>
+                    </ol>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-xs font-medium text-muted-foreground mb-2">
+                      {autoStep === 'done'
+                        ? 'Done — message delivered.'
+                        : autoStep === 'blocked'
+                        ? 'Pasted, but Skool blocked auto-send. Press Enter in the Skool tab to finish.'
+                        : autoStep === 'timeout'
+                        ? 'Stuck — see fallback below.'
+                        : 'Auto-send in progress…'}
+                    </p>
+                    <ol className="space-y-1.5">
+                      {stepOrder.map((s, i) => {
+                        const done = i < currentIdx || autoStep === 'done';
+                        const active = i === currentIdx && autoActive;
+                        return (
+                          <li key={s.key} className="flex items-center gap-2 text-xs">
+                            {done ? (
+                              <CheckCircle className="h-3.5 w-3.5 text-primary" />
+                            ) : active ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                            ) : (
+                              <Circle className="h-3.5 w-3.5 text-muted-foreground/40" />
+                            )}
+                            <span
+                              className={cn(
+                                done
+                                  ? 'text-foreground'
+                                  : active
+                                  ? 'text-foreground font-medium'
+                                  : 'text-muted-foreground',
+                              )}
+                            >
+                              {s.label}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ol>
+                  </>
+                )}
+
+                {autoError && (
+                  <div className="mt-3 flex items-start gap-2 text-xs text-foreground">
+                    <AlertTriangle className="h-3.5 w-3.5 mt-0.5 text-amber-500 shrink-0" />
+                    <span>{autoError}</span>
+                  </div>
+                )}
+
+                {(autoStep === 'timeout' || autoStep === 'blocked') && (
+                  <div className="mt-3">
+                    <Button size="sm" variant="outline" onClick={startFallback}>
+                      <ExternalLink className="h-3.5 w-3.5 mr-2" />
+                      Open profile and paste manually
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
           </>
         )}
       </DialogContent>
