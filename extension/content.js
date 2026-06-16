@@ -127,7 +127,7 @@
       const txt = normalizeText(el.innerText || el.textContent || '');
       return txt === 'message' || txt === 'chat' || txt === 'send message';
     };
-    const anchors = [...result.querySelectorAll?.('a[href]') || []].filter(visible).filter((a) => !messageLike(a));
+    const anchors = Array.from(result.querySelectorAll?.('a[href]') || []).filter(visible).filter((a) => !messageLike(a));
     const namedAnchor = anchors.find((a) => normalizeText(a.innerText || a.textContent || '').includes(needle));
     if (namedAnchor) return namedAnchor;
     const profileAnchor = anchors.find((a) => {
@@ -135,7 +135,7 @@
       return href.includes('/@') || href.includes('/members') || href.includes('/-/members');
     });
     if (profileAnchor) return profileAnchor;
-    const buttons = [...result.querySelectorAll?.('button, [role="button"]') || []].filter(visible).filter((b) => !messageLike(b));
+    const buttons = Array.from(result.querySelectorAll?.('button, [role="button"]') || []).filter(visible).filter((b) => !messageLike(b));
     return buttons[0] || (messageLike(result) ? null : result);
   }
 
@@ -198,9 +198,9 @@
       clientX: rect.left + Math.min(rect.width / 2, 24),
       clientY: rect.top + Math.min(rect.height / 2, 16),
     };
-    el.dispatchEvent(new PointerEvent('pointerdown', init));
+    if (typeof PointerEvent === 'function') el.dispatchEvent(new PointerEvent('pointerdown', init));
     el.dispatchEvent(new MouseEvent('mousedown', init));
-    el.dispatchEvent(new PointerEvent('pointerup', init));
+    if (typeof PointerEvent === 'function') el.dispatchEvent(new PointerEvent('pointerup', init));
     el.dispatchEvent(new MouseEvent('mouseup', init));
     el.dispatchEvent(new MouseEvent('click', init));
   }
