@@ -1,8 +1,9 @@
-import { Copy, Save, Check, CalendarPlus } from 'lucide-react';
+import { Copy, Save, Check, CalendarPlus, Send } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
+import { getSkoolCommunityUrl } from '@/lib/skoolLinks';
 
 interface GeneratedPostCardProps {
   title: string;
@@ -14,6 +15,7 @@ interface GeneratedPostCardProps {
 
 export function GeneratedPostCard({ title, content, onSave, onSchedule, isSaving }: GeneratedPostCardProps) {
   const [copied, setCopied] = useState(false);
+  const [sending, setSending] = useState(false);
 
   const handleCopy = async () => {
     const fullPost = `${title}\n\n${content}`;
@@ -27,6 +29,22 @@ export function GeneratedPostCard({ title, content, onSave, onSchedule, isSaving
     }
   };
 
+  const handleCopyAndOpen = async () => {
+    // window.open MUST be first to avoid pop-up blockers.
+    const win = window.open(getSkoolCommunityUrl(), '_blank', 'noopener');
+    setSending(true);
+    const fullPost = `${title}\n\n${content}`;
+    try {
+      await navigator.clipboard.writeText(fullPost);
+      toast.success('Copied — paste into the New Post box in Skool');
+    } catch {
+      toast.error('Opened Skool, but copy failed. Use Copy and try again.');
+    } finally {
+      setSending(false);
+      if (!win) toast.error('Pop-up blocked — allow pop-ups for this site');
+    }
+  };
+
   return (
     <Card className="h-full flex flex-col">
       <CardHeader className="pb-3">
@@ -37,6 +55,16 @@ export function GeneratedPostCard({ title, content, onSave, onSchedule, isSaving
           {content}
         </p>
         <div className="flex flex-col gap-2 mt-4 pt-4 border-t">
+          <Button
+            variant="default"
+            size="sm"
+            className="w-full"
+            onClick={handleCopyAndOpen}
+            disabled={sending}
+          >
+            <Send className="h-4 w-4 mr-2" />
+            Copy & Open Skool
+          </Button>
           <div className="flex gap-2">
             <Button
               variant="outline"
@@ -69,7 +97,7 @@ export function GeneratedPostCard({ title, content, onSave, onSchedule, isSaving
           </div>
           {onSchedule && (
             <Button
-              variant="default"
+              variant="outline"
               size="sm"
               className="w-full"
               onClick={onSchedule}
