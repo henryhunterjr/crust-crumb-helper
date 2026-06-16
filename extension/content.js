@@ -99,39 +99,6 @@
     return true;
   }
 
-  function closestTextContainer(el) {
-    let node = el;
-    for (let i = 0; i < 7 && node && node !== document.body; i += 1) {
-      const text = normalizeText(node.innerText || node.textContent || '');
-      if (text.length > 0 && text.length < 1200) return node;
-      node = node.parentElement;
-    }
-    return el;
-  }
-
-  function findMessageButtonForMember(memberQuery) {
-    const needle = normalizeText(memberQuery);
-    const buttons = [
-      ...document.querySelectorAll('button'),
-      ...document.querySelectorAll('[role="button"]'),
-      ...document.querySelectorAll('a'),
-    ].filter(visible).filter((b) => {
-      const txt = normalizeText(b.innerText || b.textContent || '');
-      return txt === 'message' || txt === 'chat' || txt === 'send message';
-    });
-    if (!needle) return buttons[0] || null;
-    const scoped = buttons.find((b) => {
-      let node = b.parentElement;
-      for (let i = 0; i < 8 && node && node !== document.body; i += 1) {
-        const text = normalizeText(node.innerText || node.textContent || '');
-        if (text.includes(needle) && text.length < 1400) return true;
-        node = node.parentElement;
-      }
-      return false;
-    });
-    return scoped || (buttons.length === 1 ? buttons[0] : null);
-  }
-
   function findMemberResult(memberQuery) {
     const needle = normalizeText(memberQuery);
     if (!needle) return null;
@@ -271,7 +238,7 @@
       ...document.querySelectorAll('[role="button"]'),
       ...document.querySelectorAll('a'),
     ].filter(visible).filter((b) => {
-      const text = normalizeText(el.innerText || el.textContent || '');
+      const txt = normalizeText(b.innerText || b.textContent || '');
       return txt === 'message' || txt === 'chat' || txt === 'send message';
     });
     if (!needle) return buttons[0] || null;
