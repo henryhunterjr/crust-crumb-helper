@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.auto-welcome]
 verify_jwt = false
+
+[functions.library-health]
+verify_jwt = false
