@@ -145,27 +145,28 @@
   async function openMemberChatFromDirectory(memberQuery) {
     if (!memberQuery) return false;
     searchMembersDirectory(memberQuery);
-    await new Promise((r) => setTimeout(r, 900));
+    const start = Date.now();
+    let clickedResult = false;
 
-    let msgBtn = findMessageButtonForMember(memberQuery);
-    if (msgBtn) {
-      postProgress('message-button-clicked');
-      msgBtn.click();
-      return true;
-    }
-
-    const memberResult = findMemberResult(memberQuery);
-    if (memberResult) {
-      log('clicking member result for', memberQuery);
-      postProgress('member-selected', { member: memberQuery });
-      memberResult.click();
-      await new Promise((r) => setTimeout(r, 700));
-      msgBtn = findMessageButtonForMember(memberQuery) || findMessageButton();
+    while (Date.now() - start < 8000) {
+      let msgBtn = findMessageButtonForMember(memberQuery);
       if (msgBtn) {
         postProgress('message-button-clicked');
         msgBtn.click();
         return true;
       }
+
+      if (!clickedResult) {
+        const memberResult = findMemberResult(memberQuery);
+        if (memberResult) {
+          clickedResult = true;
+          log('clicking member result for', memberQuery);
+          postProgress('member-selected', { member: memberQuery });
+          memberResult.click();
+        }
+      }
+
+      await new Promise((r) => setTimeout(r, 350));
     }
     return false;
   }
@@ -401,5 +402,5 @@
   const obs = new MutationObserver(() => mountButton());
   obs.observe(document.documentElement, { childList: true, subtree: true });
   mountButton();
-  log('content script v1.4 loaded on', location.href);
+  log('content script v1.5 loaded on', location.href);
 })();
