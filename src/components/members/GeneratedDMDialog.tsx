@@ -211,7 +211,11 @@ export function GeneratedDMDialog({
     window.addEventListener('message', onMessage);
     cleanupRef.current = () => window.removeEventListener('message', onMessage);
 
-    const result = await sendSkoolDmAuto(localMessage, member?.skool_username);
+    const result = await sendSkoolDmAuto(
+      localMessage,
+      member?.skool_username,
+      member?.skool_name,
+    );
     if (!result.ok) {
       cleanupRef.current?.();
       cleanupRef.current = null;
@@ -241,7 +245,11 @@ export function GeneratedDMDialog({
   const startFallback = async () => {
     setAutoError(null);
     setAutoStep('fallback');
-    const r = await copyAndOpenProfileFallback(localMessage, member?.skool_username);
+    const r = await copyAndOpenProfileFallback(
+      localMessage,
+      member?.skool_username,
+      member?.skool_name,
+    );
     if (!r.ok) {
       setAutoError('Could not copy the message or open the profile.');
       setAutoStep('idle');
