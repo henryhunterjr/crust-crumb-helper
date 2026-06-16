@@ -102,6 +102,8 @@ export function GeneratedDMDialog({
   type AutoStep =
     | 'idle'
     | 'opening'
+    | 'searching'
+    | 'member-selected'
     | 'message-button'
     | 'composer'
     | 'pasting'
@@ -186,6 +188,12 @@ export function GeneratedDMDialog({
         case 'opened':
           // already showing 'opening'; no-op
           break;
+        case 'searching-member':
+          setAutoStep('searching');
+          break;
+        case 'member-selected':
+          setAutoStep('member-selected');
+          break;
         case 'message-button-clicked':
           setAutoStep('message-button');
           break;
@@ -235,7 +243,7 @@ export function GeneratedDMDialog({
       setAutoStep((s) => {
         if (s === 'done' || s === 'blocked' || s === 'fallback' || s === 'idle') return s;
         setAutoError(
-          'No response from the Krusty extension. Make sure it is installed (v1.4+) and the Skool tab is open. The message is already on your clipboard, so you can paste it manually.',
+          'No response from the Krusty extension. Make sure it is installed (v1.5+) and the Skool tab is open. The message is already on your clipboard, so you can paste it manually.',
         );
         return 'timeout';
       });
@@ -251,7 +259,7 @@ export function GeneratedDMDialog({
       member?.skool_name,
     );
     if (!r.ok) {
-      setAutoError('Could not copy the message or open the profile.');
+      setAutoError('Could not copy the message or open the Members page.');
       setAutoStep('idle');
       return;
     }
@@ -344,7 +352,9 @@ export function GeneratedDMDialog({
 
   // ---- Auto-send stepper ----
   const stepOrder: { key: AutoStep; label: string }[] = [
-    { key: 'opening', label: 'Opening profile' },
+    { key: 'opening', label: 'Opening Members page' },
+    { key: 'searching', label: 'Searching member' },
+    { key: 'member-selected', label: 'Opening member chat' },
     { key: 'message-button', label: 'Clicking Message' },
     { key: 'composer', label: 'Waiting for DM composer' },
     { key: 'pasting', label: 'Pasting message' },
