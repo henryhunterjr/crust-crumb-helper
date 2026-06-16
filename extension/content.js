@@ -457,9 +457,11 @@
     }
   }
   function armAutoFire() {
-    const mode = readAutoMode();
+    const stored = readStoredAutoFlow();
+    const mode = readAutoMode() || stored?.mode;
     if (!mode || STATE.autoFired) return;
-    const memberQuery = readMemberQuery();
+    const memberQuery = readMemberQuery() || stored?.member || '';
+    storeAutoFlow(mode, memberQuery);
     log('auto mode armed:', mode);
     postProgress('opened', { mode, member: memberQuery || null });
     const tryFire = async () => {
@@ -474,6 +476,7 @@
       // Strip the hash so a manual refresh doesn't re-fire.
       try { history.replaceState(null, '', location.pathname + location.search); } catch {}
       await pasteAndOptionallySend(mode === 'send', memberQuery);
+      clearAutoFlow();
       return true;
     };
     // Try immediately, then watch for the composer to mount.
@@ -486,6 +489,7 @@
     obs.observe(document.documentElement, { childList: true, subtree: true });
   }
   window.addEventListener('hashchange', armAutoFire);
+  window.addEventListener('popstate', armAutoFire);
   armAutoFire();
 
   function mountButton() {
@@ -508,5 +512,5 @@
   const obs = new MutationObserver(() => mountButton());
   obs.observe(document.documentElement, { childList: true, subtree: true });
   mountButton();
-  log('content script v1.5 loaded on', location.href);
+  log('content script v1.6 loaded on', location.href);
 })();
