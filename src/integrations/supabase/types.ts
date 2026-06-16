@@ -1480,6 +1480,60 @@ export type Database = {
         }
         Relationships: []
       }
+      sync_runs: {
+        Row: {
+          created_at: string
+          deltas: Json
+          dry_run: boolean
+          duration_ms: number | null
+          entries_seen: number
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          inserted: Json
+          skipped: Json
+          source: string
+          started_at: string
+          status: string
+          topic_errors: Json
+          topics_seen: number
+        }
+        Insert: {
+          created_at?: string
+          deltas?: Json
+          dry_run?: boolean
+          duration_ms?: number | null
+          entries_seen?: number
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          inserted?: Json
+          skipped?: Json
+          source?: string
+          started_at?: string
+          status?: string
+          topic_errors?: Json
+          topics_seen?: number
+        }
+        Update: {
+          created_at?: string
+          deltas?: Json
+          dry_run?: boolean
+          duration_ms?: number | null
+          entries_seen?: number
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          inserted?: Json
+          skipped?: Json
+          source?: string
+          started_at?: string
+          status?: string
+          topic_errors?: Json
+          topics_seen?: number
+        }
+        Relationships: []
+      }
       url_health_checks: {
         Row: {
           created_at: string
