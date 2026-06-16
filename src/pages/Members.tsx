@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useDebounce } from '@/hooks/useDebounce';
-import { Upload, Search, ArrowUpDown, UserPlus, RefreshCw, ChevronLeft, ChevronRight, Tags, AtSign, Puzzle } from 'lucide-react';
+import { Upload, Search, ArrowUpDown, UserPlus, RefreshCw, ChevronLeft, ChevronRight, Tags, AtSign, Puzzle, Download } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -70,6 +70,25 @@ export default function Members() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectedTagFilters, setSelectedTagFilters] = useState<string[]>([]);
   const [isRetagging, setIsRetagging] = useState(false);
+
+  const handleExtensionDownload = () => {
+    fetch('/krusty-skool-helper.zip')
+      .then((res) => {
+        if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+        return res.blob();
+      })
+      .then((blob) => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'krusty-skool-helper-v1.6.0.zip';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(a.href);
+        toast.success('Extension ZIP downloaded');
+      })
+      .catch((err) => toast.error(err.message));
+  };
 
   // Handle filter from URL params
   useEffect(() => {
@@ -500,7 +519,11 @@ export default function Members() {
             </Button>
             <Button variant="outline" onClick={() => setExtensionDialogOpen(true)}>
               <Puzzle className="h-4 w-4 mr-2" />
-              Browser Extension
+              Extension Setup
+            </Button>
+            <Button variant="outline" onClick={handleExtensionDownload}>
+              <Download className="h-4 w-4 mr-2" />
+              Download Extension ZIP
             </Button>
             <Button onClick={() => setImportDialogOpen(true)}>
               <Upload className="h-4 w-4 mr-2" />
