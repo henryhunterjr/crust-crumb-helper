@@ -37,12 +37,12 @@ function buildKrustyHash(mode: 'autosend' | 'autopaste', memberQuery?: string | 
 }
 
 /**
- * One-click DM: copies the message, then opens the member's Skool profile
+ * One-click DM: opens the community Members page, then copies the message
  * with a hash signal (#krusty=autosend) that the Krusty Chrome extension
- * watches for. When the DM composer mounts on the profile, the extension
- * pastes the clipboard text and presses Enter automatically.
+ * watches for. The extension searches the member, opens their DM composer,
+ * pastes the clipboard text, and presses Enter automatically.
  *
- * Requires the Krusty extension v1.3+ installed.
+ * Requires the Krusty extension v1.5+ installed.
  */
 export interface SendSkoolDmResult {
   ok: boolean;
@@ -76,9 +76,8 @@ export async function sendSkoolDmAuto(
 }
 
 /**
- * Fallback when the extension isn't installed: copy the DM, open the
- * member's profile (no autosend hash), and leave the user to click
- * Message + paste manually. Returns the opened window or null.
+ * Fallback when the extension isn't installed: open the Members page, copy the
+ * DM, and leave the user to search the member + paste manually.
  */
 export async function copyAndOpenProfileFallback(
   message: string,
@@ -95,16 +94,16 @@ export async function copyAndOpenProfileFallback(
 }
 
 /**
- * Copy message to clipboard and open the member's Skool profile
- * so Henry can start a chat from there.
+ * Copy message to clipboard and open the Skool Members page.
  */
 export async function copyAndOpenSkool(
   message: string,
   username: string | null | undefined
 ): Promise<boolean> {
+  const win = window.open(getCommunityMembersUrl(), '_blank', 'noopener');
+  if (!win) return false;
   try {
     await navigator.clipboard.writeText(message);
-    window.open(getCommunityMembersUrl(), '_blank', 'noopener');
     return true;
   } catch {
     return false;
