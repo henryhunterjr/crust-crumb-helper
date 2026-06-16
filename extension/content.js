@@ -119,7 +119,15 @@
       return txt === 'message' || txt === 'chat' || txt === 'send message';
     });
     if (!needle) return buttons[0] || null;
-    const scoped = buttons.find((b) => normalizeText(closestTextContainer(b).innerText || '').includes(needle));
+    const scoped = buttons.find((b) => {
+      let node = b.parentElement;
+      for (let i = 0; i < 8 && node && node !== document.body; i += 1) {
+        const text = normalizeText(node.innerText || node.textContent || '');
+        if (text.includes(needle) && text.length < 1400) return true;
+        node = node.parentElement;
+      }
+      return false;
+    });
     return scoped || (buttons.length === 1 ? buttons[0] : null);
   }
 
@@ -144,11 +152,13 @@
 
   async function openMemberChatFromDirectory(memberQuery) {
     if (!memberQuery) return false;
-    searchMembersDirectory(memberQuery);
+    let searched = false;
     const start = Date.now();
     let clickedResult = false;
 
     while (Date.now() - start < 8000) {
+      if (!searched) searched = searchMembersDirectory(memberQuery);
+
       let msgBtn = findMessageButtonForMember(memberQuery);
       if (msgBtn) {
         postProgress('message-button-clicked');
