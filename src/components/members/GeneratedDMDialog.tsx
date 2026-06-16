@@ -232,7 +232,7 @@ export function GeneratedDMDialog({
       } else if (result.reason === 'clipboard-failed') {
         setAutoError('Could not copy the message to your clipboard.');
       } else if (result.reason === 'no-username') {
-        setAutoError('Member has no Skool username on file.');
+        setAutoError('Member has no searchable Skool name on file.');
       }
       setAutoStep('idle');
       return;
@@ -756,11 +756,11 @@ export function GeneratedDMDialog({
                 onClick={async () => {
                   await startAutoSend();
                 }}
-                disabled={isGenerating || !message || !member?.skool_username || autoActive}
+                disabled={isGenerating || !message || !(member?.skool_name || member?.skool_username) || autoActive}
                 aria-label="Send DM automatically via Krusty extension"
                 title={
-                  !member?.skool_username
-                    ? 'Member has no Skool username on file'
+                  !(member?.skool_name || member?.skool_username)
+                    ? 'Member has no searchable Skool name on file'
                     : 'Requires Krusty Chrome extension v1.5+ installed'
                 }
               >
