@@ -1,4 +1,4 @@
-// Krusty Skool Helper — content script v1.3
+// Krusty Skool Helper — content script v1.4
 // Skool's DM composer is a <textarea> with NO Send button.
 // Submit happens by pressing Enter inside the textarea.
 // All steps logged under [Krusty] for screenshot-able debugging.
@@ -10,6 +10,20 @@
 
   const log = (...a) => console.log(TAG, ...a);
   const warn = (...a) => console.warn(TAG, ...a);
+
+  // Notify the opener (Lovable app) of progress so the dialog stepper can update.
+  function postProgress(step, detail) {
+    try {
+      if (window.opener && !window.opener.closed) {
+        window.opener.postMessage(
+          { source: 'krusty-ext', step, detail: detail || null, ts: Date.now() },
+          '*',
+        );
+      }
+    } catch (e) {
+      // opener may be cross-origin restricted; ignore
+    }
+  }
 
   function isEditable(el) {
     if (!el || !el.tagName) return false;
@@ -41,6 +55,35 @@
       return rb.width * rb.height - ra.width * ra.height;
     });
     return cands[0] || null;
+  }
+
+  // Find the "Message" / "Chat" button on a Skool profile page.
+  function findMessageButton() {
+    const buttons = [
+      ...document.querySelectorAll('button'),
+      ...document.querySelectorAll('[role="button"]'),
+      ...document.querySelectorAll('a'),
+    ];
+    for (const b of buttons) {
+      if (!visible(b)) continue;
+      const txt = (b.innerText || b.textContent || '').trim().toLowerCase();
+      if (txt === 'message' || txt === 'chat' || txt === 'send message') return b;
+    }
+    return null;
+  }
+
+  function waitForMessageButton(timeoutMs = 6000) {
+    return new Promise((resolve) => {
+      const found = findMessageButton();
+      if (found) return resolve(found);
+      const start = Date.now();
+      const obs = new MutationObserver(() => {
+        const b = findMessageButton();
+        if (b) { obs.disconnect(); resolve(b); }
+        else if (Date.now() - start > timeoutMs) { obs.disconnect(); resolve(null); }
+      });
+      obs.observe(document.body, { childList: true, subtree: true });
+    });
   }
 
   function waitForComposer(timeoutMs = 4000) {
@@ -127,14 +170,28 @@
       if (!text) { flash('Clipboard is empty.'); return; }
       log('clipboard length', text.length);
 
+      // If we're on a profile page and no composer is open yet, click "Message" first.
+      let composer = findComposer();
+      if (!composer) {
+        const msgBtn = await waitForMessageButton(2500);
+        if (msgBtn) {
+          log('clicking Message button');
+          postProgress('message-button-clicked');
+          msgBtn.click();
+        }
+      }
+
+      postProgress('waiting-for-composer');
       const target = await waitForComposer(4000);
       if (!target) { warn('no composer found'); flash('No message box found. Open a DM first.'); return; }
       log('composer found', target.tagName, target);
+      postProgress('composer-mounted');
 
       // Let React attach handlers on freshly-mounted composers.
       await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 60)));
       injectText(target, text);
       log('text injected');
+      postProgress('pasted', { chars: text.length });
       flash(`Pasted ${text.length} chars`);
       if (!autoSend) return;
 
@@ -148,9 +205,11 @@
       const ok = await waitForMessageEcho(scroller, text, 5000);
       if (ok) {
         flash('Sent.');
+        postProgress('sent');
       } else {
         warn('no echo detected — Skool may have ignored synthetic Enter');
         flash('Pasted. Press Enter to send (Skool blocked auto-send).');
+        postProgress('send-blocked');
       }
     } finally {
       STATE.sending = false;
@@ -182,10 +241,13 @@
     const mode = readAutoMode();
     if (!mode || STATE.autoFired) return;
     log('auto mode armed:', mode);
+    postProgress('opened', { mode });
     const tryFire = async () => {
       if (STATE.autoFired) return true;
+      // Either the composer is already there, or we're on a profile with a Message button.
       const target = findComposer();
-      if (!target) return false;
+      const msgBtn = target ? null : findMessageButton();
+      if (!target && !msgBtn) return false;
       STATE.autoFired = true;
       // Strip the hash so a manual refresh doesn't re-fire.
       try { history.replaceState(null, '', location.pathname + location.search); } catch {}
@@ -224,5 +286,5 @@
   const obs = new MutationObserver(() => mountButton());
   obs.observe(document.documentElement, { childList: true, subtree: true });
   mountButton();
-  log('content script v1.3 loaded on', location.href);
+  log('content script v1.4 loaded on', location.href);
 })();
