@@ -64,7 +64,7 @@ export function BrowserExtensionDialog({ open, onOpenChange }: Props) {
             <h4 className="font-semibold mb-1">How to use</h4>
             <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
               <li>Generate a DM here, hit <b>Send via Skool</b>.</li>
-              <li>The extension opens the Members page, searches the member, and clicks <b>Message</b>.</li>
+              <li>The extension opens Members, searches the member, opens their profile/card, and clicks <b>Message</b>.</li>
               <li>It pastes the DM and sends it from the chat composer.</li>
             </ol>
             <p className="text-xs text-muted-foreground mt-2">

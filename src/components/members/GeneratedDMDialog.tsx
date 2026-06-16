@@ -197,6 +197,10 @@ export function GeneratedDMDialog({
         case 'message-button-clicked':
           setAutoStep('message-button');
           break;
+        case 'member-not-found':
+          setAutoStep('timeout');
+          setAutoError('The extension opened Members, but could not find that member profile. The DM is already copied, so use the manual button below.');
+          break;
         case 'waiting-for-composer':
           setAutoStep((s) => (s === 'message-button' ? 'message-button' : 'composer'));
           break;
@@ -245,7 +249,7 @@ export function GeneratedDMDialog({
       setAutoStep((s) => {
         if (s === 'done' || s === 'blocked' || s === 'fallback' || s === 'idle') return s;
         setAutoError(
-          'No response from the Krusty extension. Make sure it is installed (v1.5+) and the Skool tab is open. The message is already on your clipboard, so you can paste it manually.',
+          'No response from the Krusty extension. Make sure it is installed (v1.6+) and the Skool tab is open. The message is already on your clipboard, so you can paste it manually.',
         );
         return 'timeout';
       });
@@ -763,7 +767,7 @@ export function GeneratedDMDialog({
                 title={
                   !(member?.skool_name || member?.skool_username)
                     ? 'Member has no searchable Skool name on file'
-                    : 'Requires Krusty Chrome extension v1.5+ installed'
+                    : 'Requires Krusty Chrome extension v1.6+ installed'
                 }
               >
                 <Sparkles className="h-4 w-4 mr-2" />
