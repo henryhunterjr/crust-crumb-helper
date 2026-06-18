@@ -14,6 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useHermesJobs, useHermesJobRuns, useToggleHermesJob, useRunHermesJob } from '@/hooks/useHermesJobs';
 import { HermesJob, HermesJobRun } from '@/types/hermes';
 import { RunDetailsView } from '@/components/hermes/RunDetailsView';
+import { IntegrationPanel } from '@/components/hermes/IntegrationPanel';
 
 function StatusBadge({ status }: { status: string | null }) {
   if (!status) return <Badge variant="outline">never run</Badge>;
@@ -258,6 +259,7 @@ export default function Hermes() {
           <TabsList>
             <TabsTrigger value="jobs">Jobs</TabsTrigger>
             <TabsTrigger value="log">Run Log</TabsTrigger>
+            <TabsTrigger value="integration">Integration</TabsTrigger>
           </TabsList>
 
           <TabsContent value="jobs" className="mt-4">
@@ -274,6 +276,10 @@ export default function Hermes() {
 
           <TabsContent value="log" className="mt-4">
             <RunLog />
+          </TabsContent>
+
+          <TabsContent value="integration" className="mt-4">
+            <IntegrationPanel />
           </TabsContent>
         </Tabs>
 
