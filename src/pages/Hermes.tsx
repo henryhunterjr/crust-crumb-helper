@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useHermesJobs, useHermesJobRuns, useToggleHermesJob, useRunHermesJob } from '@/hooks/useHermesJobs';
 import { HermesJob, HermesJobRun } from '@/types/hermes';
+import { RunDetailsView } from '@/components/hermes/RunDetailsView';
 
 function StatusBadge({ status }: { status: string | null }) {
   if (!status) return <Badge variant="outline">never run</Badge>;
@@ -152,12 +153,10 @@ function PreviewDialog({ job, open, onOpenChange }: { job: HermesJob | null; ope
                       </span>
                     </div>
                     <p className="text-sm">{result.summary}</p>
-                    {result.details && Object.keys(result.details).length > 0 && (
-                      <ScrollArea className="h-48 mt-2">
-                        <pre className="text-xs bg-muted rounded p-3 whitespace-pre-wrap">
-                          {JSON.stringify(result.details, null, 2)}
-                        </pre>
-                      </ScrollArea>
+                    {result.details && (
+                      <div className="mt-2">
+                        <RunDetailsView details={result.details} />
+                      </div>
                     )}
                   </>
                 )}
@@ -231,13 +230,7 @@ function RunLog() {
               {detail.error_message && (
                 <p className="text-sm text-destructive border border-destructive/30 rounded p-2">{detail.error_message}</p>
               )}
-              {detail.details && (
-                <ScrollArea className="h-72">
-                  <pre className="text-xs bg-muted rounded p-3 whitespace-pre-wrap">
-                    {JSON.stringify(detail.details, null, 2)}
-                  </pre>
-                </ScrollArea>
-              )}
+              {detail.details && <RunDetailsView details={detail.details} />}
             </div>
           )}
         </DialogContent>
