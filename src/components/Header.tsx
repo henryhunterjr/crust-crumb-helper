@@ -19,6 +19,7 @@ const navItems = [
   { href: '/responses', label: 'Responses' },
   { href: '/outreach-log', label: 'Log' },
   { href: '/admin', label: 'Admin' },
+  { href: '/hermes', label: 'Hermes' },
 ];
 
 export function Header() {
