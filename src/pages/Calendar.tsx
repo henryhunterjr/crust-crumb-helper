@@ -248,11 +248,11 @@ export default function Calendar() {
                 <TabsTrigger value="month" className="text-xs px-3 h-7">Month</TabsTrigger>
               </TabsList>
             </Tabs>
-            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCurrentDate(view === 'week' ? subWeeks(currentDate, 1) : subMonths(currentDate, 1))}>
+            <Button variant="outline" size="icon" aria-label={view === 'week' ? 'Previous week' : 'Previous month'} className="h-8 w-8" onClick={() => setCurrentDate(view === 'week' ? subWeeks(currentDate, 1) : subMonths(currentDate, 1))}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setCurrentDate(new Date())}>Today</Button>
-            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCurrentDate(view === 'week' ? addWeeks(currentDate, 1) : addMonths(currentDate, 1))}>
+            <Button variant="outline" size="icon" aria-label={view === 'week' ? 'Next week' : 'Next month'} className="h-8 w-8" onClick={() => setCurrentDate(view === 'week' ? addWeeks(currentDate, 1) : addMonths(currentDate, 1))}>
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
