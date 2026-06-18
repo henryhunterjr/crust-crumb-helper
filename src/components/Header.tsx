@@ -40,9 +40,9 @@ export function Header() {
             className="h-12 w-auto"
           />
           <div className="flex flex-col">
-            <h1 className="font-serif text-lg font-bold text-foreground leading-tight">
+            <span className="font-serif text-lg font-bold text-foreground leading-tight">
               Community Manager
-            </h1>
+            </span>
             <p className="text-xs text-muted-foreground">
               Crust & Crumb Academy
             </p>
