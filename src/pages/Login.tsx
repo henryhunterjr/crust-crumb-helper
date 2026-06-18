@@ -52,7 +52,9 @@ export default function Login() {
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center space-y-4">
           <img src={logo} alt="Crust & Crumb Academy" className="h-16 w-auto mx-auto" />
-          <CardTitle className="text-xl font-serif">Community Manager</CardTitle>
+          <CardTitle asChild className="text-xl font-serif">
+            <h1>Community Manager Login</h1>
+          </CardTitle>
           <p className="text-sm text-muted-foreground">
             Sign in with your admin Google account to continue.
           </p>
