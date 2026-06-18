@@ -213,7 +213,7 @@ function RunLog() {
         </CardContent>
       </Card>
       <Dialog open={!!detail} onOpenChange={(b) => !b && setDetail(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{detail?.job_type}</DialogTitle>
             <DialogDescription>
