@@ -17,6 +17,7 @@ import EmailCampaigns from "./pages/EmailCampaigns";
 import Campaigns from "./pages/Campaigns";
 import Analytics from "./pages/Analytics";
 import Admin from "./pages/Admin";
+import Hermes from "./pages/Hermes";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 
@@ -43,6 +44,7 @@ const App = () => (
           <Route path="/campaigns" element={<ProtectedRoute><Campaigns /></ProtectedRoute>} />
           <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
+          <Route path="/hermes" element={<ProtectedRoute><Hermes /></ProtectedRoute>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
