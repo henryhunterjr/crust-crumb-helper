@@ -75,22 +75,27 @@ async function newThreadsThisWeek(): Promise<number> {
 async function runWeeklyWelcomePost(dryRun: boolean) {
   const { data: members } = await supabase
     .from("members")
-    .select("id, skool_name, join_date, application_answer")
+    .select("id, skool_name, skool_username, join_date, application_answer")
     .order("join_date", { ascending: false });
   const joiners = (members || []).filter((m) => daysSince(m.join_date) <= 7);
-  const details: any = { joiners: joiners.map((m) => m.skool_name) };
+  const details: any = {
+    joiners: joiners.map((m: any) => ({
+      id: m.id,
+      name: m.skool_name,
+      username: m.skool_username,
+      joined_days_ago: daysSince(m.join_date),
+      has_goals: !!(m.application_answer || "").trim(),
+    })),
+  };
 
   if (joiners.length === 0) {
     return { status: "success", items_processed: 0, items_succeeded: 0, items_failed: 0,
       summary: "No new joiners this week. Nothing to draft.", details };
   }
 
-  if (dryRun) {
-    return { status: "success", items_processed: joiners.length, items_succeeded: 0, items_failed: 0,
-      summary: `Would draft a welcome post for ${joiners.length} joiner(s).`, details };
-  }
-
+  // Always generate the actual draft so the preview shows what would be posted.
   let draft = "";
+  let aiUsed = false;
   if (LOVABLE_API_KEY) {
     const names = joiners.map((m) => m.skool_name).join(", ");
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -107,11 +112,21 @@ async function runWeeklyWelcomePost(dryRun: boolean) {
     if (aiRes.ok) {
       const data = await aiRes.json();
       draft = data?.choices?.[0]?.message?.content || "";
+      aiUsed = !!draft;
     }
   }
 
   if (!draft) {
     draft = `Welcome to the new bakers this week: ${joiners.map((m) => m.skool_name).join(", ")}. Glad you're here. Drop a comment and tell us what you're working on.`;
+  }
+
+  details.draft_post = draft;
+  details.ai_used = aiUsed;
+  details.target = { page: "/outreach-queue", type: "welcome_post" };
+
+  if (dryRun) {
+    return { status: "success", items_processed: joiners.length, items_succeeded: 0, items_failed: 0,
+      summary: `Preview only. Would draft a ${draft.length}-char welcome post for ${joiners.length} joiner(s).`, details };
   }
 
   const { error } = await supabase.from("outreach_messages").insert({
@@ -163,13 +178,17 @@ async function runDailyReengagement(dryRun: boolean, config: any) {
 
   const data = await res.json();
   details.autoWelcome = data;
+  details.previews = Array.isArray(data?.results) ? data.results : [];
+  details.target = { page: "/outreach-queue", type: "resource_recommendation" };
   const drafted = Number(data?.drafted || 0);
   return {
     status: "success",
     items_processed: Number(data?.candidates || 0),
     items_succeeded: drafted,
     items_failed: Number(data?.failed || 0),
-    summary: `Drafted ${drafted} re-engagement DM(s). Review in /outreach-queue.`,
+    summary: dryRun
+      ? `Preview only. Would draft ${data?.results?.length ?? 0} re-engagement DM(s).`
+      : `Drafted ${drafted} re-engagement DM(s). Review in /outreach-queue.`,
     details,
   };
 }
@@ -179,7 +198,7 @@ async function runWeeklyAnalyticsBrief(dryRun: boolean) {
   const weekStart = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
 
   const [membersRes, msgsRes] = await Promise.all([
-    supabase.from("members").select("id, skool_name, engagement_status, join_date, last_active"),
+    supabase.from("members").select("id, skool_name, engagement_status, join_date, last_active, post_count, comment_count"),
     supabase.from("outreach_messages").select("status, created_at, responded").gte("created_at", weekStart),
   ]);
   const members = membersRes.data || [];
@@ -190,17 +209,34 @@ async function runWeeklyAnalyticsBrief(dryRun: boolean) {
   const replyRate = sent > 0 ? Math.round((replied / sent) * 100) : 0;
   const atRisk = members.filter((m: any) => m.engagement_status === "at_risk").length;
   const inactive = members.filter((m: any) => m.engagement_status === "inactive").length;
+  const atRiskList = members
+    .filter((m: any) => m.engagement_status === "at_risk")
+    .sort((a: any, b: any) => (a.last_active || "").localeCompare(b.last_active || ""))
+    .slice(0, 5)
+    .map((m: any) => ({ id: m.id, name: m.skool_name, last_active: m.last_active }));
+  const topPoster = [...members]
+    .sort((a: any, b: any) => (b.post_count || 0) - (a.post_count || 0))[0];
 
-  const details: any = { weekStart, weekEnd, newMembers: newMembers.length, sent, replied, replyRate, atRisk, inactive };
+  const metrics = {
+    weekStart, weekEnd,
+    newMembers: newMembers.length,
+    totalMembers: members.length,
+    dmsSent: sent,
+    dmsReplied: replied,
+    replyRate,
+    atRiskCount: atRisk,
+    inactiveCount: inactive,
+    atRiskTop5: atRiskList,
+    topPoster: topPoster ? { id: topPoster.id, name: topPoster.skool_name, posts: topPoster.post_count } : null,
+  };
 
-  if (dryRun) {
-    return { status: "success", items_processed: 1, items_succeeded: 0, items_failed: 0,
-      summary: "Would draft a 5-bullet decision brief.", details };
-  }
+  const details: any = { metrics };
 
+  // Generate bullets in both modes so previews show what would be posted.
   let bullets = "";
+  let aiUsed = false;
   if (LOVABLE_API_KEY) {
-    const context = `New members: ${newMembers.length}\nDMs sent: ${sent}, replied: ${replied} (${replyRate}%)\nAt-risk: ${atRisk}, Inactive: ${inactive}\nAt-risk names: ${members.filter((m: any) => m.engagement_status === "at_risk").slice(0, 5).map((m: any) => m.skool_name).join(", ")}`;
+    const context = `New members: ${newMembers.length}\nDMs sent: ${sent}, replied: ${replied} (${replyRate}%)\nAt-risk: ${atRisk}, Inactive: ${inactive}\nAt-risk names: ${atRiskList.map((m: any) => m.name).join(", ")}\nTop poster: ${topPoster?.skool_name || "n/a"} (${topPoster?.post_count || 0} posts)`;
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${LOVABLE_API_KEY}` },
@@ -215,11 +251,21 @@ async function runWeeklyAnalyticsBrief(dryRun: boolean) {
     if (aiRes.ok) {
       const data = await aiRes.json();
       bullets = data?.choices?.[0]?.message?.content || "";
+      aiUsed = !!bullets;
     }
   }
 
   if (!bullets) {
     bullets = `- Welcomed ${newMembers.length} new members this week.\n- Reply rate held at ${replyRate}%.\n- ${atRisk} members slipped to at-risk; pick the longest-quiet first.\n- Reuse the top topic from your most-commented post.\n- Stop sending DMs without a specific resource attached.`;
+  }
+
+  details.bullets = bullets;
+  details.ai_used = aiUsed;
+  details.target = { page: "/", type: "activity_feed" };
+
+  if (dryRun) {
+    return { status: "success", items_processed: 1, items_succeeded: 0, items_failed: 0,
+      summary: "Preview only. Decision brief drafted but not posted.", details };
   }
 
   await supabase.from("activity_feed").insert({
