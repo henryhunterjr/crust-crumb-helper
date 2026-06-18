@@ -127,7 +127,7 @@ function PreviewDialog({ job, open, onOpenChange }: { job: HermesJob | null; ope
 
   return (
     <Dialog open={open} onOpenChange={(b) => { onOpenChange(b); if (!b) setResult(null); }}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Preview: {job?.display_name}</DialogTitle>
           <DialogDescription>
