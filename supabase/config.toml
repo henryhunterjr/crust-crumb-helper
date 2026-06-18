@@ -47,3 +47,15 @@ verify_jwt = false
 
 [functions.library-health]
 verify_jwt = false
+
+[functions.hermes-run]
+verify_jwt = false
+
+[functions.hermes-queue]
+verify_jwt = false
+
+[functions.hermes-mark-sent]
+verify_jwt = false
+
+[functions.hermes-manifest]
+verify_jwt = false

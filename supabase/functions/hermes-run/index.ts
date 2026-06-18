@@ -344,8 +344,38 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    // Auth: accept Bearer INGEST_API_KEY (agent), Bearer SERVICE_KEY (pg_cron),
+    // or fall back to the Supabase JWT that the in-app client already attaches.
+    const INGEST_API_KEY = Deno.env.get("INGEST_API_KEY");
+    const authHeader = req.headers.get("Authorization") || "";
+    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+    const isAgent = !!INGEST_API_KEY && token === INGEST_API_KEY;
+    const isService = !!SERVICE_KEY && token === SERVICE_KEY;
+    const hasJwt = token.split(".").length === 3;
+    if (INGEST_API_KEY && !isAgent && !isService && !hasJwt) {
+      return json({ error: "Unauthorized" }, 401);
+    }
+
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
-    const trigger = body.trigger || "cron";
+    const action = body.action || null;
+    const trigger = body.trigger || (isAgent ? "agent" : "cron");
+
+    // Read-only actions for the agent / dashboards.
+    if (action === "list_jobs") {
+      const { data, error } = await supabase
+        .from("hermes_jobs").select("*").order("job_type");
+      if (error) return json({ error: error.message }, 500);
+      return json({ ok: true, jobs: data });
+    }
+    if (action === "list_runs") {
+      const limit = Math.min(parseInt(body.limit, 10) || 50, 200);
+      let q = supabase.from("hermes_job_runs").select("*")
+        .order("started_at", { ascending: false }).limit(limit);
+      if (body.job_type) q = q.eq("job_type", body.job_type);
+      const { data, error } = await q;
+      if (error) return json({ error: error.message }, 500);
+      return json({ ok: true, runs: data });
+    }
 
     // Cron tick: run all due, enabled jobs.
     if (trigger === "cron" || !body.job_id) {
