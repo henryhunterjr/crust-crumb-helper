@@ -902,6 +902,125 @@ export type Database = {
           },
         ]
       }
+      hermes_job_runs: {
+        Row: {
+          created_at: string
+          details: Json
+          dry_run: boolean
+          duration_ms: number | null
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          items_failed: number
+          items_processed: number
+          items_succeeded: number
+          job_id: string
+          job_type: string
+          started_at: string
+          status: string
+          summary: string | null
+          trigger: string
+        }
+        Insert: {
+          created_at?: string
+          details?: Json
+          dry_run?: boolean
+          duration_ms?: number | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          items_failed?: number
+          items_processed?: number
+          items_succeeded?: number
+          job_id: string
+          job_type: string
+          started_at?: string
+          status?: string
+          summary?: string | null
+          trigger?: string
+        }
+        Update: {
+          created_at?: string
+          details?: Json
+          dry_run?: boolean
+          duration_ms?: number | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          items_failed?: number
+          items_processed?: number
+          items_succeeded?: number
+          job_id?: string
+          job_type?: string
+          started_at?: string
+          status?: string
+          summary?: string | null
+          trigger?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hermes_job_runs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "hermes_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hermes_jobs: {
+        Row: {
+          auto_send: boolean
+          config: Json
+          created_at: string
+          description: string | null
+          display_name: string
+          enabled: boolean
+          id: string
+          job_type: string
+          last_run_at: string | null
+          last_run_status: string | null
+          last_run_summary: string | null
+          next_run_at: string | null
+          schedule_cron: string
+          schedule_label: string
+          updated_at: string
+        }
+        Insert: {
+          auto_send?: boolean
+          config?: Json
+          created_at?: string
+          description?: string | null
+          display_name: string
+          enabled?: boolean
+          id?: string
+          job_type: string
+          last_run_at?: string | null
+          last_run_status?: string | null
+          last_run_summary?: string | null
+          next_run_at?: string | null
+          schedule_cron: string
+          schedule_label: string
+          updated_at?: string
+        }
+        Update: {
+          auto_send?: boolean
+          config?: Json
+          created_at?: string
+          description?: string | null
+          display_name?: string
+          enabled?: boolean
+          id?: string
+          job_type?: string
+          last_run_at?: string | null
+          last_run_status?: string | null
+          last_run_summary?: string | null
+          next_run_at?: string | null
+          schedule_cron?: string
+          schedule_label?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       interest_mappings: {
         Row: {
           book_link: string | null
