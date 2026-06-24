@@ -197,7 +197,7 @@ async function fetchAllExisting(): Promise<ExistingMember[]> {
   for (let from = 0; ; from += pageSize) {
     const { data, error } = await supabase
       .from("members")
-      .select("id, skool_name, skool_username")
+      .select("id, skool_name, skool_username, intent_raw")
       .range(from, from + pageSize - 1);
     if (error) throw error;
     const batch = (data || []) as ExistingMember[];
