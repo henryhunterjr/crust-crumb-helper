@@ -14,6 +14,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   planRosterSync,
+  deriveIntentTier,
   type ExistingMember,
   type RosterMemberInput,
 } from "../_shared/roster-logic.ts";
