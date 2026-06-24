@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 const navItems = [
   { href: '/', label: 'Dashboard' },
   { href: '/members', label: 'Members' },
+  { href: '/targets', label: 'Targets' },
   { href: '/outreach-queue', label: 'Queue' },
   { href: '/smart-search', label: 'Search' },
   { href: '/campaigns', label: 'Campaigns' },
