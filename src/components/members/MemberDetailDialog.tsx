@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Member, EngagementStatus, MessageStatus } from '@/types/member';
+import type { IntentTier, NurtureStatus } from '@/types/member';
 import { MemberMessageHistory } from './MemberMessageHistory';
 import { MemberTagEditor } from './MemberTagEditor';
 import { cn } from '@/lib/utils';
@@ -62,6 +63,12 @@ export function MemberDetailDialog({
   const [notes, setNotes] = useState(member?.notes || '');
   const [status, setStatus] = useState<EngagementStatus>(member?.engagement_status || 'unknown');
   const [skoolUsername, setSkoolUsername] = useState(member?.skool_username || '');
+  const [intentTier, setIntentTier] = useState<IntentTier | 'unset'>(
+    (member?.intent_tier as IntentTier) || 'unset'
+  );
+  const [nurtureStatus, setNurtureStatus] = useState<NurtureStatus>(
+    (member?.nurture_status as NurtureStatus) || 'active'
+  );
   const [hasChanges, setHasChanges] = useState(false);
 
   // Check if member is also on email list
@@ -91,7 +98,13 @@ export function MemberDetailDialog({
   const msgStatus = messageStatusConfig[member.message_status] || messageStatusConfig.not_contacted;
 
   const handleSave = () => {
-    onUpdate({ notes, engagement_status: status, skool_username: skoolUsername || null });
+    onUpdate({
+      notes,
+      engagement_status: status,
+      skool_username: skoolUsername || null,
+      intent_tier: intentTier === 'unset' ? null : intentTier,
+      nurture_status: nurtureStatus,
+    } as Partial<Member>);
     setHasChanges(false);
     toast.success('Member updated');
   };
