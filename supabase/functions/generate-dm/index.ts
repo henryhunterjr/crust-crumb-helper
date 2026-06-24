@@ -901,7 +901,7 @@ serve(async (req) => {
     // Select the appropriate prompt based on outreach type
     switch (outreach_type) {
       case 'welcome_message':
-        systemPrompt = getWelcomeMessagePrompt(hasApplicationAnswer, resourcesForPrompt, recipesForPrompt, videosForPrompt, blogPostsForPrompt, starterInterest, recipeInterest, tagRecommendations, memberTags, aiSettings);
+        systemPrompt = getWelcomeMessagePrompt(hasApplicationAnswer, resourcesForPrompt, recipesForPrompt, videosForPrompt, blogPostsForPrompt, starterInterest, recipeInterest, tagRecommendations, memberTags, aiSettings, member.intent_tier);
         break;
       case 'feedback_request':
         systemPrompt = getFeedbackRequestPrompt(hasApplicationAnswer, memberTags, aiSettings);
