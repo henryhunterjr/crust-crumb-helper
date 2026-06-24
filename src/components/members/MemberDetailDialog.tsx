@@ -276,6 +276,51 @@ export function MemberDetailDialog({
               </Select>
             </div>
 
+            {/* Intent tier — manual override of Q3-derived tier */}
+            <div>
+              <Label htmlFor="intentTier">Business intent tier</Label>
+              <Select
+                value={intentTier}
+                onValueChange={(v) => { setIntentTier(v as IntentTier | 'unset'); setHasChanges(true); }}
+              >
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unset">Unknown / not set</SelectItem>
+                  <SelectItem value="hobbyist">Hobbyist (no business interest)</SelectItem>
+                  <SelectItem value="curious">Curious (wondered about selling)</SelectItem>
+                  <SelectItem value="prospect">Prospect (thinking about selling)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Auto-derived from intake Q3. Override here when Q1 reveals clearer intent.
+              </p>
+              {member.intent_raw?.q3 && (
+                <p className="text-xs text-muted-foreground mt-1 italic">
+                  Q3 answer: "{member.intent_raw.q3}"
+                </p>
+              )}
+            </div>
+
+            {/* Nurture status */}
+            <div>
+              <Label htmlFor="nurtureStatus">Nurture status</Label>
+              <Select
+                value={nurtureStatus}
+                onValueChange={(v) => { setNurtureStatus(v as NurtureStatus); setHasChanges(true); }}
+              >
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="paused">Paused</SelectItem>
+                  <SelectItem value="opted_out">Opted out</SelectItem>
+                  <SelectItem value="customer">Customer (bought FOTM)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Opted-out and customer are excluded from MailerLite and SYS invites.
+              </p>
+            </div>
+
             {/* Notes */}
             <div>
               <Label htmlFor="notes">Notes</Label>
