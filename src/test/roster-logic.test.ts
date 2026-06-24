@@ -57,6 +57,19 @@ function referenceImport(row: RosterMemberInput, today: Date) {
     comment_count: commentCount,
     last_active: row.lastActive || null,
     engagement_status: engagementStatus,
+    // intent_raw + intent_tier added with the Q3 layer. CSV importer leaves
+    // them null (it never sees Q3); buildInsert mirrors that when intentRaw
+    // is not supplied by the reader.
+    intent_raw: row.intentRaw && Object.keys(row.intentRaw).length > 0
+      ? row.intentRaw
+      : null,
+    intent_tier: (() => {
+      const q3 = row.intentRaw?.q3?.replace(/\s+/g, " ").trim().toLowerCase();
+      if (q3 === "i'm baking mostly for myself and the people i love") return "hobbyist";
+      if (q3 === "i've wondered about selling what i bake, but i haven't really looked into it") return "curious";
+      if (q3 === "i'm thinking about one day selling what i bake") return "prospect";
+      return null;
+    })(),
   };
 }
 

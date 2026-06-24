@@ -14,6 +14,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   planRosterSync,
+  deriveIntentTier,
   type ExistingMember,
   type RosterMemberInput,
 } from "../_shared/roster-logic.ts";
@@ -132,10 +133,25 @@ serve(async (req) => {
 
     // Updates — partial, never wipes fields the read could not see.
     for (const { id, updates } of plan.toUpdate) {
+      // Merge intent_raw append-only against the existing row, then derive
+      // intent_tier from the merged map (so a single Q3 hit can set the tier
+      // even if Q1 was captured on a different run).
+      const finalUpdates: Record<string, unknown> = { ...updates };
+      if (updates.intent_raw) {
+        const existingRow = existing.find((e) => e.id === id) as
+          | (ExistingMember & { intent_raw?: Record<string, string> | null })
+          | undefined;
+        const merged = {
+          ...(existingRow?.intent_raw || {}),
+          ...updates.intent_raw,
+        };
+        finalUpdates.intent_raw = merged;
+        finalUpdates.intent_tier = deriveIntentTier(merged);
+      }
       const { error } = await supabase
         .from("members")
         .update({
-          ...updates,
+          ...finalUpdates,
           roster_status: "on_roster",
           roster_last_seen_at: nowIso,
         })
@@ -196,7 +212,7 @@ async function fetchAllExisting(): Promise<ExistingMember[]> {
   for (let from = 0; ; from += pageSize) {
     const { data, error } = await supabase
       .from("members")
-      .select("id, skool_name, skool_username")
+      .select("id, skool_name, skool_username, intent_raw")
       .range(from, from + pageSize - 1);
     if (error) throw error;
     const batch = (data || []) as ExistingMember[];

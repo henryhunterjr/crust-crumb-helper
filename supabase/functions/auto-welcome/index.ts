@@ -14,7 +14,7 @@ async function fetchCandidates(memberIds?: string[]) {
   const pageSize = 1000;
   for (let from = 0; ; from += pageSize) {
     let q = supabase.from("members")
-      .select("id, skool_name, skool_username, join_date, application_answer, post_count, comment_count, last_active, engagement_status, message_status, outreach_sent, roster_status")
+      .select("id, skool_name, skool_username, join_date, application_answer, post_count, comment_count, last_active, engagement_status, message_status, outreach_sent, roster_status, intent_tier, intent_raw, nurture_status")
       .eq("roster_status", "on_roster").eq("message_status", "not_contacted").eq("outreach_sent", false)
       .not("application_answer", "is", null).range(from, from + pageSize - 1);
     if (memberIds && memberIds.length) q = q.in("id", memberIds);

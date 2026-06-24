@@ -49,6 +49,12 @@ export interface RosterMemberInput {
   comments?: number | null;
   lastActive?: string | null; // YYYY-MM-DD
   profileUrl?: string | null;
+  /**
+   * Structured intake answers keyed by question id (e.g. q1, q3). Append-only;
+   * later runs merge into the existing map last-write-wins per key. The reader
+   * only sets keys it actually saw.
+   */
+  intentRaw?: Record<string, string> | null;
 }
 
 /** Existing member row, the subset we need for matching. */
@@ -69,6 +75,29 @@ export interface MemberWriteData {
   comment_count?: number;
   last_active?: string | null;
   engagement_status?: EngagementStatus;
+  intent_raw?: Record<string, string> | null;
+  intent_tier?: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Q3 business-intent mapping. Exact-match (case-insensitive, trimmed) against
+// the three known Skool option strings. Anything else stays null and gets
+// flagged for manual review in /admin.
+// ---------------------------------------------------------------------------
+const INTENT_TIER_BY_Q3: Record<string, "hobbyist" | "curious" | "prospect"> = {
+  "i'm baking mostly for myself and the people i love": "hobbyist",
+  "i've wondered about selling what i bake, but i haven't really looked into it":
+    "curious",
+  "i'm thinking about one day selling what i bake": "prospect",
+};
+
+export function deriveIntentTier(
+  intentRaw: Record<string, string> | null | undefined,
+): "hobbyist" | "curious" | "prospect" | null {
+  const q3 = intentRaw?.q3;
+  if (!q3) return null;
+  const key = q3.replace(/\s+/g, " ").trim().toLowerCase();
+  return INTENT_TIER_BY_Q3[key] ?? null;
 }
 
 export interface RosterSyncPlan {
@@ -142,6 +171,9 @@ export function computeEngagementStatus(
 
 /** Full row for a NEW member. Mirrors the CSV importer's memberData. */
 export function buildInsert(row: RosterMemberInput, now: Date): MemberWriteData {
+  const intentRaw = row.intentRaw && Object.keys(row.intentRaw).length > 0
+    ? row.intentRaw
+    : null;
   return {
     skool_name: row.name,
     skool_username: row.skoolUsername || null,
@@ -152,6 +184,8 @@ export function buildInsert(row: RosterMemberInput, now: Date): MemberWriteData 
     comment_count: row.comments || 0,
     last_active: row.lastActive || null,
     engagement_status: computeEngagementStatus(row, now),
+    intent_raw: intentRaw,
+    intent_tier: deriveIntentTier(intentRaw),
   };
 }
 
@@ -179,6 +213,13 @@ export function buildUpdate(row: RosterMemberInput, now: Date): MemberWriteData 
     (row.posts !== undefined && row.posts !== null) ||
     (row.comments !== undefined && row.comments !== null);
   if (hasActivitySignal) u.engagement_status = computeEngagementStatus(row, now);
+
+  // intent_raw is merged in the caller (ingest-roster) because we need the
+  // existing row's intent_raw to do an append-only merge. Here we only signal
+  // that this row carries new intent keys.
+  if (row.intentRaw && Object.keys(row.intentRaw).length > 0) {
+    u.intent_raw = row.intentRaw;
+  }
 
   return u;
 }

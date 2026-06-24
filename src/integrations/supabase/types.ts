@@ -1092,15 +1092,22 @@ export type Database = {
       members: {
         Row: {
           application_answer: string | null
+          business_touch_count: number
           comment_count: number | null
           created_at: string | null
           email: string | null
           engagement_status: string | null
           id: string
+          intent_raw: Json | null
+          intent_tier: string | null
+          invited_to_sys: boolean
+          invited_to_sys_at: string | null
           join_date: string | null
           last_active: string | null
+          last_business_touch: string | null
           message_status: string
           notes: string | null
+          nurture_status: string
           outreach_responded: boolean | null
           outreach_sent: boolean | null
           outreach_sent_at: string | null
@@ -1115,15 +1122,22 @@ export type Database = {
         }
         Insert: {
           application_answer?: string | null
+          business_touch_count?: number
           comment_count?: number | null
           created_at?: string | null
           email?: string | null
           engagement_status?: string | null
           id?: string
+          intent_raw?: Json | null
+          intent_tier?: string | null
+          invited_to_sys?: boolean
+          invited_to_sys_at?: string | null
           join_date?: string | null
           last_active?: string | null
+          last_business_touch?: string | null
           message_status?: string
           notes?: string | null
+          nurture_status?: string
           outreach_responded?: boolean | null
           outreach_sent?: boolean | null
           outreach_sent_at?: string | null
@@ -1138,15 +1152,22 @@ export type Database = {
         }
         Update: {
           application_answer?: string | null
+          business_touch_count?: number
           comment_count?: number | null
           created_at?: string | null
           email?: string | null
           engagement_status?: string | null
           id?: string
+          intent_raw?: Json | null
+          intent_tier?: string | null
+          invited_to_sys?: boolean
+          invited_to_sys_at?: string | null
           join_date?: string | null
           last_active?: string | null
+          last_business_touch?: string | null
           message_status?: string
           notes?: string | null
+          nurture_status?: string
           outreach_responded?: boolean | null
           outreach_sent?: boolean | null
           outreach_sent_at?: string | null
@@ -1210,6 +1231,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      nurture_runs: {
+        Row: {
+          created_at: string
+          detail: Json | null
+          dry_run: boolean
+          ended_at: string | null
+          failed: number
+          id: string
+          job: string
+          requested: number
+          started_at: string
+          status: string
+          succeeded: number
+        }
+        Insert: {
+          created_at?: string
+          detail?: Json | null
+          dry_run?: boolean
+          ended_at?: string | null
+          failed?: number
+          id?: string
+          job: string
+          requested?: number
+          started_at?: string
+          status?: string
+          succeeded?: number
+        }
+        Update: {
+          created_at?: string
+          detail?: Json | null
+          dry_run?: boolean
+          ended_at?: string | null
+          failed?: number
+          id?: string
+          job?: string
+          requested?: number
+          started_at?: string
+          status?: string
+          succeeded?: number
+        }
+        Relationships: []
       }
       outreach_messages: {
         Row: {

@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Member, EngagementStatus, MessageStatus } from '@/types/member';
+import type { IntentTier, NurtureStatus } from '@/types/member';
 import { MemberMessageHistory } from './MemberMessageHistory';
 import { MemberTagEditor } from './MemberTagEditor';
 import { cn } from '@/lib/utils';
@@ -62,6 +63,12 @@ export function MemberDetailDialog({
   const [notes, setNotes] = useState(member?.notes || '');
   const [status, setStatus] = useState<EngagementStatus>(member?.engagement_status || 'unknown');
   const [skoolUsername, setSkoolUsername] = useState(member?.skool_username || '');
+  const [intentTier, setIntentTier] = useState<IntentTier | 'unset'>(
+    (member?.intent_tier as IntentTier) || 'unset'
+  );
+  const [nurtureStatus, setNurtureStatus] = useState<NurtureStatus>(
+    (member?.nurture_status as NurtureStatus) || 'active'
+  );
   const [hasChanges, setHasChanges] = useState(false);
 
   // Check if member is also on email list
@@ -91,7 +98,13 @@ export function MemberDetailDialog({
   const msgStatus = messageStatusConfig[member.message_status] || messageStatusConfig.not_contacted;
 
   const handleSave = () => {
-    onUpdate({ notes, engagement_status: status, skool_username: skoolUsername || null });
+    onUpdate({
+      notes,
+      engagement_status: status,
+      skool_username: skoolUsername || null,
+      intent_tier: intentTier === 'unset' ? null : intentTier,
+      nurture_status: nurtureStatus,
+    } as Partial<Member>);
     setHasChanges(false);
     toast.success('Member updated');
   };
@@ -261,6 +274,51 @@ export function MemberDetailDialog({
                   <SelectItem value="unknown">Unknown</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Intent tier — manual override of Q3-derived tier */}
+            <div>
+              <Label htmlFor="intentTier">Business intent tier</Label>
+              <Select
+                value={intentTier}
+                onValueChange={(v) => { setIntentTier(v as IntentTier | 'unset'); setHasChanges(true); }}
+              >
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unset">Unknown / not set</SelectItem>
+                  <SelectItem value="hobbyist">Hobbyist (no business interest)</SelectItem>
+                  <SelectItem value="curious">Curious (wondered about selling)</SelectItem>
+                  <SelectItem value="prospect">Prospect (thinking about selling)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Auto-derived from intake Q3. Override here when Q1 reveals clearer intent.
+              </p>
+              {member.intent_raw?.q3 && (
+                <p className="text-xs text-muted-foreground mt-1 italic">
+                  Q3 answer: "{member.intent_raw.q3}"
+                </p>
+              )}
+            </div>
+
+            {/* Nurture status */}
+            <div>
+              <Label htmlFor="nurtureStatus">Nurture status</Label>
+              <Select
+                value={nurtureStatus}
+                onValueChange={(v) => { setNurtureStatus(v as NurtureStatus); setHasChanges(true); }}
+              >
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="paused">Paused</SelectItem>
+                  <SelectItem value="opted_out">Opted out</SelectItem>
+                  <SelectItem value="customer">Customer (bought FOTM)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Opted-out and customer are excluded from MailerLite and SYS invites.
+              </p>
             </div>
 
             {/* Notes */}

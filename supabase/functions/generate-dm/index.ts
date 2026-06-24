@@ -530,7 +530,8 @@ function getWelcomeMessagePrompt(
   recipeInterest: boolean,
   tagRecommendations: string,
   memberTags: string[],
-  aiSettings?: AIPersonalitySettings
+  aiSettings?: AIPersonalitySettings,
+  intentTier?: string | null
 ): string {
   let linkInstructions = '';
   
@@ -555,6 +556,36 @@ function getWelcomeMessagePrompt(
   const avoidList = aiSettings?.avoided_words || "dive deep, journey, excited to have you, don't hesitate, em dashes, embark, game changer";
   const signoff = aiSettings?.dm_signoff || '';
 
+  // Q3 business-intent branch. Layered ON TOP of the craft welcome.
+  // - hobbyist: NEVER mention business. Pure craft welcome.
+  // - curious: append ONE warm low-pressure seed line near the end.
+  // - prospect: append ONE acknowledgment + one selling-side resource bias.
+  // - null/undefined: pure craft welcome, no business line.
+  let intentBlock = '';
+  if (intentTier === 'curious') {
+    intentBlock = `\n\nINTENT BRANCH — curious tier:
+- The member told us in Q3 they've wondered about selling what they bake.
+- Near the end of the message, add ONE warm low-pressure seed line in Henry's voice.
+- Sample (rewrite naturally, don't copy verbatim, no em-dashes):
+  "You also mentioned you've wondered about selling what you bake someday. No rush on that at all. When you get curious, there's a corner of what we do here built for exactly that. For now, let's get you baking."
+- Do NOT pitch any course or product. Do NOT add a link for this seed line.
+- The craft welcome above is still the main body. The seed line is one sentence at the end.`;
+  } else if (intentTier === 'prospect') {
+    intentBlock = `\n\nINTENT BRANCH — prospect tier:
+- The member told us in Q3 they're thinking about one day selling what they bake.
+- Add ONE acknowledgment in Henry's voice that you heard them on the business side.
+- Then point them to ONE selling-side resource (cottage food, pricing, farmers market, business of baking) chosen from the lists above.
+- Sample acknowledgment (rewrite naturally, no em-dashes):
+  "You said you're thinking about selling what you bake one day. That's a real thing you can build, and you're in the right room for it."
+- The craft welcome above is still primary. The business line + selling resource is in addition, not instead.
+- Do NOT pitch any paid course. Just acknowledge + one resource.`;
+  } else if (intentTier === 'hobbyist') {
+    intentBlock = `\n\nINTENT BRANCH — hobbyist tier:
+- The member told us in Q3 they're baking for themselves and the people they love.
+- DO NOT mention selling, business, market, monetizing, courses, or anything commercial.
+- Pure craft welcome only.`;
+  }
+
   return `Generate a warm welcome DM for a new bread baking community member.
 
 Community: ${communityName} (bread baking)
@@ -573,6 +604,7 @@ ${videosForPrompt}
 Available Blog Posts (recommend an article if reading would help more than a course or video):
 ${blogPostsForPrompt}
 ${tagRecommendations}
+${intentBlock}
 
 Instructions:
 - Warmly welcome them by first name
@@ -869,7 +901,7 @@ serve(async (req) => {
     // Select the appropriate prompt based on outreach type
     switch (outreach_type) {
       case 'welcome_message':
-        systemPrompt = getWelcomeMessagePrompt(hasApplicationAnswer, resourcesForPrompt, recipesForPrompt, videosForPrompt, blogPostsForPrompt, starterInterest, recipeInterest, tagRecommendations, memberTags, aiSettings);
+        systemPrompt = getWelcomeMessagePrompt(hasApplicationAnswer, resourcesForPrompt, recipesForPrompt, videosForPrompt, blogPostsForPrompt, starterInterest, recipeInterest, tagRecommendations, memberTags, aiSettings, member.intent_tier);
         break;
       case 'feedback_request':
         systemPrompt = getFeedbackRequestPrompt(hasApplicationAnswer, memberTags, aiSettings);

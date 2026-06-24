@@ -10,5 +10,13 @@
   "pagination": {
     "mode": "numbered-next",
     "nextButtonName": "Next"
+  },
+
+  "_intent_note": "Intake answers (Q1, Q3) only appear in the per-member profile drawer that opens when a card is clicked. These selectors are best-guess placeholders; run `node read-roster.mjs --probe-intent` against a real card to confirm.",
+  "memberDrawer": {
+    "openTrigger": "div[class*='MemberItemWrapper'] a[href^='/@']",
+    "panel": "div[role='dialog'], aside[class*='Drawer'], div[class*='ProfileDrawer']",
+    "answerBlock": "div[class*='Answer'], section[class*='Application']",
+    "closeButton": "button[aria-label='Close']"
   }
 }

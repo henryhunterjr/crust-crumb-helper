@@ -4,6 +4,16 @@ export type MessageStatus = 'not_contacted' | 'message_generated' | 'sent' | 're
 
 export type OutreachType = 'welcome_message' | 'resource_recommendation' | 'feedback_request' | 'custom';
 
+export type IntentTier = 'hobbyist' | 'curious' | 'prospect';
+
+export type NurtureStatus = 'active' | 'paused' | 'opted_out' | 'customer';
+
+export interface IntentRaw {
+  q1?: string;
+  q3?: string;
+  [key: string]: string | undefined;
+}
+
 export interface Member {
   id: string;
   skool_name: string;
@@ -22,6 +32,13 @@ export interface Member {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  intent_raw?: IntentRaw | null;
+  intent_tier?: IntentTier | null;
+  nurture_status?: NurtureStatus;
+  last_business_touch?: string | null;
+  business_touch_count?: number;
+  invited_to_sys?: boolean;
+  invited_to_sys_at?: string | null;
 }
 
 export interface MemberImportRow {
