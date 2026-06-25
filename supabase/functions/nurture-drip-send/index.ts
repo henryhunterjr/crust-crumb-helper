@@ -27,9 +27,9 @@ const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const NURTURE_FROM_EMAIL =
   Deno.env.get("NURTURE_FROM_EMAIL") ||
-  "Henry Hunter <henry@bakinggreatbread.com>";
+  "Henry <henry@fromoventomarket.com>";
 const NURTURE_REPLY_TO =
-  Deno.env.get("NURTURE_REPLY_TO") || "henry@bakinggreatbread.com";
+  Deno.env.get("NURTURE_REPLY_TO") || "henry@fromoventomarket.com";
 
 const MAX_PER_RUN = 50;
 const COOLDOWN_DAYS = 5;
