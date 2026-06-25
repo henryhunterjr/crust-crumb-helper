@@ -1232,6 +1232,56 @@ export type Database = {
           },
         ]
       }
+      nurture_events: {
+        Row: {
+          campaign_id: string | null
+          created_at: string
+          event_id: string
+          event_type: string
+          id: string
+          member_id: string | null
+          payload: Json
+          process_error: string | null
+          processed: boolean
+          received_at: string
+          subscriber_email: string | null
+        }
+        Insert: {
+          campaign_id?: string | null
+          created_at?: string
+          event_id: string
+          event_type: string
+          id?: string
+          member_id?: string | null
+          payload?: Json
+          process_error?: string | null
+          processed?: boolean
+          received_at?: string
+          subscriber_email?: string | null
+        }
+        Update: {
+          campaign_id?: string | null
+          created_at?: string
+          event_id?: string
+          event_type?: string
+          id?: string
+          member_id?: string | null
+          payload?: Json
+          process_error?: string | null
+          processed?: boolean
+          received_at?: string
+          subscriber_email?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nurture_events_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nurture_runs: {
         Row: {
           created_at: string
