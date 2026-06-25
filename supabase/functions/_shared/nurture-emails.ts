@@ -47,7 +47,7 @@ export function renderNurtureEmail(
 ): { subject: string; html: string } {
   const replace = (s: string) =>
     s
-      .replaceAll("{{first_name}}", vars.first_name || "there")
-      .replaceAll("{{unsubscribe}}", vars.unsubscribe);
+      .split("{{first_name}}").join(vars.first_name || "there")
+      .split("{{unsubscribe}}").join(vars.unsubscribe);
   return { subject: replace(email.subject), html: replace(email.html) };
 }
