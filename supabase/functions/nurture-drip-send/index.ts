@@ -33,6 +33,8 @@ const NURTURE_REPLY_TO =
 
 const MAX_PER_RUN = 50;
 const COOLDOWN_DAYS = 5;
+/** Hard launch gate. Nothing sends before this instant. */
+const LAUNCH_AT = new Date("2026-06-29T13:00:00Z");
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
@@ -229,6 +231,17 @@ Deno.serve(async (req) => {
   }
   const dryRun = !!body.dryRun;
   const limit = Math.min(Math.max(1, body.limit ?? MAX_PER_RUN), MAX_PER_RUN);
+
+  const now = new Date();
+  if (now < LAUNCH_AT && !dryRun) {
+    return json({
+      ok: true,
+      skipped: true,
+      reason: "pre_launch",
+      launchAt: LAUNCH_AT.toISOString(),
+      now: now.toISOString(),
+    });
+  }
 
   const cutoff = new Date(Date.now() - COOLDOWN_DAYS * 86_400_000).toISOString();
 
