@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { format, parseISO, differenceInDays } from 'date-fns';
+import { format, parseISO, differenceInDays, formatDistanceToNow } from 'date-fns';
 import { Loader2, Mail, Send, AlertCircle } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -17,14 +16,12 @@ import type { Member, IntentTier } from '@/types/member';
 import { MemberDetailDialog } from '@/components/members/MemberDetailDialog';
 import { useMembers } from '@/hooks/useMembers';
 import { toast } from 'sonner';
+import { NURTURE_EMAILS, MAX_NURTURE_STEP } from '../../supabase/functions/_shared/nurture-emails';
 
 type FreshnessFilter = 'all' | 'never_touched' | 'stale';
 type TierFilter = 'all' | IntentTier;
-
-interface FnStatus {
-  configured: boolean;
-  missing: string[];
-}
+type SortField = 'joined' | 'nurture_step' | 'last_touch';
+type SortDir = 'asc' | 'desc';
 
 function tierBadge(tier: IntentTier | null | undefined) {
   if (tier === 'curious') {
@@ -50,7 +47,15 @@ async function fetchTargets(): Promise<Member[]> {
 async function callFn(name: string, body: object) {
   const { data, error } = await supabase.functions.invoke(name, { body });
   if (error) throw error;
-  return data as { ok: boolean; configured?: boolean; missing?: string[]; eligibleCount?: number; reason?: string };
+  return data as {
+    ok: boolean;
+    eligibleCount?: number;
+    sent?: number;
+    failed?: number;
+    reason?: string;
+    detail?: string;
+    results?: Array<{ status: string; error?: string }>;
+  };
 }
 
 export default function Targets() {
@@ -58,27 +63,20 @@ export default function Targets() {
   const [tierFilter, setTierFilter] = useState<TierFilter>('all');
   const [freshness, setFreshness] = useState<FreshnessFilter>('all');
   const [selected, setSelected] = useState<Member | null>(null);
-  const [mailerStatus, setMailerStatus] = useState<FnStatus | null>(null);
-  const [sysStatus, setSysStatus] = useState<FnStatus | null>(null);
+  const [sortField, setSortField] = useState<SortField>('joined');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [dripBusy, setDripBusy] = useState(false);
 
   const { data: targets = [], isLoading } = useQuery({
     queryKey: ['targets'],
     queryFn: fetchTargets,
   });
 
-  // Check stub configuration once on mount.
-  useEffect(() => {
-    callFn('sync-market-curious', { action: 'status' })
-      .then((r) => setMailerStatus({ configured: !!r.configured, missing: r.missing || [] }))
-      .catch(() => setMailerStatus({ configured: false, missing: ['MAILERLITE_API_KEY'] }));
-    callFn('invite-to-sys', { action: 'status' })
-      .then((r) => setSysStatus({ configured: !!r.configured, missing: r.missing || [] }))
-      .catch(() => setSysStatus({ configured: false, missing: ['SYS_WEBHOOK_URL'] }));
-  }, []);
+  const copyReady = NURTURE_EMAILS.length === MAX_NURTURE_STEP;
 
   const filtered = useMemo(() => {
     const now = new Date();
-    return targets.filter((m) => {
+    const list = targets.filter((m) => {
       if (tierFilter !== 'all' && m.intent_tier !== tierFilter) return false;
       if (freshness === 'never_touched' && m.last_business_touch) return false;
       if (freshness === 'stale') {
@@ -88,14 +86,37 @@ export default function Targets() {
       }
       return true;
     });
-  }, [targets, tierFilter, freshness]);
+    const dir = sortDir === 'asc' ? 1 : -1;
+    const ts = (s: string | null | undefined) => (s ? new Date(s).getTime() : 0);
+    return [...list].sort((a, b) => {
+      if (sortField === 'nurture_step') return dir * ((a.nurture_step ?? 0) - (b.nurture_step ?? 0));
+      if (sortField === 'last_touch') return dir * (ts(a.last_business_touch) - ts(b.last_business_touch));
+      return dir * (ts(a.join_date) - ts(b.join_date));
+    });
+  }, [targets, tierFilter, freshness, sortField, sortDir]);
 
-  const previewDryRun = async (fn: string, label: string) => {
+  const toggleSort = (f: SortField) => {
+    if (sortField === f) setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+    else { setSortField(f); setSortDir('desc'); }
+  };
+
+  const runDrip = async (dryRun: boolean) => {
+    setDripBusy(true);
     try {
-      const r = await callFn(fn, { action: 'dryRun' });
-      toast.success(`${label}: ${r.eligibleCount ?? 0} eligible member(s)`);
+      const r = await callFn('nurture-drip-send', { dryRun });
+      if (!r.ok) {
+        toast.error(`Drip ${dryRun ? 'preview' : 'send'} failed: ${r.reason ?? 'unknown'}`);
+        return;
+      }
+      if (dryRun) {
+        toast.success(`${r.eligibleCount ?? 0} member(s) eligible for next send`);
+      } else {
+        toast.success(`Sent ${r.sent ?? 0}, failed ${r.failed ?? 0} (of ${r.eligibleCount ?? 0} eligible)`);
+      }
     } catch (e) {
-      toast.error(`${label} dry-run failed: ${e instanceof Error ? e.message : 'unknown error'}`);
+      toast.error(e instanceof Error ? e.message : 'drip call failed');
+    } finally {
+      setDripBusy(false);
     }
   };
 
@@ -111,89 +132,35 @@ export default function Targets() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Mail className="h-4 w-4" />
-                MailerLite nurture sync
-              </CardTitle>
-              <CardDescription>
-                Pushes curious + prospect into the <code>market-curious</code> group, tagged by tier.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={() => previewDryRun('sync-market-curious', 'Sync')}>
-                Preview (dry-run)
-              </Button>
-              {mailerStatus?.configured ? (
-                <Button onClick={async () => {
-                  try {
-                    const r = await callFn('sync-market-curious', { action: 'run' });
-                    if (!r.ok) toast.error(`Sync: ${r.reason}`);
-                    else toast.success('MailerLite sync started');
-                  } catch (e) {
-                    toast.error(e instanceof Error ? e.message : 'sync failed');
-                  }
-                }}>
-                  Sync to MailerLite
-                </Button>
-              ) : (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span tabIndex={0}>
-                      <Button disabled>Sync to MailerLite</Button>
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    Add {mailerStatus?.missing?.join(', ') || 'MAILERLITE_API_KEY'} to enable.
-                  </TooltipContent>
-                </Tooltip>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Send className="h-4 w-4" />
-                Sell Your Sourdough migration
-              </CardTitle>
-              <CardDescription>
-                Invites every curious + prospect member who hasn't been invited yet, via Skool webhook.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={() => previewDryRun('invite-to-sys', 'Invite')}>
-                Preview (dry-run)
-              </Button>
-              {sysStatus?.configured ? (
-                <Button onClick={async () => {
-                  try {
-                    const r = await callFn('invite-to-sys', { action: 'run' });
-                    if (!r.ok) toast.error(`Invite: ${r.reason}`);
-                    else toast.success('SYS invites sent');
-                  } catch (e) {
-                    toast.error(e instanceof Error ? e.message : 'invite failed');
-                  }
-                }}>
-                  Invite curious + prospect to SYS
-                </Button>
-              ) : (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span tabIndex={0}>
-                      <Button disabled>Invite curious + prospect to SYS</Button>
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    Add {sysStatus?.missing?.join(', ') || 'SYS_WEBHOOK_URL'} to enable. Community must be open first.
-                  </TooltipContent>
-                </Tooltip>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Mail className="h-4 w-4" />
+              Market-curious nurture drip (Resend)
+            </CardTitle>
+            <CardDescription>
+              6-email sequence, one touch every 5 days, max 50 sends per run. Copy lives in
+              <code className="mx-1">supabase/functions/_shared/nurture-emails.ts</code>.
+              {copyReady
+                ? ` All ${MAX_NURTURE_STEP} steps loaded.`
+                : ` ${NURTURE_EMAILS.length}/${MAX_NURTURE_STEP} steps loaded — sends will fail until all 6 are filled in.`}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2 items-center">
+            <Button variant="outline" disabled={dripBusy} onClick={() => runDrip(true)}>
+              Preview eligible (dry-run)
+            </Button>
+            <Button disabled={dripBusy || !copyReady} onClick={() => runDrip(false)}>
+              <Send className="h-4 w-4 mr-1" />
+              Send next batch now
+            </Button>
+            {!copyReady && (
+              <span className="text-xs text-amber-600 flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" /> Paste all 6 emails into nurture-emails.ts to enable sending.
+              </span>
+            )}
+          </CardContent>
+        </Card>
 
         <div className="flex flex-wrap items-center gap-3 mb-4">
           <div className="flex items-center gap-2">
@@ -242,10 +209,25 @@ export default function Targets() {
                       <TableHead>Name</TableHead>
                       <TableHead>Tier</TableHead>
                       <TableHead>Email</TableHead>
-                      <TableHead>Joined</TableHead>
+                      <TableHead
+                        className="cursor-pointer select-none"
+                        onClick={() => toggleSort('joined')}
+                      >
+                        Joined {sortField === 'joined' && (sortDir === 'asc' ? '↑' : '↓')}
+                      </TableHead>
                       <TableHead>Learn goal (Q1)</TableHead>
-                      <TableHead>Last touch</TableHead>
-                      <TableHead className="text-right">Touches</TableHead>
+                      <TableHead
+                        className="cursor-pointer select-none text-right"
+                        onClick={() => toggleSort('nurture_step')}
+                      >
+                        Step {sortField === 'nurture_step' && (sortDir === 'asc' ? '↑' : '↓')}
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer select-none"
+                        onClick={() => toggleSort('last_touch')}
+                      >
+                        Last touch {sortField === 'last_touch' && (sortDir === 'asc' ? '↑' : '↓')}
+                      </TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -267,12 +249,14 @@ export default function Targets() {
                             {m.application_answer || '—'}
                           </span>
                         </TableCell>
+                        <TableCell className="text-right text-xs tabular-nums">
+                          {(m.nurture_step ?? 0)}/{MAX_NURTURE_STEP}
+                        </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
                           {m.last_business_touch
-                            ? format(parseISO(m.last_business_touch), 'MMM d, yyyy')
+                            ? formatDistanceToNow(parseISO(m.last_business_touch), { addSuffix: true })
                             : 'never'}
                         </TableCell>
-                        <TableCell className="text-right text-xs">{m.business_touch_count ?? 0}</TableCell>
                         <TableCell>
                           {m.invited_to_sys ? (
                             <Badge variant="outline" className="text-xs">invited</Badge>

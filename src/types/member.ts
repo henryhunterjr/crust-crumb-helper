@@ -39,6 +39,8 @@ export interface Member {
   business_touch_count?: number;
   invited_to_sys?: boolean;
   invited_to_sys_at?: string | null;
+  nurture_step?: number;
+  nurture_started_at?: string | null;
 }
 
 export interface MemberImportRow {

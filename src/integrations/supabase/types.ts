@@ -1107,7 +1107,9 @@ export type Database = {
           last_business_touch: string | null
           message_status: string
           notes: string | null
+          nurture_started_at: string | null
           nurture_status: string
+          nurture_step: number
           outreach_responded: boolean | null
           outreach_sent: boolean | null
           outreach_sent_at: string | null
@@ -1118,6 +1120,7 @@ export type Database = {
           roster_status: string | null
           skool_name: string
           skool_username: string | null
+          unsubscribe_token: string | null
           updated_at: string | null
         }
         Insert: {
@@ -1137,7 +1140,9 @@ export type Database = {
           last_business_touch?: string | null
           message_status?: string
           notes?: string | null
+          nurture_started_at?: string | null
           nurture_status?: string
+          nurture_step?: number
           outreach_responded?: boolean | null
           outreach_sent?: boolean | null
           outreach_sent_at?: string | null
@@ -1148,6 +1153,7 @@ export type Database = {
           roster_status?: string | null
           skool_name: string
           skool_username?: string | null
+          unsubscribe_token?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -1167,7 +1173,9 @@ export type Database = {
           last_business_touch?: string | null
           message_status?: string
           notes?: string | null
+          nurture_started_at?: string | null
           nurture_status?: string
+          nurture_step?: number
           outreach_responded?: boolean | null
           outreach_sent?: boolean | null
           outreach_sent_at?: string | null
@@ -1178,6 +1186,7 @@ export type Database = {
           roster_status?: string | null
           skool_name?: string
           skool_username?: string | null
+          unsubscribe_token?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -1232,68 +1241,24 @@ export type Database = {
           },
         ]
       }
-      nurture_events: {
-        Row: {
-          campaign_id: string | null
-          created_at: string
-          event_id: string
-          event_type: string
-          id: string
-          member_id: string | null
-          payload: Json
-          process_error: string | null
-          processed: boolean
-          received_at: string
-          subscriber_email: string | null
-        }
-        Insert: {
-          campaign_id?: string | null
-          created_at?: string
-          event_id: string
-          event_type: string
-          id?: string
-          member_id?: string | null
-          payload?: Json
-          process_error?: string | null
-          processed?: boolean
-          received_at?: string
-          subscriber_email?: string | null
-        }
-        Update: {
-          campaign_id?: string | null
-          created_at?: string
-          event_id?: string
-          event_type?: string
-          id?: string
-          member_id?: string | null
-          payload?: Json
-          process_error?: string | null
-          processed?: boolean
-          received_at?: string
-          subscriber_email?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "nurture_events_member_id_fkey"
-            columns: ["member_id"]
-            isOneToOne: false
-            referencedRelation: "members"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       nurture_runs: {
         Row: {
           created_at: string
           detail: Json | null
           dry_run: boolean
           ended_at: string | null
+          error: string | null
           failed: number
           id: string
           job: string
+          member_id: string | null
           requested: number
+          resend_message_id: string | null
+          sent_at: string | null
           started_at: string
           status: string
+          step: number | null
+          subject: string | null
           succeeded: number
         }
         Insert: {
@@ -1301,12 +1266,18 @@ export type Database = {
           detail?: Json | null
           dry_run?: boolean
           ended_at?: string | null
+          error?: string | null
           failed?: number
           id?: string
           job: string
+          member_id?: string | null
           requested?: number
+          resend_message_id?: string | null
+          sent_at?: string | null
           started_at?: string
           status?: string
+          step?: number | null
+          subject?: string | null
           succeeded?: number
         }
         Update: {
@@ -1314,15 +1285,29 @@ export type Database = {
           detail?: Json | null
           dry_run?: boolean
           ended_at?: string | null
+          error?: string | null
           failed?: number
           id?: string
           job?: string
+          member_id?: string | null
           requested?: number
+          resend_message_id?: string | null
+          sent_at?: string | null
           started_at?: string
           status?: string
+          step?: number | null
+          subject?: string | null
           succeeded?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "nurture_runs_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       outreach_messages: {
         Row: {
