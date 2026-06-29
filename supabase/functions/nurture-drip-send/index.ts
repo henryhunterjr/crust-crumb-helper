@@ -5,8 +5,7 @@
 //
 // Eligibility:
 //   intent_tier IN (curious, prospect)
-//   AND nurture_status = 'active'
-//   AND status != 'enrolled'
+//   AND nurture_status = 'active'  (excludes 'customer'/'opted_out'/'paused')
 //   AND email IS NOT NULL
 //   AND (nurture_step = 0
 //        OR (nurture_step < 6 AND last_business_touch <= now() - interval '5 days'))
@@ -249,10 +248,9 @@ Deno.serve(async (req) => {
   // Pass A: never-started.
   const { data: starters, error: errA } = await supabase
     .from("members")
-    .select("id, email, skool_name, nurture_step, nurture_started_at, business_touch_count, unsubscribe_token, status, intent_tier, nurture_status, last_business_touch")
+    .select("id, email, skool_name, nurture_step, nurture_started_at, business_touch_count, unsubscribe_token, intent_tier, nurture_status, last_business_touch")
     .in("intent_tier", ["curious", "prospect"])
     .eq("nurture_status", "active")
-    .neq("status", "enrolled")
     .not("email", "is", null)
     .eq("nurture_step", 0)
     .order("join_date", { ascending: false, nullsFirst: false })
@@ -265,10 +263,9 @@ Deno.serve(async (req) => {
     const remaining = limit - pool.length;
     const { data: continuers, error: errB } = await supabase
       .from("members")
-      .select("id, email, skool_name, nurture_step, nurture_started_at, business_touch_count, unsubscribe_token, status, intent_tier, nurture_status, last_business_touch")
+      .select("id, email, skool_name, nurture_step, nurture_started_at, business_touch_count, unsubscribe_token, intent_tier, nurture_status, last_business_touch")
       .in("intent_tier", ["curious", "prospect"])
       .eq("nurture_status", "active")
-      .neq("status", "enrolled")
       .not("email", "is", null)
       .gt("nurture_step", 0)
       .lt("nurture_step", MAX_NURTURE_STEP)
