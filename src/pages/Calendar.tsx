@@ -1,9 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   format, addDays, addWeeks, subWeeks, startOfWeek, endOfWeek, startOfMonth, endOfMonth,
   eachDayOfInterval, isSameDay, isSameMonth, isToday, getDay, addMonths, subMonths,
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, Plus, Copy, Check, CheckCircle, Sparkles, Edit, Loader2, ExternalLink } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Copy, Check, CheckCircle, Sparkles, Edit, Loader2, ExternalLink, CalendarPlus } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCalendarPosts, useCalendarTemplates, ScheduledPostSlot } from '@/hooks/useCalendarPosts';
+import { CustomPostDialog } from '@/components/calendar/CustomPostDialog';
+import { UpcomingDraftsPanel } from '@/components/calendar/UpcomingDraftsPanel';
 import { PLATFORMS, CONTENT_PILLARS, FRAMEWORKS } from '@/types/postIdea';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
@@ -79,6 +81,14 @@ export default function Calendar() {
   const [editorSourceMaterial, setEditorSourceMaterial] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [customOpen, setCustomOpen] = useState(false);
+  const [now, setNow] = useState(new Date());
+
+  // Tick every minute so countdowns stay fresh
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(t);
+  }, []);
 
   // Week boundaries
   const weekStart = startOfWeek(currentDate);
@@ -255,6 +265,10 @@ export default function Calendar() {
             <Button variant="outline" size="icon" aria-label={view === 'week' ? 'Next week' : 'Next month'} className="h-8 w-8" onClick={() => setCurrentDate(view === 'week' ? addWeeks(currentDate, 1) : addMonths(currentDate, 1))}>
               <ChevronRight className="h-4 w-4" />
             </Button>
+            <Button size="sm" className="h-8 text-xs ml-2" onClick={() => setCustomOpen(true)}>
+              <CalendarPlus className="h-3.5 w-3.5 mr-1" />
+              Custom Post
+            </Button>
           </div>
         </div>
 
@@ -284,6 +298,26 @@ export default function Calendar() {
               <p className="text-[11px] text-muted-foreground">🏫 Skool Posts</p>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Upcoming drafts with next-run previews */}
+        <div className="mb-5">
+          <UpcomingDraftsPanel
+            posts={posts}
+            now={now}
+            onEdit={(p) => {
+              const slot = SLOT_CONFIG.find(s => s.time === p.time_slot) || {
+                time: p.time_slot || '12:00',
+                label: p.time_slot || 'Custom',
+                type: p.post_type || 'value',
+                icon: '📌',
+                typeLabel: 'Custom Post',
+                defaultPlatform: p.platform || 'skool',
+              };
+              openEditor(new Date(p.scheduled_date), slot as any, p);
+            }}
+            onCopyAndOpen={(p) => handleCopyAndPost(p)}
+          />
         </div>
 
         {/* WEEKLY VIEW */}
@@ -619,6 +653,32 @@ export default function Calendar() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Precise-time custom post dialog */}
+        <CustomPostDialog
+          open={customOpen}
+          onOpenChange={setCustomOpen}
+          isSaving={createPost.isPending}
+          onSave={(p) => {
+            createPost.mutate(
+              {
+                title: p.title,
+                content: p.content,
+                scheduled_date: p.scheduled_date,
+                time_slot: p.time_slot,
+                post_type: p.post_type,
+                platform: p.platform,
+                content_pillar: p.content_pillar,
+                framework: p.framework,
+                caption: p.caption,
+                hashtags: p.hashtags,
+                source_material: p.source_material,
+                status: 'planned',
+              },
+              { onSuccess: () => setCustomOpen(false) }
+            );
+          }}
+        />
       </main>
       <Footer />
     </div>
