@@ -1099,6 +1099,8 @@ export type Database = {
           email: string | null
           engagement_status: string | null
           first_name: string | null
+          fotm_joined_at: string | null
+          fotm_tier: string | null
           id: string
           intent_raw: Json | null
           intent_tier: string | null
@@ -1137,6 +1139,8 @@ export type Database = {
           email?: string | null
           engagement_status?: string | null
           first_name?: string | null
+          fotm_joined_at?: string | null
+          fotm_tier?: string | null
           id?: string
           intent_raw?: Json | null
           intent_tier?: string | null
@@ -1175,6 +1179,8 @@ export type Database = {
           email?: string | null
           engagement_status?: string | null
           first_name?: string | null
+          fotm_joined_at?: string | null
+          fotm_tier?: string | null
           id?: string
           intent_raw?: Json | null
           intent_tier?: string | null
@@ -1659,6 +1665,7 @@ export type Database = {
       roster_sync_runs: {
         Row: {
           captured_at: string | null
+          community: string | null
           created_at: string | null
           error: string | null
           full_roster: boolean | null
@@ -1675,6 +1682,7 @@ export type Database = {
         }
         Insert: {
           captured_at?: string | null
+          community?: string | null
           created_at?: string | null
           error?: string | null
           full_roster?: boolean | null
@@ -1691,6 +1699,7 @@ export type Database = {
         }
         Update: {
           captured_at?: string | null
+          community?: string | null
           created_at?: string | null
           error?: string | null
           full_roster?: boolean | null
@@ -1774,6 +1783,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      segment_refresh_log: {
+        Row: {
+          id: string
+          members_updated: number
+          pro_members_updated: number
+          ran_at: string
+          source: string | null
+        }
+        Insert: {
+          id?: string
+          members_updated?: number
+          pro_members_updated?: number
+          ran_at?: string
+          source?: string | null
+        }
+        Update: {
+          id?: string
+          members_updated?: number
+          pro_members_updated?: number
+          ran_at?: string
+          source?: string | null
+        }
+        Relationships: []
       }
       segment_snapshots: {
         Row: {
