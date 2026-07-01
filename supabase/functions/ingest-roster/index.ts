@@ -229,6 +229,7 @@ serve(async (req) => {
       status: "completed",
       runId: payload.runId ?? runId,
       fullRoster,
+      community,
       ...summary,
       newMembers: inserted,
       missingMembers: missingFlagged,
@@ -267,7 +268,7 @@ async function fetchAllExisting(): Promise<ExistingMember[]> {
 }
 
 async function logRun(
-  payload: { runId?: string; capturedAt?: string; fullRoster?: boolean },
+  payload: { runId?: string; capturedAt?: string; fullRoster?: boolean; community?: string },
   summary: {
     total_seen: number;
     inserted: number;
@@ -285,6 +286,7 @@ async function logRun(
         run_id: payload.runId ?? null,
         source: "browser-agent",
         full_roster: payload.fullRoster === true,
+        community: payload.community ?? null,
         captured_at: payload.capturedAt ?? null,
         ...summary,
       })
