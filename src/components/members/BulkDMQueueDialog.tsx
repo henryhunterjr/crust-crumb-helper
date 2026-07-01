@@ -19,6 +19,9 @@ interface BulkDMQueueDialogProps {
   members: Member[];
   onMarkSent: (memberId: string) => void;
   outreachType: OutreachType;
+  /** If provided, skip AI generation and use this exact template text (with merge tags). */
+  templateContent?: string | null;
+  templateName?: string | null;
 }
 
 interface QueueItem {
@@ -35,6 +38,8 @@ export function BulkDMQueueDialog({
   members,
   onMarkSent,
   outreachType,
+  templateContent,
+  templateName,
 }: BulkDMQueueDialogProps) {
   const [queue, setQueue] = useState<QueueItem[]>([]);
 
@@ -62,7 +67,47 @@ export function BulkDMQueueDialog({
       ));
 
       const member = queue[pendingIndex].member;
-      
+
+      // Template mode: no AI, just merge-tag substitution.
+      if (templateContent) {
+        const firstName = (member.skool_name || '').trim().split(/\s+/)[0] || 'there';
+        const message = templateContent
+          .replace(/\{\{\s*first_name\s*\}\}/gi, firstName)
+          .replace(/\{\{\s*name\s*\}\}/gi, member.skool_name || firstName);
+
+        let savedMessageId: string | null = null;
+        try {
+          const { data: savedMsg } = await supabase
+            .from('outreach_messages')
+            .insert({
+              member_id: member.id,
+              member_name: member.skool_name,
+              message_type: outreachType,
+              message_text: message,
+              custom_topic: templateName ? `Template: ${templateName}` : null,
+            })
+            .select()
+            .single();
+          savedMessageId = savedMsg?.id || null;
+          await supabase
+            .from('members')
+            .update({ message_status: 'message_generated' })
+            .eq('id', member.id);
+        } catch (logErr) {
+          console.error('Error saving to outreach log:', logErr);
+        }
+
+        setQueue(prev => prev.map((q, i) =>
+          i === pendingIndex ? {
+            ...q,
+            status: 'done',
+            message,
+            outreachMessageId: savedMessageId,
+          } : q
+        ));
+        return;
+      }
+
       let attempts = 0;
       const maxAttempts = 3;
       
@@ -141,7 +186,7 @@ export function BulkDMQueueDialog({
 
     const timer = setTimeout(generateNext, 500);
     return () => clearTimeout(timer);
-  }, [queue, open, outreachType]);
+  }, [queue, open, outreachType, templateContent, templateName]);
 
   const handleCopy = async (index: number) => {
     const item = queue[index];
@@ -188,7 +233,9 @@ export function BulkDMQueueDialog({
       <DialogContent className="max-w-2xl max-h-[80vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            Bulk {isFeedback ? 'Feedback Request' : 'DM'} Generation
+            {templateContent
+              ? `Send Template${templateName ? `: ${templateName}` : ''}`
+              : `Bulk ${isFeedback ? 'Feedback Request' : 'DM'} Generation`}
             <Badge variant="outline">
               {completedCount}/{queue.length} complete
             </Badge>

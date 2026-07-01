@@ -23,6 +23,7 @@ import { GeneratedDMDialog } from '@/components/members/GeneratedDMDialog';
 import { MemberDetailDialog } from '@/components/members/MemberDetailDialog';
 import { BulkActionsBar } from '@/components/members/BulkActionsBar';
 import { BulkDMQueueDialog } from '@/components/members/BulkDMQueueDialog';
+import { PickTemplateDialog } from '@/components/members/PickTemplateDialog';
 import { AddMemberDialog } from '@/components/members/AddMemberDialog';
 import { NewMemberDigest } from '@/components/members/NewMemberDigest';
 import { NewMemberWelcomeExportDialog } from '@/components/members/NewMemberWelcomeExportDialog';
@@ -99,6 +100,8 @@ export default function Members() {
   // Bulk DM state
   const [bulkDMDialogOpen, setBulkDMDialogOpen] = useState(false);
   const [bulkOutreachType, setBulkOutreachType] = useState<OutreachType>('resource_recommendation');
+  const [pickTemplateOpen, setPickTemplateOpen] = useState(false);
+  const [activeTemplate, setActiveTemplate] = useState<{ name: string; content: string; type: OutreachType } | null>(null);
 
   // Filter and sort members
   const filteredMembers = useMemo(() => {
@@ -661,6 +664,7 @@ export default function Members() {
           selectedMembers={selectedMembers}
           onBulkMarkActive={handleBulkMarkActive}
           isBulkUpdating={isBulkUpdating}
+          onSendTemplate={() => setPickTemplateOpen(true)}
         />
 
         {/* Dialogs */}
@@ -704,10 +708,29 @@ export default function Members() {
 
         <BulkDMQueueDialog
           open={bulkDMDialogOpen}
-          onOpenChange={setBulkDMDialogOpen}
+          onOpenChange={(open) => {
+            setBulkDMDialogOpen(open);
+            if (!open) setActiveTemplate(null);
+          }}
           members={selectedMembers}
           onMarkSent={handleMarkSent}
-          outreachType={bulkOutreachType}
+          outreachType={activeTemplate?.type ?? bulkOutreachType}
+          templateContent={activeTemplate?.content ?? null}
+          templateName={activeTemplate?.name ?? null}
+        />
+
+        <PickTemplateDialog
+          open={pickTemplateOpen}
+          onOpenChange={(open) => {
+            setPickTemplateOpen(open);
+            if (!open) setActiveTemplate(null);
+          }}
+          memberCount={selectedMembers.length}
+          onPick={(tpl) => {
+            setActiveTemplate({ name: tpl.name, content: tpl.content, type: tpl.outreach_type });
+            setPickTemplateOpen(false);
+            setBulkDMDialogOpen(true);
+          }}
         />
 
         <NewMemberWelcomeExportDialog

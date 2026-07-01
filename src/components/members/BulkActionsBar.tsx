@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, MessageSquare, BookOpen, MessageCircle, ChevronDown, Sparkles, FileText, Tags, CheckCircle } from 'lucide-react';
+import { X, MessageSquare, BookOpen, MessageCircle, ChevronDown, Sparkles, FileText, Tags, CheckCircle, Send } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,6 +20,7 @@ interface BulkActionsBarProps {
   selectedMembers?: Member[];
   onBulkMarkActive?: () => void;
   isBulkUpdating?: boolean;
+  onSendTemplate?: () => void;
 }
 
 export function BulkActionsBar({ 
@@ -30,6 +31,7 @@ export function BulkActionsBar({
   selectedMembers = [],
   onBulkMarkActive,
   isBulkUpdating = false,
+  onSendTemplate,
 }: BulkActionsBarProps) {
   const navigate = useNavigate();
   const [bulkTagOpen, setBulkTagOpen] = useState(false);
@@ -92,7 +94,14 @@ export function BulkActionsBar({
         onOpenChange={setBulkTagOpen}
         memberIds={selectedMembers.map(m => m.id)}
       />
-      
+
+      {onSendTemplate && (
+        <Button size="sm" variant="secondary" onClick={onSendTemplate}>
+          <Send className="h-4 w-4 mr-2" />
+          Send Template
+        </Button>
+      )}
+
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button size="sm" disabled={isGenerating}>
