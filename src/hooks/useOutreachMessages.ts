@@ -55,7 +55,7 @@ export function useOutreachMessages(memberId?: string) {
 
   const updateMessageStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const updates: Record<string, unknown> = { status };
+      const updates: { status: string; sent_at?: string } = { status };
       if (status === 'sent') {
         updates.sent_at = new Date().toISOString();
       }

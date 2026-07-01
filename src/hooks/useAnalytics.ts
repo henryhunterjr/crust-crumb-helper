@@ -181,11 +181,12 @@ export function useRespondedTracking() {
 
   const updateResponded = useMutation({
     mutationFn: async ({ id, responded }: { id: string; responded: boolean | null }) => {
-      const updates: Record<string, unknown> = { responded };
+      const updates: { responded: boolean | null; responded_at: string | null } = {
+        responded,
+        responded_at: null,
+      };
       if (responded === true) {
         updates.responded_at = new Date().toISOString();
-      } else {
-        updates.responded_at = null;
       }
       const { error } = await supabase
         .from('outreach_messages')
