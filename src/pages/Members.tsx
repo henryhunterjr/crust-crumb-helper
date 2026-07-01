@@ -71,6 +71,7 @@ export default function Members() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectedTagFilters, setSelectedTagFilters] = useState<string[]>([]);
   const [isRetagging, setIsRetagging] = useState(false);
+  const [communityFilter, setCommunityFilter] = useState<string>('all');
 
   // Handle filter from URL params
   useEffect(() => {
@@ -166,6 +167,15 @@ export default function Members() {
       });
     }
 
+    // Apply community filter
+    if (communityFilter !== 'all') {
+      result = result.filter(m => {
+        const c = (m as any).communities as string[] | null | undefined;
+        if (communityFilter === 'untagged') return !c || c.length === 0;
+        return Array.isArray(c) && c.includes(communityFilter);
+      });
+    }
+
     // Apply search
     if (debouncedSearch) {
       const query = debouncedSearch.toLowerCase();
@@ -192,12 +202,12 @@ export default function Members() {
     });
 
     return result;
-  }, [members, activeFilter, debouncedSearch, sortField, selectedTagFilters, tagsByMember]);
+  }, [members, activeFilter, debouncedSearch, sortField, selectedTagFilters, tagsByMember, communityFilter]);
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeFilter, debouncedSearch, sortField, selectedTagFilters]);
+  }, [activeFilter, debouncedSearch, sortField, selectedTagFilters, communityFilter]);
 
   // Paginate
   const totalPages = Math.max(1, Math.ceil(filteredMembers.length / ITEMS_PER_PAGE));
@@ -542,6 +552,17 @@ export default function Members() {
           />
           
           <div className="flex gap-2 ml-auto">
+            <Select value={communityFilter} onValueChange={setCommunityFilter}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Community" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All communities</SelectItem>
+                <SelectItem value="crust-crumb-academy">Crust & Crumb Academy</SelectItem>
+                <SelectItem value="from-oven-to-market">From Oven to Market</SelectItem>
+                <SelectItem value="untagged">Untagged</SelectItem>
+              </SelectContent>
+            </Select>
             <TagFilterDropdown
               tagCounts={tagCounts}
               selectedTags={selectedTagFilters}
