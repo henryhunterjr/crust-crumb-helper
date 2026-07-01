@@ -14,6 +14,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   planRosterSync,
+  deriveIntentTier,
   type ExistingMember,
   type RosterMemberInput,
 } from "../_shared/roster-logic.ts";
@@ -60,6 +61,7 @@ serve(async (req) => {
     runId?: string;
     capturedAt?: string;
     fullRoster?: boolean;
+    community?: string;
     members?: RosterMemberInput[];
   };
   try {
@@ -100,6 +102,11 @@ serve(async (req) => {
   const now = new Date();
   const nowIso = now.toISOString();
   const fullRoster = payload.fullRoster === true;
+  const community = typeof payload.community === "string"
+    ? payload.community.trim().toLowerCase()
+    : null;
+  const isFotm = community === "from-oven-to-market";
+  const FOUNDING_CUTOFF = "2026-07-06";
 
   try {
     // Existing members for matching. PostgREST caps a select at ~1000 rows by
@@ -117,11 +124,19 @@ serve(async (req) => {
 
     // Inserts — new joiners. Mirror the CSV importer's row, stamped on_roster.
     if (plan.toInsert.length > 0) {
-      const insertRows = plan.toInsert.map((m) => ({
-        ...m,
-        roster_status: "on_roster",
-        roster_last_seen_at: nowIso,
-      }));
+      const insertRows = plan.toInsert.map((m) => {
+        const row: Record<string, unknown> = {
+          ...m,
+          roster_status: "on_roster",
+          roster_last_seen_at: nowIso,
+        };
+        if (community) row.communities = [community];
+        if (isFotm && m.join_date) {
+          row.fotm_joined_at = m.join_date;
+          if (m.join_date < FOUNDING_CUTOFF) row.fotm_tier = "founding";
+        }
+        return row;
+      });
       const { data, error } = await supabase
         .from("members")
         .insert(insertRows)
@@ -132,10 +147,55 @@ serve(async (req) => {
 
     // Updates — partial, never wipes fields the read could not see.
     for (const { id, updates } of plan.toUpdate) {
+      // Merge intent_raw append-only against the existing row, then derive
+      // intent_tier from the merged map (so a single Q3 hit can set the tier
+      // even if Q1 was captured on a different run).
+      const finalUpdates: Record<string, unknown> = { ...updates };
+      if (updates.intent_raw) {
+        const existingRow = existing.find((e) => e.id === id) as
+          | (ExistingMember & { intent_raw?: Record<string, string> | null })
+          | undefined;
+        const merged = {
+          ...(existingRow?.intent_raw || {}),
+          ...updates.intent_raw,
+        };
+        finalUpdates.intent_raw = merged;
+        finalUpdates.intent_tier = deriveIntentTier(merged);
+      }
+
+      // Communities merge — append the roster's community if not already
+      // present. Preserves any other memberships the member already has.
+      if (community) {
+        const existingRow = existing.find((e) => e.id === id) as
+          | (ExistingMember & {
+            communities?: string[] | null;
+            fotm_joined_at?: string | null;
+            fotm_tier?: string | null;
+          })
+          | undefined;
+        const currentCommunities = existingRow?.communities ?? [];
+        if (!currentCommunities.includes(community)) {
+          finalUpdates.communities = [...currentCommunities, community];
+        }
+        // FOTM join-date + founding tier backfill — never overwrite an
+        // existing value; only fill when we finally see the data.
+        if (isFotm && updates.join_date) {
+          if (!existingRow?.fotm_joined_at) {
+            finalUpdates.fotm_joined_at = updates.join_date;
+          }
+          if (
+            !existingRow?.fotm_tier &&
+            updates.join_date < FOUNDING_CUTOFF
+          ) {
+            finalUpdates.fotm_tier = "founding";
+          }
+        }
+      }
+
       const { error } = await supabase
         .from("members")
         .update({
-          ...updates,
+          ...finalUpdates,
           roster_status: "on_roster",
           roster_last_seen_at: nowIso,
         })
@@ -169,6 +229,7 @@ serve(async (req) => {
       status: "completed",
       runId: payload.runId ?? runId,
       fullRoster,
+      community,
       ...summary,
       newMembers: inserted,
       missingMembers: missingFlagged,
@@ -196,7 +257,7 @@ async function fetchAllExisting(): Promise<ExistingMember[]> {
   for (let from = 0; ; from += pageSize) {
     const { data, error } = await supabase
       .from("members")
-      .select("id, skool_name, skool_username")
+      .select("id, skool_name, skool_username, intent_raw, communities, fotm_joined_at, fotm_tier")
       .range(from, from + pageSize - 1);
     if (error) throw error;
     const batch = (data || []) as ExistingMember[];
@@ -207,7 +268,7 @@ async function fetchAllExisting(): Promise<ExistingMember[]> {
 }
 
 async function logRun(
-  payload: { runId?: string; capturedAt?: string; fullRoster?: boolean },
+  payload: { runId?: string; capturedAt?: string; fullRoster?: boolean; community?: string },
   summary: {
     total_seen: number;
     inserted: number;
@@ -225,6 +286,7 @@ async function logRun(
         run_id: payload.runId ?? null,
         source: "browser-agent",
         full_roster: payload.fullRoster === true,
+        community: payload.community ?? null,
         captured_at: payload.capturedAt ?? null,
         ...summary,
       })

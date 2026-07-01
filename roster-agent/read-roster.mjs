@@ -28,6 +28,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const argv = new Set(process.argv.slice(2));
 const PROBE = argv.has("--probe");
 const DRY_RUN = argv.has("--dry-run");
+const PROBE_INTENT = argv.has("--probe-intent");
+const READ_INTENT = argv.has("--read-intent") || PROBE_INTENT;
 
 const cfg = {
   cdp: process.env.CHROME_CDP_URL || "http://localhost:9222",
@@ -43,6 +45,23 @@ const cfg = {
   navTimeoutMs: Number(process.env.ROSTER_NAV_TIMEOUT_MS || 30000),
 };
 
+// Community slug attribution — every roster read tells the server WHICH
+// community it belongs to, so the ingest can append the right value to
+// members.communities. Explicit COMMUNITY_SLUG wins; otherwise we infer from
+// SKOOL_MEMBERS_URL (`.../<slug>-<digits>/-/members` → `<slug>`).
+function inferCommunitySlug(url) {
+  const m = url.match(/skool\.com\/([a-z0-9-]+?)(?:-\d+)?\/-\/members/i);
+  return m ? m[1] : null;
+}
+cfg.community = process.env.COMMUNITY_SLUG ||
+  inferCommunitySlug(cfg.communityUrl);
+if (!cfg.community) {
+  console.error(
+    "COMMUNITY_SLUG not set and could not be inferred from SKOOL_MEMBERS_URL. Set COMMUNITY_SLUG in .env.",
+  );
+  process.exit(1);
+}
+
 // --partial forces a non-reconciling run (inserts + updates, flags nobody
 // missing). Use it for the first sync against a CSV-seeded table, before
 // usernames are backfilled. --full forces reconciliation on.
@@ -53,6 +72,46 @@ const selectors = JSON.parse(
   readFileSync(join(__dirname, "selectors.json"), "utf8"),
 );
 const CARD = selectors.memberCard;
+const DRAWER = selectors.memberDrawer || {};
+
+// ---------------------------------------------------------------------------
+// Intake answer reader (Q1, Q3). Disabled by default — pass --read-intent to
+// enable per-profile drawer scraping, or --probe-intent to inspect ONE drawer
+// without writing anything. Confirms selectors.memberDrawer before turning on.
+// Intent_raw is sent as { q1, q3 } — ingest-roster does append-only merge and
+// derives intent_tier from q3 via the canonical mapping.
+// ---------------------------------------------------------------------------
+async function readIntentForProfile(page, profileUrl) {
+  if (!profileUrl) return null;
+  try {
+    await page.goto(profileUrl, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(800);
+    const text = await page.evaluate(() => document.body.innerText || "");
+    // Heuristic split — Skool renders Q&A as adjacent blocks. We grab the
+    // first three non-empty paragraphs after the application section header.
+    const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+    const start = lines.findIndex((l) =>
+      /application|why.*join|tell us|getting started/i.test(l)
+    );
+    if (start < 0) return null;
+    const answers = lines.slice(start + 1, start + 12);
+    // Pair questions with answers: lines ending in "?" are questions,
+    // following non-question lines are answers, keyed q1, q2, q3, ...
+    const out = {};
+    let qi = 0;
+    for (let i = 0; i < answers.length; i++) {
+      if (answers[i].endsWith("?")) {
+        qi += 1;
+        const a = answers[i + 1];
+        if (a && !a.endsWith("?")) out[`q${qi}`] = a;
+      }
+    }
+    return Object.keys(out).length ? out : null;
+  } catch (e) {
+    log(`intent read failed for ${profileUrl}: ${e.message}`);
+    return null;
+  }
+}
 
 function log(...a) {
   console.log(new Date().toISOString(), ...a);
@@ -236,10 +295,30 @@ async function probe(page) {
   log(`Next button present: ${next > 0}`);
 }
 
+async function probeIntent(page) {
+  log("PROBE-INTENT — opening the first member profile to inspect intake answers.");
+  const raw = await extractVisible(page);
+  const first = raw.find((r) => r.profileUrl);
+  if (!first) { log("No profile link found on page 1."); return; }
+  const url = first.profileUrl.startsWith("http")
+    ? first.profileUrl
+    : "https://www.skool.com" + first.profileUrl;
+  log(`Opening ${url}`);
+  const intent = await readIntentForProfile(page, url);
+  log("Parsed intent_raw:", JSON.stringify(intent, null, 2));
+  log("If q3 is missing or wrong, update selectors.memberDrawer + the heuristic in readIntentForProfile().");
+}
+
 // ---- post ----------------------------------------------------------------
 async function post(members, capturedAt) {
   if (!cfg.apiKey) fail("INGEST_API_KEY is not set. Cannot post the roster.");
-  const payload = { runId: `roster-${capturedAt}`, capturedAt, fullRoster: cfg.fullRoster, members };
+  const payload = {
+    runId: `roster-${capturedAt}`,
+    capturedAt,
+    community: cfg.community,
+    fullRoster: cfg.fullRoster,
+    members,
+  };
   const res = await fetch(cfg.ingestUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.apiKey}` },
@@ -257,9 +336,24 @@ async function main() {
     await ensureLoaded(page);
 
     if (PROBE) { await probe(page); return; }
+    if (PROBE_INTENT) { await probeIntent(page); return; }
 
     const members = await readAll(page);
     log(`read ${members.length} members`);
+
+    // Optional per-profile intake read. OFF by default — slow + rate-limit risk.
+    if (READ_INTENT) {
+      log(`--read-intent ON: opening ${members.length} profile pages for intake answers.`);
+      for (const m of members) {
+        if (!m.profileUrl) continue;
+        const intent = await readIntentForProfile(page, m.profileUrl);
+        if (intent) m.intentRaw = intent;
+        await humanDelay();
+      }
+      const withIntent = members.filter((m) => m.intentRaw).length;
+      log(`intake answers captured for ${withIntent} of ${members.length} members`);
+    }
+
     if (members.length === 0) {
       fail("Read zero members. Treating as a broken read, not an empty community. Run --probe.");
     }
