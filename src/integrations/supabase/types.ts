@@ -1434,6 +1434,99 @@ export type Database = {
         }
         Relationships: []
       }
+      outreach_sends: {
+        Row: {
+          attempts: number
+          batch_id: string | null
+          channel: string
+          created_at: string
+          error: string | null
+          external_id: string | null
+          id: string
+          member_id: string | null
+          queued_at: string
+          recipient_email: string | null
+          recipient_name: string | null
+          recipient_skool_username: string | null
+          rendered_body: string | null
+          rendered_subject: string | null
+          responded_at: string | null
+          segment_key: string | null
+          sent_at: string | null
+          status: string
+          template_id: string | null
+          template_key: string | null
+          triggered_by: string
+          triggered_by_user: string | null
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          batch_id?: string | null
+          channel: string
+          created_at?: string
+          error?: string | null
+          external_id?: string | null
+          id?: string
+          member_id?: string | null
+          queued_at?: string
+          recipient_email?: string | null
+          recipient_name?: string | null
+          recipient_skool_username?: string | null
+          rendered_body?: string | null
+          rendered_subject?: string | null
+          responded_at?: string | null
+          segment_key?: string | null
+          sent_at?: string | null
+          status?: string
+          template_id?: string | null
+          template_key?: string | null
+          triggered_by: string
+          triggered_by_user?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          batch_id?: string | null
+          channel?: string
+          created_at?: string
+          error?: string | null
+          external_id?: string | null
+          id?: string
+          member_id?: string | null
+          queued_at?: string
+          recipient_email?: string | null
+          recipient_name?: string | null
+          recipient_skool_username?: string | null
+          rendered_body?: string | null
+          rendered_subject?: string | null
+          responded_at?: string | null
+          segment_key?: string | null
+          sent_at?: string | null
+          status?: string
+          template_id?: string | null
+          template_key?: string | null
+          triggered_by?: string
+          triggered_by_user?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outreach_sends_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outreach_sends_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "outreach_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       outreach_templates: {
         Row: {
           body: string
