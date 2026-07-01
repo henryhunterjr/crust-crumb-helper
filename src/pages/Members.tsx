@@ -762,7 +762,35 @@ export default function Members() {
             if (!open) setActiveTemplate(null);
           }}
           memberCount={selectedMembers.length}
+          members={selectedMembers}
+          defaultTemplateName={
+            communityFilter === 'from-oven-to-market' || activeFilter === 'needs_welcome'
+              ? 'FOTM Welcome — Personal'
+              : null
+          }
           onPick={(tpl) => {
+            // Safety: FOTM welcome template must only go to FOTM members.
+            const isFotmWelcome =
+              tpl.name.trim().toLowerCase() === 'fotm welcome — personal';
+            if (isFotmWelcome) {
+              const eligible = selectedMembers.filter((m) =>
+                Array.isArray((m as any).communities) &&
+                (m as any).communities.includes('from-oven-to-market')
+              );
+              const skipped = selectedMembers.length - eligible.length;
+              if (eligible.length === 0) {
+                toast.error(
+                  'None of the selected members are tagged in From Oven to Market. Import the FOTM roster or switch the community filter.'
+                );
+                return;
+              }
+              if (skipped > 0) {
+                setSelectedIds(new Set(eligible.map((m) => m.id)));
+                toast.warning(
+                  `Removed ${skipped} non-FOTM recipient${skipped === 1 ? '' : 's'}. Sending to ${eligible.length} FOTM member${eligible.length === 1 ? '' : 's'}.`
+                );
+              }
+            }
             setActiveTemplate({ name: tpl.name, content: tpl.content, type: tpl.outreach_type });
             setPickTemplateOpen(false);
             setBulkDMDialogOpen(true);
