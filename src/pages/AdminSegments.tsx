@@ -4,10 +4,11 @@ import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, RefreshCw, Upload } from 'lucide-react';
+import { Loader2, RefreshCw, Upload, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useRef, useState } from 'react';
+import { BulkSendDialog } from '@/components/admin/BulkSendDialog';
 
 const SEGMENTS: { key: string; label: string; description: string }[] = [
   { key: 'cca_all', label: 'CCA — All', description: 'All Crust & Crumb Academy members.' },
@@ -27,6 +28,8 @@ export default function AdminSegments() {
   const qc = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkSegment, setBulkSegment] = useState<string | undefined>(undefined);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const { data: counts, isLoading, dataUpdatedAt } = useQuery({
@@ -200,6 +203,9 @@ export default function AdminSegments() {
               {refreshing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
               Refresh now
             </Button>
+            <Button onClick={() => { setBulkSegment(undefined); setBulkOpen(true); }}>
+              <Send className="h-4 w-4 mr-2" /> Bulk send
+            </Button>
           </div>
         </div>
 
@@ -248,6 +254,14 @@ export default function AdminSegments() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">{s.description}</p>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="mt-2 px-0 h-7 text-xs"
+                    onClick={() => { setBulkSegment(s.key); setBulkOpen(true); }}
+                  >
+                    <Send className="h-3 w-3 mr-1" /> Send to this segment
+                  </Button>
                 </CardContent>
               </Card>
             ))}
@@ -255,6 +269,7 @@ export default function AdminSegments() {
         )}
       </main>
       <Footer />
+      <BulkSendDialog open={bulkOpen} onOpenChange={setBulkOpen} defaultSegment={bulkSegment} />
     </div>
   );
 }
