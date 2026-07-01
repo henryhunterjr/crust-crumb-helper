@@ -22,6 +22,7 @@ export interface Member {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  communities?: string[] | null;
 }
 
 export interface MemberImportRow {
@@ -33,6 +34,8 @@ export interface MemberImportRow {
   posts?: number;
   comments?: number;
   lastActive?: string;
+  /** Community slug to tag this row with (e.g. 'crust-crumb-academy', 'from-oven-to-market'). */
+  community?: string;
 }
 
 export type MemberFilter = 'all' | 'never_engaged' | 'at_risk' | 'inactive' | 'needs_outreach' | 'has_goals' | 'no_goals' | 'joined_this_week' | 'needs_welcome' | 'lead_signals';
