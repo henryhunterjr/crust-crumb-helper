@@ -75,7 +75,7 @@ export default function Members() {
   // Handle filter from URL params
   useEffect(() => {
     const filterParam = searchParams.get('filter');
-    if (filterParam && ['all', 'never_engaged', 'at_risk', 'inactive', 'needs_outreach', 'has_goals', 'no_goals', 'joined_this_week', 'needs_welcome'].includes(filterParam)) {
+    if (filterParam && ['all', 'never_engaged', 'at_risk', 'inactive', 'needs_outreach', 'has_goals', 'no_goals', 'joined_this_week', 'needs_welcome', 'lead_signals'].includes(filterParam)) {
       setActiveFilter(filterParam as MemberFilter);
       // Clear the URL param after applying
       setSearchParams({}, { replace: true });
@@ -148,6 +148,14 @@ export default function Members() {
       case 'no_goals':
         result = result.filter(m => !m.application_answer || m.application_answer.trim().length === 0);
         break;
+      case 'lead_signals': {
+        const rx = /bakery|business|sell|selling|market|profession|income|customer|micro/i;
+        result = result.filter(m =>
+          (m as any).intent_tier === 'prospect' ||
+          (m.application_answer && rx.test(m.application_answer))
+        );
+        break;
+      }
     }
 
     // Apply tag filters (AND logic)
@@ -223,6 +231,13 @@ export default function Members() {
       ).length,
       has_goals: members.filter(m => m.application_answer && m.application_answer.trim().length > 0).length,
       no_goals: members.filter(m => !m.application_answer || m.application_answer.trim().length === 0).length,
+      lead_signals: (() => {
+        const rx = /bakery|business|sell|selling|market|profession|income|customer|micro/i;
+        return members.filter(m =>
+          (m as any).intent_tier === 'prospect' ||
+          (m.application_answer && rx.test(m.application_answer))
+        ).length;
+      })(),
     };
   }, [members]);
 
