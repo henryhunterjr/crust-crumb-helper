@@ -10,13 +10,27 @@ export function useMembers() {
   const { data: members = [], isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ['members'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('members')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data as Member[];
+      const allMembers: Member[] = [];
+      const pageSize = 1000;
+      let from = 0;
+
+      while (true) {
+        const { data, error } = await supabase
+          .from('members')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .range(from, from + pageSize - 1);
+        
+        if (error) throw error;
+
+        const page = (data || []) as Member[];
+        allMembers.push(...page);
+
+        if (page.length < pageSize) break;
+        from += pageSize;
+      }
+
+      return allMembers;
     },
   });
 
@@ -24,14 +38,22 @@ export function useMembers() {
     mutationFn: async (rows: MemberImportRow[]) => {
       const today = new Date();
       
-      // Fetch existing members to check for duplicates (match by name)
+      // Fetch existing members to check for duplicates without overwriting history.
       const { data: existingMembers } = await supabase
         .from('members')
-        .select('id, skool_name');
+        .select('id, skool_name, skool_username, email, engagement_status');
       
-      const existingByName = new Map(
-        (existingMembers || []).map(m => [m.skool_name.toLowerCase().trim(), m.id])
-      );
+      const existingByKey = new Map<string, { id: string; engagement_status: EngagementStatus }>();
+      const addExistingKey = (key: string | null | undefined, member: { id: string; engagement_status: EngagementStatus }) => {
+        const normalized = key?.toLowerCase().trim();
+        if (normalized) existingByKey.set(normalized, member);
+      };
+
+      (existingMembers || []).forEach((member) => {
+        addExistingKey(member.skool_name, member);
+        addExistingKey(member.skool_username, member);
+        addExistingKey(member.email, member);
+      });
       
       const toInsert: any[] = [];
       const toUpdate: { id: string; updates: any }[] = [];
@@ -39,8 +61,11 @@ export function useMembers() {
       for (const row of rows) {
         const joinDate = row.joinDate ? parseISO(row.joinDate) : null;
         const lastActive = row.lastActive ? parseISO(row.lastActive) : null;
-        const postCount = row.posts || 0;
-        const commentCount = row.comments || 0;
+        const hasPostCount = typeof row.posts === 'number';
+        const hasCommentCount = typeof row.comments === 'number';
+        const postCount = row.posts ?? 0;
+        const commentCount = row.comments ?? 0;
+        const hasActivityData = !!lastActive || hasPostCount || hasCommentCount;
         
         // Calculate engagement status using configurable thresholds
         let engagementStatus: EngagementStatus = 'unknown';
@@ -55,32 +80,46 @@ export function useMembers() {
           } else if (daysSinceActive > SEGMENTATION_THRESHOLDS.atRiskDays && (postCount > 0 || commentCount > 0)) {
             engagementStatus = 'at_risk';
           }
-        } else if (joinDate && postCount === 0 && commentCount === 0) {
+        } else if (joinDate && hasActivityData && postCount === 0 && commentCount === 0) {
           // No last_active, no posts, no comments — we have no activity data
           // Keep as 'unknown' (we don't know their status)
           engagementStatus = 'unknown';
         }
         
-        const memberData = {
+        const memberData: Record<string, unknown> = {
           skool_name: row.name,
-          skool_username: row.skoolUsername || null,
-          email: row.email || null,
-          join_date: row.joinDate || null,
-          application_answer: row.applicationAnswer || null,
-          post_count: postCount,
-          comment_count: commentCount,
-          last_active: row.lastActive || null,
-          engagement_status: engagementStatus,
         };
+
+        if (row.skoolUsername?.trim()) memberData.skool_username = row.skoolUsername.trim();
+        if (row.email?.trim()) memberData.email = row.email.trim();
+        if (row.joinDate) memberData.join_date = row.joinDate;
+        if (row.applicationAnswer?.trim()) memberData.application_answer = row.applicationAnswer.trim();
+        if (hasPostCount) memberData.post_count = postCount;
+        if (hasCommentCount) memberData.comment_count = commentCount;
+        if (row.lastActive) memberData.last_active = row.lastActive;
+        if (hasActivityData) memberData.engagement_status = engagementStatus;
         
-        const existingId = existingByName.get(row.name.toLowerCase().trim());
+        const existingMember =
+          existingByKey.get(row.skoolUsername?.toLowerCase().trim() || '') ||
+          existingByKey.get(row.email?.toLowerCase().trim() || '') ||
+          existingByKey.get(row.name.toLowerCase().trim());
         
-        if (existingId) {
-          // Update existing member
-          toUpdate.push({ id: existingId, updates: memberData });
+        if (existingMember) {
+          // Update existing member. Blank CSV fields never erase notes, outreach history, or prior answers.
+          toUpdate.push({ id: existingMember.id, updates: memberData });
         } else {
-          // Insert new member
-          toInsert.push(memberData);
+          // Insert new member with safe defaults.
+          toInsert.push({
+            ...memberData,
+            skool_username: row.skoolUsername || null,
+            email: row.email || null,
+            join_date: row.joinDate || null,
+            application_answer: row.applicationAnswer || null,
+            post_count: postCount,
+            comment_count: commentCount,
+            last_active: row.lastActive || null,
+            engagement_status: engagementStatus,
+          });
         }
       }
       
