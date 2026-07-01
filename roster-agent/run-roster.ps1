@@ -9,7 +9,8 @@
 
 param(
   [string]$Mode = "--full",
-  [bool]$Headless = $true
+  [bool]$Headless = $true,
+  [string]$EnvFile = ".env"
 )
 
 $AgentDir = $PSScriptRoot
@@ -20,7 +21,7 @@ $Log      = Join-Path $AgentDir "roster-run.log"
 
 function Log($m) { "$(Get-Date -Format o)  $m" | Tee-Object -FilePath $Log -Append }
 
-Log "=== roster sync start (mode=$Mode headless=$Headless) ==="
+Log "=== roster sync start (mode=$Mode headless=$Headless env=$EnvFile) ==="
 
 $chromeArgs = @(
   "--remote-debugging-port=$Port",
@@ -52,7 +53,7 @@ try {
   Log "using node: $node"
 
   Push-Location $AgentDir
-  & $node --env-file=.env read-roster.mjs $Mode *>> $Log
+  & $node "--env-file=$EnvFile" read-roster.mjs $Mode *>> $Log
   $code = $LASTEXITCODE
   Pop-Location
   Log "agent exit code: $code"
