@@ -61,6 +61,7 @@ serve(async (req) => {
     runId?: string;
     capturedAt?: string;
     fullRoster?: boolean;
+    community?: string;
     members?: RosterMemberInput[];
   };
   try {
@@ -101,6 +102,11 @@ serve(async (req) => {
   const now = new Date();
   const nowIso = now.toISOString();
   const fullRoster = payload.fullRoster === true;
+  const community = typeof payload.community === "string"
+    ? payload.community.trim().toLowerCase()
+    : null;
+  const isFotm = community === "from-oven-to-market";
+  const FOUNDING_CUTOFF = "2026-07-06";
 
   try {
     // Existing members for matching. PostgREST caps a select at ~1000 rows by
@@ -118,11 +124,19 @@ serve(async (req) => {
 
     // Inserts — new joiners. Mirror the CSV importer's row, stamped on_roster.
     if (plan.toInsert.length > 0) {
-      const insertRows = plan.toInsert.map((m) => ({
-        ...m,
-        roster_status: "on_roster",
-        roster_last_seen_at: nowIso,
-      }));
+      const insertRows = plan.toInsert.map((m) => {
+        const row: Record<string, unknown> = {
+          ...m,
+          roster_status: "on_roster",
+          roster_last_seen_at: nowIso,
+        };
+        if (community) row.communities = [community];
+        if (isFotm && m.join_date) {
+          row.fotm_joined_at = m.join_date;
+          if (m.join_date < FOUNDING_CUTOFF) row.fotm_tier = "founding";
+        }
+        return row;
+      });
       const { data, error } = await supabase
         .from("members")
         .insert(insertRows)
@@ -148,6 +162,36 @@ serve(async (req) => {
         finalUpdates.intent_raw = merged;
         finalUpdates.intent_tier = deriveIntentTier(merged);
       }
+
+      // Communities merge — append the roster's community if not already
+      // present. Preserves any other memberships the member already has.
+      if (community) {
+        const existingRow = existing.find((e) => e.id === id) as
+          | (ExistingMember & {
+            communities?: string[] | null;
+            fotm_joined_at?: string | null;
+            fotm_tier?: string | null;
+          })
+          | undefined;
+        const currentCommunities = existingRow?.communities ?? [];
+        if (!currentCommunities.includes(community)) {
+          finalUpdates.communities = [...currentCommunities, community];
+        }
+        // FOTM join-date + founding tier backfill — never overwrite an
+        // existing value; only fill when we finally see the data.
+        if (isFotm && updates.join_date) {
+          if (!existingRow?.fotm_joined_at) {
+            finalUpdates.fotm_joined_at = updates.join_date;
+          }
+          if (
+            !existingRow?.fotm_tier &&
+            updates.join_date < FOUNDING_CUTOFF
+          ) {
+            finalUpdates.fotm_tier = "founding";
+          }
+        }
+      }
+
       const { error } = await supabase
         .from("members")
         .update({
@@ -185,6 +229,7 @@ serve(async (req) => {
       status: "completed",
       runId: payload.runId ?? runId,
       fullRoster,
+      community,
       ...summary,
       newMembers: inserted,
       missingMembers: missingFlagged,
@@ -212,7 +257,7 @@ async function fetchAllExisting(): Promise<ExistingMember[]> {
   for (let from = 0; ; from += pageSize) {
     const { data, error } = await supabase
       .from("members")
-      .select("id, skool_name, skool_username, intent_raw")
+      .select("id, skool_name, skool_username, intent_raw, communities, fotm_joined_at, fotm_tier")
       .range(from, from + pageSize - 1);
     if (error) throw error;
     const batch = (data || []) as ExistingMember[];
@@ -223,7 +268,7 @@ async function fetchAllExisting(): Promise<ExistingMember[]> {
 }
 
 async function logRun(
-  payload: { runId?: string; capturedAt?: string; fullRoster?: boolean },
+  payload: { runId?: string; capturedAt?: string; fullRoster?: boolean; community?: string },
   summary: {
     total_seen: number;
     inserted: number;
@@ -241,6 +286,7 @@ async function logRun(
         run_id: payload.runId ?? null,
         source: "browser-agent",
         full_roster: payload.fullRoster === true,
+        community: payload.community ?? null,
         captured_at: payload.capturedAt ?? null,
         ...summary,
       })
