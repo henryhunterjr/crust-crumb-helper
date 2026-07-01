@@ -45,6 +45,23 @@ const cfg = {
   navTimeoutMs: Number(process.env.ROSTER_NAV_TIMEOUT_MS || 30000),
 };
 
+// Community slug attribution — every roster read tells the server WHICH
+// community it belongs to, so the ingest can append the right value to
+// members.communities. Explicit COMMUNITY_SLUG wins; otherwise we infer from
+// SKOOL_MEMBERS_URL (`.../<slug>-<digits>/-/members` → `<slug>`).
+function inferCommunitySlug(url) {
+  const m = url.match(/skool\.com\/([a-z0-9-]+?)(?:-\d+)?\/-\/members/i);
+  return m ? m[1] : null;
+}
+cfg.community = process.env.COMMUNITY_SLUG ||
+  inferCommunitySlug(cfg.communityUrl);
+if (!cfg.community) {
+  console.error(
+    "COMMUNITY_SLUG not set and could not be inferred from SKOOL_MEMBERS_URL. Set COMMUNITY_SLUG in .env.",
+  );
+  process.exit(1);
+}
+
 // --partial forces a non-reconciling run (inserts + updates, flags nobody
 // missing). Use it for the first sync against a CSV-seeded table, before
 // usernames are backfilled. --full forces reconciliation on.
@@ -295,7 +312,13 @@ async function probeIntent(page) {
 // ---- post ----------------------------------------------------------------
 async function post(members, capturedAt) {
   if (!cfg.apiKey) fail("INGEST_API_KEY is not set. Cannot post the roster.");
-  const payload = { runId: `roster-${capturedAt}`, capturedAt, fullRoster: cfg.fullRoster, members };
+  const payload = {
+    runId: `roster-${capturedAt}`,
+    capturedAt,
+    community: cfg.community,
+    fullRoster: cfg.fullRoster,
+    members,
+  };
   const res = await fetch(cfg.ingestUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.apiKey}` },
