@@ -11,6 +11,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { MemberImportRow } from '@/types/member';
 
 interface ImportMembersDialogProps {
@@ -29,6 +36,7 @@ export function ImportMembersDialog({
   const [csvText, setCsvText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isParsing, setIsParsing] = useState(false);
+  const [community, setCommunity] = useState<string>('none');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const parseCSV = (text: string): MemberImportRow[] => {
@@ -266,7 +274,10 @@ export function ImportMembersDialog({
           if (rows.length === 0) {
             throw new Error('No valid rows found in CSV');
           }
-          onImport(rows);
+          const tagged = community !== 'none'
+            ? rows.map(r => ({ ...r, community }))
+            : rows;
+          onImport(tagged);
         } catch (err) {
           setError(err instanceof Error ? err.message : 'Failed to parse CSV');
         } finally {
