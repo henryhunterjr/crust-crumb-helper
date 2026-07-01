@@ -53,7 +53,7 @@ export function BulkDMQueueDialog({
         outreachMessageId: null,
       })));
     }
-  }, [open, members]);
+  }, [open, members, outreachType, templateContent, templateName]);
 
   useEffect(() => {
     if (!open || queue.length === 0) return;

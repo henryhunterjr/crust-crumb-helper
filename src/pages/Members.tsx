@@ -103,6 +103,7 @@ export default function Members() {
   const [bulkOutreachType, setBulkOutreachType] = useState<OutreachType>('resource_recommendation');
   const [pickTemplateOpen, setPickTemplateOpen] = useState(false);
   const [activeTemplate, setActiveTemplate] = useState<{ name: string; content: string; type: OutreachType } | null>(null);
+  const [templateRecipients, setTemplateRecipients] = useState<Member[] | null>(null);
 
   // Filter and sort members
   const filteredMembers = useMemo(() => {
@@ -746,9 +747,12 @@ export default function Members() {
           open={bulkDMDialogOpen}
           onOpenChange={(open) => {
             setBulkDMDialogOpen(open);
-            if (!open) setActiveTemplate(null);
+            if (!open) {
+              setActiveTemplate(null);
+              setTemplateRecipients(null);
+            }
           }}
-          members={selectedMembers}
+          members={templateRecipients ?? selectedMembers}
           onMarkSent={handleMarkSent}
           outreachType={activeTemplate?.type ?? bulkOutreachType}
           templateContent={activeTemplate?.content ?? null}
@@ -759,7 +763,10 @@ export default function Members() {
           open={pickTemplateOpen}
           onOpenChange={(open) => {
             setPickTemplateOpen(open);
-            if (!open) setActiveTemplate(null);
+            if (!open && !bulkDMDialogOpen) {
+              setActiveTemplate(null);
+              setTemplateRecipients(null);
+            }
           }}
           memberCount={selectedMembers.length}
           members={selectedMembers}
@@ -772,6 +779,7 @@ export default function Members() {
             // Safety: FOTM welcome template must only go to FOTM members.
             const isFotmWelcome =
               tpl.name.trim().toLowerCase() === 'fotm welcome — personal';
+            let recipients = selectedMembers;
             if (isFotmWelcome) {
               const eligible = selectedMembers.filter((m) =>
                 Array.isArray((m as any).communities) &&
@@ -790,8 +798,10 @@ export default function Members() {
                   `Removed ${skipped} non-FOTM recipient${skipped === 1 ? '' : 's'}. Sending to ${eligible.length} FOTM member${eligible.length === 1 ? '' : 's'}.`
                 );
               }
+              recipients = eligible;
             }
             setActiveTemplate({ name: tpl.name, content: tpl.content, type: tpl.outreach_type });
+            setTemplateRecipients(recipients);
             setPickTemplateOpen(false);
             setBulkDMDialogOpen(true);
           }}
