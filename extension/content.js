@@ -1,6 +1,8 @@
-// Krusty Skool Helper — content script v1.2
+// Krusty Skool Helper — content script v1.6.2
 // Skool's DM composer is a <textarea> with NO Send button.
 // Submit happens by pressing Enter inside the textarea.
+// Also drives the members directory → profile → Message flow when the
+// page URL contains #krusty=autosend|autopaste&member=<name>.
 // All steps logged under [Krusty] for screenshot-able debugging.
 
 (function () {
@@ -190,5 +192,116 @@
   const obs = new MutationObserver(() => mountButton());
   obs.observe(document.documentElement, { childList: true, subtree: true });
   mountButton();
-  log('content script v1.2 loaded on', location.href);
+  log('content script v1.6.2 loaded on', location.href);
+
+  // ---------- Auto-flow driven by URL hash ----------
+  // #krusty=autosend&member=Jane%20Doe   → search, open profile, click Message, paste, send
+  // #krusty=autopaste&member=Jane%20Doe  → same but stop after paste (no auto-send)
+  function parseHash() {
+    const h = (location.hash || '').replace(/^#/, '');
+    if (!h) return null;
+    const params = new URLSearchParams(h);
+    const mode = params.get('krusty');
+    const member = params.get('member');
+    if (!mode || !member) return null;
+    if (mode !== 'autosend' && mode !== 'autopaste') return null;
+    return { mode, member: decodeURIComponent(member) };
+  }
+
+  function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
+  async function waitFor(fn, { timeout = 8000, interval = 200 } = {}) {
+    const start = Date.now();
+    while (Date.now() - start < timeout) {
+      try { const v = fn(); if (v) return v; } catch {}
+      await sleep(interval);
+    }
+    return null;
+  }
+
+  function findSearchInput() {
+    // Skool member directory search box.
+    return document.querySelector(
+      'input[placeholder*="Search" i], input[type="search"], input[aria-label*="search" i]'
+    );
+  }
+
+  function typeInto(el, text) {
+    el.focus();
+    setNativeValue(el, text);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  function findMemberCard(name) {
+    const needle = name.trim().toLowerCase();
+    if (!needle) return null;
+    // Any anchor to a Skool user profile whose visible text includes the name.
+    const links = Array.from(document.querySelectorAll('a[href^="/@"], a[href*="/@"]'));
+    for (const a of links) {
+      const t = (a.innerText || '').trim().toLowerCase();
+      if (t && t.includes(needle)) return a;
+    }
+    // Fallback: any element whose text starts with the name inside the directory grid.
+    const nodes = Array.from(document.querySelectorAll('div,span,h3,h4'));
+    for (const n of nodes) {
+      const t = (n.innerText || '').trim().toLowerCase();
+      if (t && (t === needle || t.startsWith(needle + '\n'))) {
+        const clickable = n.closest('a,button,[role="button"]');
+        if (clickable) return clickable;
+      }
+    }
+    return null;
+  }
+
+  function findMessageButton() {
+    const buttons = Array.from(document.querySelectorAll('button, a[role="button"], a'));
+    for (const b of buttons) {
+      const t = (b.innerText || '').trim().toLowerCase();
+      if (t === 'message' || t === 'send message' || t === 'chat') {
+        if (visible(b)) return b;
+      }
+    }
+    return null;
+  }
+
+  async function runAutoFlow() {
+    const params = parseHash();
+    if (!params) return;
+    log('auto-flow start', params);
+    flash(`Krusty: searching for ${params.member}…`);
+
+    // Only run search step if we're on a members directory page.
+    const onDirectory = /\/-\/members(\/|$|\?)/.test(location.pathname) || /\/members$/.test(location.pathname);
+
+    if (onDirectory) {
+      const search = await waitFor(findSearchInput, { timeout: 6000 });
+      if (!search) { warn('no search input'); flash('Could not find member search.'); return; }
+      typeInto(search, params.member);
+      await sleep(700);
+
+      const card = await waitFor(() => findMemberCard(params.member), { timeout: 6000 });
+      if (!card) { warn('member card not found'); flash(`No match for "${params.member}".`); return; }
+      log('clicking member card');
+      card.click();
+    }
+
+    // On the profile page now — find and click Message.
+    const msgBtn = await waitFor(findMessageButton, { timeout: 8000 });
+    if (!msgBtn) { warn('no Message button'); flash('Profile opened. Click Message manually.'); return; }
+    log('clicking Message');
+    msgBtn.click();
+
+    // Composer should open — paste (and optionally send).
+    await sleep(400);
+    await pasteAndOptionallySend(params.mode === 'autosend');
+
+    // Clear the hash so a manual refresh doesn't re-trigger.
+    try { history.replaceState(null, '', location.pathname + location.search); } catch {}
+  }
+
+  // Trigger auto-flow on load and on hash changes.
+  window.addEventListener('hashchange', () => { runAutoFlow().catch((e) => warn('auto-flow', e)); });
+  // Give the SPA a moment to mount.
+  setTimeout(() => { runAutoFlow().catch((e) => warn('auto-flow', e)); }, 800);
 })();
