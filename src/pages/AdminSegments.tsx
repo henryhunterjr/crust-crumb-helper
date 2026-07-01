@@ -56,7 +56,7 @@ export default function AdminSegments() {
         .limit(1)
         .maybeSingle();
       if (error) throw error;
-      return data as {
+      return data as unknown as {
         ran_at: string;
         members_updated: number;
         pro_members_updated: number;
