@@ -145,6 +145,7 @@ export type Database = {
           published_at: string | null
           reading_time: string | null
           skill_level: string | null
+          source: string | null
           title: string
           updated_at: string
           url_verified: boolean | null
@@ -161,6 +162,7 @@ export type Database = {
           published_at?: string | null
           reading_time?: string | null
           skill_level?: string | null
+          source?: string | null
           title: string
           updated_at?: string
           url_verified?: boolean | null
@@ -177,6 +179,7 @@ export type Database = {
           published_at?: string | null
           reading_time?: string | null
           skill_level?: string | null
+          source?: string | null
           title?: string
           updated_at?: string
           url_verified?: boolean | null
@@ -425,6 +428,7 @@ export type Database = {
           last_synced_at: string | null
           parent_course_url: string | null
           skill_level: string | null
+          source: string | null
           title: string
           url: string | null
           url_verified: boolean | null
@@ -439,6 +443,7 @@ export type Database = {
           last_synced_at?: string | null
           parent_course_url?: string | null
           skill_level?: string | null
+          source?: string | null
           title: string
           url?: string | null
           url_verified?: boolean | null
@@ -453,6 +458,7 @@ export type Database = {
           last_synced_at?: string | null
           parent_course_url?: string | null
           skill_level?: string | null
+          source?: string | null
           title?: string
           url?: string | null
           url_verified?: boolean | null
@@ -896,6 +902,125 @@ export type Database = {
           },
         ]
       }
+      hermes_job_runs: {
+        Row: {
+          created_at: string
+          details: Json
+          dry_run: boolean
+          duration_ms: number | null
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          items_failed: number
+          items_processed: number
+          items_succeeded: number
+          job_id: string
+          job_type: string
+          started_at: string
+          status: string
+          summary: string | null
+          trigger: string
+        }
+        Insert: {
+          created_at?: string
+          details?: Json
+          dry_run?: boolean
+          duration_ms?: number | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          items_failed?: number
+          items_processed?: number
+          items_succeeded?: number
+          job_id: string
+          job_type: string
+          started_at?: string
+          status?: string
+          summary?: string | null
+          trigger?: string
+        }
+        Update: {
+          created_at?: string
+          details?: Json
+          dry_run?: boolean
+          duration_ms?: number | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          items_failed?: number
+          items_processed?: number
+          items_succeeded?: number
+          job_id?: string
+          job_type?: string
+          started_at?: string
+          status?: string
+          summary?: string | null
+          trigger?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hermes_job_runs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "hermes_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hermes_jobs: {
+        Row: {
+          auto_send: boolean
+          config: Json
+          created_at: string
+          description: string | null
+          display_name: string
+          enabled: boolean
+          id: string
+          job_type: string
+          last_run_at: string | null
+          last_run_status: string | null
+          last_run_summary: string | null
+          next_run_at: string | null
+          schedule_cron: string
+          schedule_label: string
+          updated_at: string
+        }
+        Insert: {
+          auto_send?: boolean
+          config?: Json
+          created_at?: string
+          description?: string | null
+          display_name: string
+          enabled?: boolean
+          id?: string
+          job_type: string
+          last_run_at?: string | null
+          last_run_status?: string | null
+          last_run_summary?: string | null
+          next_run_at?: string | null
+          schedule_cron: string
+          schedule_label: string
+          updated_at?: string
+        }
+        Update: {
+          auto_send?: boolean
+          config?: Json
+          created_at?: string
+          description?: string | null
+          display_name?: string
+          enabled?: boolean
+          id?: string
+          job_type?: string
+          last_run_at?: string | null
+          last_run_status?: string | null
+          last_run_summary?: string | null
+          next_run_at?: string | null
+          schedule_cron?: string
+          schedule_label?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       interest_mappings: {
         Row: {
           book_link: string | null
@@ -967,15 +1092,28 @@ export type Database = {
       members: {
         Row: {
           application_answer: string | null
+          business_touch_count: number
           comment_count: number | null
+          communities: string[]
           created_at: string | null
           email: string | null
           engagement_status: string | null
+          first_name: string | null
+          fotm_joined_at: string | null
+          fotm_tier: string | null
           id: string
+          intent_raw: Json | null
+          intent_tier: string | null
+          invited_to_sys: boolean
+          invited_to_sys_at: string | null
           join_date: string | null
           last_active: string | null
+          last_business_touch: string | null
           message_status: string
           notes: string | null
+          nurture_started_at: string | null
+          nurture_status: string
+          nurture_step: number
           outreach_responded: boolean | null
           outreach_sent: boolean | null
           outreach_sent_at: string | null
@@ -984,21 +1122,38 @@ export type Database = {
           priority_score: number | null
           roster_last_seen_at: string | null
           roster_status: string | null
+          segments: string[]
+          segments_updated_at: string | null
           skool_name: string
           skool_username: string | null
+          unsubscribe_token: string | null
           updated_at: string | null
+          wingman_tags: string[]
         }
         Insert: {
           application_answer?: string | null
+          business_touch_count?: number
           comment_count?: number | null
+          communities?: string[]
           created_at?: string | null
           email?: string | null
           engagement_status?: string | null
+          first_name?: string | null
+          fotm_joined_at?: string | null
+          fotm_tier?: string | null
           id?: string
+          intent_raw?: Json | null
+          intent_tier?: string | null
+          invited_to_sys?: boolean
+          invited_to_sys_at?: string | null
           join_date?: string | null
           last_active?: string | null
+          last_business_touch?: string | null
           message_status?: string
           notes?: string | null
+          nurture_started_at?: string | null
+          nurture_status?: string
+          nurture_step?: number
           outreach_responded?: boolean | null
           outreach_sent?: boolean | null
           outreach_sent_at?: string | null
@@ -1007,21 +1162,38 @@ export type Database = {
           priority_score?: number | null
           roster_last_seen_at?: string | null
           roster_status?: string | null
+          segments?: string[]
+          segments_updated_at?: string | null
           skool_name: string
           skool_username?: string | null
+          unsubscribe_token?: string | null
           updated_at?: string | null
+          wingman_tags?: string[]
         }
         Update: {
           application_answer?: string | null
+          business_touch_count?: number
           comment_count?: number | null
+          communities?: string[]
           created_at?: string | null
           email?: string | null
           engagement_status?: string | null
+          first_name?: string | null
+          fotm_joined_at?: string | null
+          fotm_tier?: string | null
           id?: string
+          intent_raw?: Json | null
+          intent_tier?: string | null
+          invited_to_sys?: boolean
+          invited_to_sys_at?: string | null
           join_date?: string | null
           last_active?: string | null
+          last_business_touch?: string | null
           message_status?: string
           notes?: string | null
+          nurture_started_at?: string | null
+          nurture_status?: string
+          nurture_step?: number
           outreach_responded?: boolean | null
           outreach_sent?: boolean | null
           outreach_sent_at?: string | null
@@ -1030,9 +1202,13 @@ export type Database = {
           priority_score?: number | null
           roster_last_seen_at?: string | null
           roster_status?: string | null
+          segments?: string[]
+          segments_updated_at?: string | null
           skool_name?: string
           skool_username?: string | null
+          unsubscribe_token?: string | null
           updated_at?: string | null
+          wingman_tags?: string[]
         }
         Relationships: []
       }
@@ -1082,6 +1258,74 @@ export type Database = {
             columns: ["brief_id"]
             isOneToOne: false
             referencedRelation: "brief_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nurture_runs: {
+        Row: {
+          created_at: string
+          detail: Json | null
+          dry_run: boolean
+          ended_at: string | null
+          error: string | null
+          failed: number
+          id: string
+          job: string
+          member_id: string | null
+          requested: number
+          resend_message_id: string | null
+          sent_at: string | null
+          started_at: string
+          status: string
+          step: number | null
+          subject: string | null
+          succeeded: number
+        }
+        Insert: {
+          created_at?: string
+          detail?: Json | null
+          dry_run?: boolean
+          ended_at?: string | null
+          error?: string | null
+          failed?: number
+          id?: string
+          job: string
+          member_id?: string | null
+          requested?: number
+          resend_message_id?: string | null
+          sent_at?: string | null
+          started_at?: string
+          status?: string
+          step?: number | null
+          subject?: string | null
+          succeeded?: number
+        }
+        Update: {
+          created_at?: string
+          detail?: Json | null
+          dry_run?: boolean
+          ended_at?: string | null
+          error?: string | null
+          failed?: number
+          id?: string
+          job?: string
+          member_id?: string | null
+          requested?: number
+          resend_message_id?: string | null
+          sent_at?: string | null
+          started_at?: string
+          status?: string
+          step?: number | null
+          subject?: string | null
+          succeeded?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nurture_runs_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
             referencedColumns: ["id"]
           },
         ]
@@ -1190,6 +1434,150 @@ export type Database = {
         }
         Relationships: []
       }
+      outreach_sends: {
+        Row: {
+          attempts: number
+          batch_id: string | null
+          channel: string
+          created_at: string
+          error: string | null
+          external_id: string | null
+          id: string
+          member_id: string | null
+          queued_at: string
+          recipient_email: string | null
+          recipient_name: string | null
+          recipient_skool_username: string | null
+          rendered_body: string | null
+          rendered_subject: string | null
+          responded_at: string | null
+          segment_key: string | null
+          sent_at: string | null
+          status: string
+          template_id: string | null
+          template_key: string | null
+          triggered_by: string
+          triggered_by_user: string | null
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          batch_id?: string | null
+          channel: string
+          created_at?: string
+          error?: string | null
+          external_id?: string | null
+          id?: string
+          member_id?: string | null
+          queued_at?: string
+          recipient_email?: string | null
+          recipient_name?: string | null
+          recipient_skool_username?: string | null
+          rendered_body?: string | null
+          rendered_subject?: string | null
+          responded_at?: string | null
+          segment_key?: string | null
+          sent_at?: string | null
+          status?: string
+          template_id?: string | null
+          template_key?: string | null
+          triggered_by: string
+          triggered_by_user?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          batch_id?: string | null
+          channel?: string
+          created_at?: string
+          error?: string | null
+          external_id?: string | null
+          id?: string
+          member_id?: string | null
+          queued_at?: string
+          recipient_email?: string | null
+          recipient_name?: string | null
+          recipient_skool_username?: string | null
+          rendered_body?: string | null
+          rendered_subject?: string | null
+          responded_at?: string | null
+          segment_key?: string | null
+          sent_at?: string | null
+          status?: string
+          template_id?: string | null
+          template_key?: string | null
+          triggered_by?: string
+          triggered_by_user?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outreach_sends_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outreach_sends_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "outreach_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      outreach_templates: {
+        Row: {
+          body: string
+          channel: string
+          created_at: string
+          daily_cap: number
+          dedupe_days: number
+          description: string | null
+          id: string
+          is_active: boolean
+          key: string
+          merge_tags: string[]
+          name: string
+          segment_key: string | null
+          subject: string | null
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          channel?: string
+          created_at?: string
+          daily_cap?: number
+          dedupe_days?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          key: string
+          merge_tags?: string[]
+          name: string
+          segment_key?: string | null
+          subject?: string | null
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          channel?: string
+          created_at?: string
+          daily_cap?: number
+          dedupe_days?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          key?: string
+          merge_tags?: string[]
+          name?: string
+          segment_key?: string | null
+          subject?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       post_ideas: {
         Row: {
           content: string
@@ -1223,6 +1611,42 @@ export type Database = {
           title?: string
           topic?: string | null
           used_at?: string | null
+        }
+        Relationships: []
+      }
+      pro_members: {
+        Row: {
+          created_at: string
+          email: string
+          first_name: string | null
+          id: string
+          last_name: string | null
+          rpp_purchase_source: string | null
+          segments: string[]
+          segments_updated_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          rpp_purchase_source?: string | null
+          segments?: string[]
+          segments_updated_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          rpp_purchase_source?: string | null
+          segments?: string[]
+          segments_updated_at?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1286,6 +1710,7 @@ export type Database = {
           share_url: string | null
           skill_level: string | null
           skool_url: string | null
+          source: string | null
           tags: string[] | null
           title: string
           url: string | null
@@ -1303,6 +1728,7 @@ export type Database = {
           share_url?: string | null
           skill_level?: string | null
           skool_url?: string | null
+          source?: string | null
           tags?: string[] | null
           title: string
           url?: string | null
@@ -1320,6 +1746,7 @@ export type Database = {
           share_url?: string | null
           skill_level?: string | null
           skool_url?: string | null
+          source?: string | null
           tags?: string[] | null
           title?: string
           url?: string | null
@@ -1331,6 +1758,7 @@ export type Database = {
       roster_sync_runs: {
         Row: {
           captured_at: string | null
+          community: string | null
           created_at: string | null
           error: string | null
           full_roster: boolean | null
@@ -1347,6 +1775,7 @@ export type Database = {
         }
         Insert: {
           captured_at?: string | null
+          community?: string | null
           created_at?: string | null
           error?: string | null
           full_roster?: boolean | null
@@ -1363,6 +1792,7 @@ export type Database = {
         }
         Update: {
           captured_at?: string | null
+          community?: string | null
           created_at?: string | null
           error?: string | null
           full_roster?: boolean | null
@@ -1447,6 +1877,30 @@ export type Database = {
           },
         ]
       }
+      segment_refresh_log: {
+        Row: {
+          id: string
+          members_updated: number
+          pro_members_updated: number
+          ran_at: string
+          source: string | null
+        }
+        Insert: {
+          id?: string
+          members_updated?: number
+          pro_members_updated?: number
+          ran_at?: string
+          source?: string | null
+        }
+        Update: {
+          id?: string
+          members_updated?: number
+          pro_members_updated?: number
+          ran_at?: string
+          source?: string | null
+        }
+        Relationships: []
+      }
       segment_snapshots: {
         Row: {
           created_at: string
@@ -1468,6 +1922,60 @@ export type Database = {
           member_count?: number
           segment_name?: string
           snapshot_date?: string
+        }
+        Relationships: []
+      }
+      sync_runs: {
+        Row: {
+          created_at: string
+          deltas: Json
+          dry_run: boolean
+          duration_ms: number | null
+          entries_seen: number
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          inserted: Json
+          skipped: Json
+          source: string
+          started_at: string
+          status: string
+          topic_errors: Json
+          topics_seen: number
+        }
+        Insert: {
+          created_at?: string
+          deltas?: Json
+          dry_run?: boolean
+          duration_ms?: number | null
+          entries_seen?: number
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          inserted?: Json
+          skipped?: Json
+          source?: string
+          started_at?: string
+          status?: string
+          topic_errors?: Json
+          topics_seen?: number
+        }
+        Update: {
+          created_at?: string
+          deltas?: Json
+          dry_run?: boolean
+          duration_ms?: number | null
+          entries_seen?: number
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          inserted?: Json
+          skipped?: Json
+          source?: string
+          started_at?: string
+          status?: string
+          topic_errors?: Json
+          topics_seen?: number
         }
         Relationships: []
       }
@@ -1605,6 +2113,7 @@ export type Database = {
           published_at: string | null
           series: string | null
           skill_level: string | null
+          source: string | null
           thumbnail_url: string | null
           title: string
           updated_at: string
@@ -1621,6 +2130,7 @@ export type Database = {
           published_at?: string | null
           series?: string | null
           skill_level?: string | null
+          source?: string | null
           thumbnail_url?: string | null
           title: string
           updated_at?: string
@@ -1637,6 +2147,7 @@ export type Database = {
           published_at?: string | null
           series?: string | null
           skill_level?: string | null
+          source?: string | null
           thumbnail_url?: string | null
           title?: string
           updated_at?: string
@@ -1658,6 +2169,13 @@ export type Database = {
         Returns: boolean
       }
       increment_qr_search_hits: { Args: { _ids: string[] }; Returns: undefined }
+      refresh_member_segments: {
+        Args: never
+        Returns: {
+          members_updated: number
+          pro_members_updated: number
+        }[]
+      }
     }
     Enums: {
       app_role: "admin"
