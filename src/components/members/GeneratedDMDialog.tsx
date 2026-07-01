@@ -183,26 +183,25 @@ export function GeneratedDMDialog({
   const handleUseTemplate = (template: DMTemplate) => {
     if (!member) return;
     
-    // Replace {name} placeholder with member's first name
-    const firstName = member.skool_name.split(' ')[0];
-    const personalizedMessage = template.content.replace(/\{name\}/gi, firstName);
-    
-    // Copy to clipboard immediately
-    navigator.clipboard.writeText(personalizedMessage).then(() => {
-      toast.success('Template copied to clipboard!');
-      incrementUseCount.mutate(template.id);
-    }).catch(() => {
-      toast.error('Failed to copy template');
-    });
+    const firstName = (member.skool_name || '').trim().split(/\s+/)[0] || 'there';
+    const personalizedMessage = template.content
+      .replace(/\{\{\s*first_name\s*\}\}/gi, firstName)
+      .replace(/\{\{\s*name\s*\}\}/gi, member.skool_name || firstName)
+      .replace(/\{name\}/gi, firstName);
+
+    setLocalMessage(personalizedMessage);
+    onOutreachTypeChange(template.outreach_type);
+    incrementUseCount.mutate(template.id);
+    toast.success(`Loaded template: ${template.name}`);
   };
 
   const handleSaveAsTemplate = async () => {
-    if (!templateName.trim() || !message) return;
+    if (!templateName.trim() || !localMessage) return;
     
     try {
       // Replace the member's name back with placeholder
       const firstName = member?.skool_name.split(' ')[0] || '';
-      const templateContent = message.replace(new RegExp(firstName, 'g'), '{name}');
+      const templateContent = localMessage.replace(new RegExp(firstName, 'g'), '{name}');
       
       await createTemplate.mutateAsync({
         name: templateName.trim(),
@@ -330,7 +329,7 @@ export function GeneratedDMDialog({
                 Generating personalized message...
               </span>
             </div>
-          ) : message ? (
+          ) : localMessage ? (
             <>
               <div className="bg-muted/50 rounded-lg p-4">
                <p className="whitespace-pre-wrap text-sm leading-relaxed">
@@ -511,7 +510,7 @@ export function GeneratedDMDialog({
           ) : null}
         </div>
 
-        {message && (
+        {localMessage && (
           <>
             {/* Save as template section */}
             {showSaveDialog ? (
@@ -526,7 +525,7 @@ export function GeneratedDMDialog({
                 <Button
                   size="sm"
                   onClick={handleSaveAsTemplate}
-                  disabled={!templateName.trim() || createTemplate.isPending}
+                    disabled={!templateName.trim() || createTemplate.isPending}
                 >
                   {createTemplate.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -573,7 +572,7 @@ export function GeneratedDMDialog({
                 variant="secondary"
                 size="sm"
                 onClick={handleCopy}
-                disabled={isGenerating || !message}
+                disabled={isGenerating || !localMessage}
                 aria-label="Copy DM to clipboard"
               >
                 {copied ? (
@@ -595,7 +594,7 @@ export function GeneratedDMDialog({
                     toast.error('Failed to copy');
                   }
                 }}
-                disabled={isGenerating || !message}
+                disabled={isGenerating || !localMessage}
                 aria-label="Copy message and open Skool chat"
               >
                 <ExternalLink className="h-4 w-4 mr-2" />
@@ -605,7 +604,7 @@ export function GeneratedDMDialog({
               <Button
                 size="sm"
                 onClick={handleMarkSent}
-                disabled={isGenerating || !message}
+                disabled={isGenerating || !localMessage}
               >
                 <CheckCircle className="h-4 w-4 mr-2" />
                 Mark as Sent
