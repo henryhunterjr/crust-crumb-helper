@@ -1,6 +1,3 @@
-// TEMP: Auth bypass enabled for development. Re-enable by removing DEV_BYPASS_AUTH.
-const DEV_BYPASS_AUTH = true;
-
 import { Navigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
@@ -11,16 +8,11 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isAdmin, loading, signOut } = useAuth();
 
   useEffect(() => {
-    if (DEV_BYPASS_AUTH) return;
     if (!loading && user && !isAdmin) {
       toast.error('This account is not authorized for the admin console.');
       void signOut();
     }
   }, [loading, user, isAdmin, signOut]);
-
-  if (DEV_BYPASS_AUTH) {
-    return <>{children}</>;
-  }
 
   if (loading) {
     return (
