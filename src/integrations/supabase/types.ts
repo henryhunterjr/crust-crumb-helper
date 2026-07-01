@@ -1094,9 +1094,11 @@ export type Database = {
           application_answer: string | null
           business_touch_count: number
           comment_count: number | null
+          communities: string[]
           created_at: string | null
           email: string | null
           engagement_status: string | null
+          first_name: string | null
           id: string
           intent_raw: Json | null
           intent_tier: string | null
@@ -1118,18 +1120,23 @@ export type Database = {
           priority_score: number | null
           roster_last_seen_at: string | null
           roster_status: string | null
+          segments: string[]
+          segments_updated_at: string | null
           skool_name: string
           skool_username: string | null
           unsubscribe_token: string | null
           updated_at: string | null
+          wingman_tags: string[]
         }
         Insert: {
           application_answer?: string | null
           business_touch_count?: number
           comment_count?: number | null
+          communities?: string[]
           created_at?: string | null
           email?: string | null
           engagement_status?: string | null
+          first_name?: string | null
           id?: string
           intent_raw?: Json | null
           intent_tier?: string | null
@@ -1151,18 +1158,23 @@ export type Database = {
           priority_score?: number | null
           roster_last_seen_at?: string | null
           roster_status?: string | null
+          segments?: string[]
+          segments_updated_at?: string | null
           skool_name: string
           skool_username?: string | null
           unsubscribe_token?: string | null
           updated_at?: string | null
+          wingman_tags?: string[]
         }
         Update: {
           application_answer?: string | null
           business_touch_count?: number
           comment_count?: number | null
+          communities?: string[]
           created_at?: string | null
           email?: string | null
           engagement_status?: string | null
+          first_name?: string | null
           id?: string
           intent_raw?: Json | null
           intent_tier?: string | null
@@ -1184,10 +1196,13 @@ export type Database = {
           priority_score?: number | null
           roster_last_seen_at?: string | null
           roster_status?: string | null
+          segments?: string[]
+          segments_updated_at?: string | null
           skool_name?: string
           skool_username?: string | null
           unsubscribe_token?: string | null
           updated_at?: string | null
+          wingman_tags?: string[]
         }
         Relationships: []
       }
@@ -1413,6 +1428,57 @@ export type Database = {
         }
         Relationships: []
       }
+      outreach_templates: {
+        Row: {
+          body: string
+          channel: string
+          created_at: string
+          daily_cap: number
+          dedupe_days: number
+          description: string | null
+          id: string
+          is_active: boolean
+          key: string
+          merge_tags: string[]
+          name: string
+          segment_key: string | null
+          subject: string | null
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          channel?: string
+          created_at?: string
+          daily_cap?: number
+          dedupe_days?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          key: string
+          merge_tags?: string[]
+          name: string
+          segment_key?: string | null
+          subject?: string | null
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          channel?: string
+          created_at?: string
+          daily_cap?: number
+          dedupe_days?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          key?: string
+          merge_tags?: string[]
+          name?: string
+          segment_key?: string | null
+          subject?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       post_ideas: {
         Row: {
           content: string
@@ -1446,6 +1512,42 @@ export type Database = {
           title?: string
           topic?: string | null
           used_at?: string | null
+        }
+        Relationships: []
+      }
+      pro_members: {
+        Row: {
+          created_at: string
+          email: string
+          first_name: string | null
+          id: string
+          last_name: string | null
+          rpp_purchase_source: string | null
+          segments: string[]
+          segments_updated_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          rpp_purchase_source?: string | null
+          segments?: string[]
+          segments_updated_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          rpp_purchase_source?: string | null
+          segments?: string[]
+          segments_updated_at?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1941,6 +2043,13 @@ export type Database = {
         Returns: boolean
       }
       increment_qr_search_hits: { Args: { _ids: string[] }; Returns: undefined }
+      refresh_member_segments: {
+        Args: never
+        Returns: {
+          members_updated: number
+          pro_members_updated: number
+        }[]
+      }
     }
     Enums: {
       app_role: "admin"
