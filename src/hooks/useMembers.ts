@@ -50,9 +50,13 @@ export function useMembers() {
       };
 
       (existingMembers || []).forEach((member) => {
-        addExistingKey(member.skool_name, member);
-        addExistingKey(member.skool_username, member);
-        addExistingKey(member.email, member);
+        const existingMember = {
+          id: member.id,
+          engagement_status: member.engagement_status as EngagementStatus,
+        };
+        addExistingKey(member.skool_name, existingMember);
+        addExistingKey(member.skool_username, existingMember);
+        addExistingKey(member.email, existingMember);
       });
       
       const toInsert: any[] = [];
