@@ -19,6 +19,7 @@ import Analytics from "./pages/Analytics";
 import Admin from "./pages/Admin";
 import AdminTemplates from "./pages/AdminTemplates";
 import AdminSegments from "./pages/AdminSegments";
+import AdminSends from "./pages/AdminSends";
 import Hermes from "./pages/Hermes";
 import Targets from "./pages/Targets";
 import Login from "./pages/Login";
@@ -49,6 +50,7 @@ const App = () => (
           <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
           <Route path="/admin/templates" element={<ProtectedRoute><AdminTemplates /></ProtectedRoute>} />
           <Route path="/admin/segments" element={<ProtectedRoute><AdminSegments /></ProtectedRoute>} />
+          <Route path="/admin/sends" element={<ProtectedRoute><AdminSends /></ProtectedRoute>} />
           <Route path="/hermes" element={<ProtectedRoute><Hermes /></ProtectedRoute>} />
           <Route path="/targets" element={<ProtectedRoute><Targets /></ProtectedRoute>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
