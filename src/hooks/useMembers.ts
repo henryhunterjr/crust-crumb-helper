@@ -27,10 +27,10 @@ export function useMembers() {
       // Fetch existing members to check for duplicates (match by name)
       const { data: existingMembers } = await supabase
         .from('members')
-        .select('id, skool_name');
+        .select('id, skool_name, communities');
       
-      const existingByName = new Map(
-        (existingMembers || []).map(m => [m.skool_name.toLowerCase().trim(), m.id])
+      const existingByName = new Map<string, { id: string; communities: string[] | null }>(
+        (existingMembers || []).map((m: any) => [m.skool_name.toLowerCase().trim(), { id: m.id, communities: m.communities }])
       );
       
       const toInsert: any[] = [];
@@ -71,14 +71,24 @@ export function useMembers() {
           comment_count: commentCount,
           last_active: row.lastActive || null,
           engagement_status: engagementStatus,
-        };
+        } as any;
         
-        const existingId = existingByName.get(row.name.toLowerCase().trim());
+        const existing = existingByName.get(row.name.toLowerCase().trim());
         
-        if (existingId) {
+        if (existing) {
+          // Append community tag if not already present
+          if (row.community) {
+            const current = existing.communities || [];
+            if (!current.includes(row.community)) {
+              memberData.communities = [...current, row.community];
+            }
+          }
           // Update existing member
-          toUpdate.push({ id: existingId, updates: memberData });
+          toUpdate.push({ id: existing.id, updates: memberData });
         } else {
+          if (row.community) {
+            memberData.communities = [row.community];
+          }
           // Insert new member
           toInsert.push(memberData);
         }
