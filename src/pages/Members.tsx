@@ -708,7 +708,10 @@ export default function Members() {
 
         <BulkDMQueueDialog
           open={bulkDMDialogOpen}
-          onOpenChange={setBulkDMDialogOpen}
+          onOpenChange={(open) => {
+            setBulkDMDialogOpen(open);
+            if (!open) setActiveTemplate(null);
+          }}
           members={selectedMembers}
           onMarkSent={handleMarkSent}
           outreachType={activeTemplate?.type ?? bulkOutreachType}
