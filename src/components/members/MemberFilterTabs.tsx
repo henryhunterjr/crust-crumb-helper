@@ -16,12 +16,14 @@ interface MemberFilterTabsProps {
     no_goals: number;
     joined_this_week: number;
     needs_welcome: number;
+    lead_signals: number;
   };
 }
 
 export function MemberFilterTabs({ activeFilter, onFilterChange, counts }: MemberFilterTabsProps) {
   const filters: { id: MemberFilter; label: string; count: number; isWarning?: boolean }[] = [
     { id: 'all', label: 'All', count: counts.all },
+    { id: 'lead_signals', label: '🎯 Lead Signals', count: counts.lead_signals },
     { id: 'joined_this_week', label: 'Joined This Week', count: counts.joined_this_week },
     { id: 'needs_welcome', label: 'Needs Welcome', count: counts.needs_welcome, isWarning: counts.needs_welcome > 0 },
     { id: 'never_engaged', label: 'Never Engaged', count: counts.never_engaged },
