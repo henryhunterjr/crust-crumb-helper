@@ -297,6 +297,23 @@ export function ImportMembersDialog({
           </p>
         </DialogHeader>
 
+        <div className="mt-4">
+          <Label htmlFor="community-select">Tag these members with a community</Label>
+          <Select value={community} onValueChange={setCommunity}>
+            <SelectTrigger id="community-select" className="mt-1">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">None (don't tag)</SelectItem>
+              <SelectItem value="crust-crumb-academy">Crust & Crumb Academy</SelectItem>
+              <SelectItem value="from-oven-to-market">From Oven to Market</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground mt-1">
+            Every row in this CSV will be tagged so you can filter by community on the members page. Existing tags are kept.
+          </p>
+        </div>
+
         <Tabs defaultValue="paste" className="mt-4">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="paste">
