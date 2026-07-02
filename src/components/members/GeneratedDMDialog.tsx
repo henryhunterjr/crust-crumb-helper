@@ -160,8 +160,10 @@ export function GeneratedDMDialog({
   };
 
   useEffect(() => {
+    // Don't let a late-arriving AI generation overwrite the FOTM welcome template
+    if (isFotmMember && outreachType === 'welcome_message' && fotmWelcomeTemplate) return;
     setLocalMessage(message);
-  }, [message]);
+  }, [message, isFotmMember, outreachType, fotmWelcomeTemplate?.id]);
 
   useEffect(() => {
     setLocalCustomTopic(customTopic);
