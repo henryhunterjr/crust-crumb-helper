@@ -216,16 +216,28 @@ export default function Members() {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
     return filteredMembers.slice(start, start + ITEMS_PER_PAGE);
   }, [filteredMembers, currentPage]);
+  // Base list scoped to the current community filter — filter tab counts and
+  // the "matches" indicator should react immediately when switching Academy ↔ FOTM.
+  const communityScopedMembers = useMemo(() => {
+    if (communityFilter === 'all') return members;
+    return members.filter((m) => {
+      const c = (m as any).communities as string[] | null | undefined;
+      if (communityFilter === 'untagged') return !c || c.length === 0;
+      return Array.isArray(c) && c.includes(communityFilter);
+    });
+  }, [members, communityFilter]);
+
   const filterCounts = useMemo(() => {
     const today = new Date();
+    const base = communityScopedMembers;
     return {
-      all: members.length,
-      joined_this_week: members.filter(m => {
+      all: base.length,
+      joined_this_week: base.filter(m => {
         if (!m.join_date) return false;
         const joinDate = parseISO(m.join_date);
         return differenceInDays(today, joinDate) <= SEGMENTATION_THRESHOLDS.joinedThisWeekDays;
       }).length,
-      needs_welcome: members.filter(m => {
+      needs_welcome: base.filter(m => {
         if (!m.join_date) return false;
         if (m.outreach_sent) return false;
         if (m.engagement_status === 'active') return false;
@@ -233,24 +245,24 @@ export default function Members() {
         const joinDate = parseISO(m.join_date);
         return differenceInDays(today, joinDate) >= SEGMENTATION_THRESHOLDS.needsWelcomeDays;
       }).length,
-      never_engaged: members.filter(m => m.engagement_status === 'never_engaged').length,
-      at_risk: members.filter(m => m.engagement_status === 'at_risk').length,
-      inactive: members.filter(m => m.engagement_status === 'inactive').length,
-      needs_outreach: members.filter(m => 
+      never_engaged: base.filter(m => m.engagement_status === 'never_engaged').length,
+      at_risk: base.filter(m => m.engagement_status === 'at_risk').length,
+      inactive: base.filter(m => m.engagement_status === 'inactive').length,
+      needs_outreach: base.filter(m =>
         ['never_engaged', 'at_risk', 'inactive'].includes(m.engagement_status) && 
         !m.outreach_sent
       ).length,
-      has_goals: members.filter(m => m.application_answer && m.application_answer.trim().length > 0).length,
-      no_goals: members.filter(m => !m.application_answer || m.application_answer.trim().length === 0).length,
+      has_goals: base.filter(m => m.application_answer && m.application_answer.trim().length > 0).length,
+      no_goals: base.filter(m => !m.application_answer || m.application_answer.trim().length === 0).length,
       lead_signals: (() => {
         const rx = /bakery|business|sell|selling|market|profession|income|customer|micro/i;
-        return members.filter(m =>
+        return base.filter(m =>
           (m as any).intent_tier === 'prospect' ||
           (m.application_answer && rx.test(m.application_answer))
         ).length;
       })(),
     };
-  }, [members]);
+  }, [communityScopedMembers]);
 
   const handleImport = async (rows: MemberImportRow[]) => {
     try {
