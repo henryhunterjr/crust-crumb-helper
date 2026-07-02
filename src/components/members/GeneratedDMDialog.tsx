@@ -101,6 +101,33 @@ export function GeneratedDMDialog({
   const { resources: allResources } = useClassroomResources();
   const { recipes: allRecipes } = useRecipes();
 
+  const isFotmMember = !!member?.communities?.includes('from-oven-to-market');
+  const fotmWelcomeTemplate = templates.find(
+    (t) => t.name === 'FOTM Welcome — Personal'
+  );
+
+  const applyTemplateToMember = (template: DMTemplate) => {
+    if (!member) return;
+    const firstName = (member.skool_name || '').trim().split(/\s+/)[0] || 'there';
+    const personalizedMessage = template.content
+      .replace(/\{\{\s*first_name\s*\}\}/gi, firstName)
+      .replace(/\{FIRST NAME\}/g, firstName)
+      .replace(/\{\{\s*name\s*\}\}/gi, member.skool_name || firstName)
+      .replace(/\{name\}/gi, firstName);
+    setLocalMessage(personalizedMessage);
+    onOutreachTypeChange(template.outreach_type);
+    incrementUseCount.mutate(template.id);
+  };
+
+  // Auto-apply FOTM welcome template when dialog opens for a FOTM member on Welcome type
+  useEffect(() => {
+    if (!open || !member) return;
+    if (isFotmMember && outreachType === 'welcome_message' && fotmWelcomeTemplate) {
+      applyTemplateToMember(fotmWelcomeTemplate);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, member?.id, isFotmMember, fotmWelcomeTemplate?.id]);
+
   const getResourceUrl = (title: string): string | null => {
     const resource = allResources.find(r => r.title === title);
     return resource?.url || null;
@@ -158,6 +185,11 @@ export function GeneratedDMDialog({
 
   const handleTypeChange = (type: OutreachType) => {
     onOutreachTypeChange(type);
+    // FOTM welcome: use the personal template instead of AI-generating
+    if (type === 'welcome_message' && isFotmMember && fotmWelcomeTemplate) {
+      applyTemplateToMember(fotmWelcomeTemplate);
+      return;
+    }
     if (type !== 'custom') {
       onRegenerate(type);
     }
@@ -182,16 +214,7 @@ export function GeneratedDMDialog({
 
   const handleUseTemplate = (template: DMTemplate) => {
     if (!member) return;
-    
-    const firstName = (member.skool_name || '').trim().split(/\s+/)[0] || 'there';
-    const personalizedMessage = template.content
-      .replace(/\{\{\s*first_name\s*\}\}/gi, firstName)
-      .replace(/\{\{\s*name\s*\}\}/gi, member.skool_name || firstName)
-      .replace(/\{name\}/gi, firstName);
-
-    setLocalMessage(personalizedMessage);
-    onOutreachTypeChange(template.outreach_type);
-    incrementUseCount.mutate(template.id);
+    applyTemplateToMember(template);
     toast.success(`Loaded template: ${template.name}`);
   };
 
