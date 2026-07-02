@@ -790,7 +790,13 @@ export default function Members() {
           memberCount={selectedMembers.length}
           members={selectedMembers}
           defaultTemplateName={
-            communityFilter === 'from-oven-to-market' || activeFilter === 'needs_welcome'
+            communityFilter === 'from-oven-to-market' ||
+            activeFilter === 'needs_welcome' ||
+            selectedMembers.some(
+              (m) =>
+                Array.isArray((m as any).communities) &&
+                (m as any).communities.includes('from-oven-to-market')
+            )
               ? 'FOTM Welcome — Personal'
               : null
           }
