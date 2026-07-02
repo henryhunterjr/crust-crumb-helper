@@ -495,7 +495,12 @@ export default function OutreachQueue() {
                         aria-label="Copy message and open Skool"
                         onClick={async () => {
                           const text = item.isEditing ? item.editedMessage : (item.message || '');
-                          const success = await copyAndOpenSkool(text, item.member.skool_username, item.member.skool_name);
+                          const success = await copyAndOpenSkool(
+                            text,
+                            item.member.skool_username,
+                            item.member.skool_name,
+                            (item.member as any)?.communities,
+                          );
                           if (success) toast.success('Copied! Opening Skool...');
                           else toast.error('Failed to copy');
                         }}

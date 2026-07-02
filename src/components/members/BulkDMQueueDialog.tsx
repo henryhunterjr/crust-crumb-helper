@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Copy, CheckCircle, Loader2 } from 'lucide-react';
+import { Copy, CheckCircle, Loader2, ExternalLink } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Member, OutreachType } from '@/types/member';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { copyAndOpenSkool } from '@/lib/skoolLinks';
 
 interface BulkDMQueueDialogProps {
   open: boolean;
@@ -203,6 +204,23 @@ export function BulkDMQueueDialog({
     }
   };
 
+  const handleCopyAndOpen = async (index: number) => {
+    const item = queue[index];
+    if (!item.message) return;
+    const ok = await copyAndOpenSkool(
+      item.message,
+      item.member.skool_username,
+      item.member.skool_name,
+      (item.member as any)?.communities,
+    );
+    if (ok) {
+      setQueue(prev => prev.map((q, i) => (i === index ? { ...q, copied: true } : q)));
+      toast.success('Copied. Opening Skool…');
+    } else {
+      toast.error('Failed to copy');
+    }
+  };
+
   const handleMarkSent = async (index: number) => {
     const item = queue[index];
     onMarkSent(item.member.id);
@@ -284,6 +302,15 @@ export function BulkDMQueueDialog({
                         <Copy className="h-4 w-4 mr-1" />
                       )}
                       Copy
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleCopyAndOpen(index)}
+                      aria-label="Copy and open Skool DM"
+                    >
+                      <ExternalLink className="h-4 w-4 mr-1" />
+                      Copy &amp; Open Skool
                     </Button>
                     <Button
                       size="sm"

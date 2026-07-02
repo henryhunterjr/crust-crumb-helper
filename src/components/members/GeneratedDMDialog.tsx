@@ -587,7 +587,12 @@ export function GeneratedDMDialog({
                 variant="outline"
                 size="sm"
                 onClick={async () => {
-                  const success = await copyAndOpenSkool(localMessage, member?.skool_username, member?.skool_name);
+                  const success = await copyAndOpenSkool(
+                    localMessage,
+                    member?.skool_username,
+                    member?.skool_name,
+                    (member as any)?.communities,
+                  );
                   if (success) {
                     toast.success('Copied! Opening Skool...');
                   } else {
