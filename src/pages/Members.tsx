@@ -565,6 +565,13 @@ export default function Members() {
           />
           
           <div className="flex gap-2 ml-auto">
+            <div
+              className="flex items-center px-3 rounded-md border bg-muted/40 text-sm font-medium"
+              aria-live="polite"
+              title="Members matching the current filters"
+            >
+              {filteredMembers.length} match{filteredMembers.length === 1 ? '' : 'es'}
+            </div>
             <Select value={communityFilter} onValueChange={setCommunityFilter}>
               <SelectTrigger className="w-[200px]">
                 <SelectValue placeholder="Community" />
