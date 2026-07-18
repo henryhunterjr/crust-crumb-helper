@@ -1,8 +1,13 @@
 {
   "manifest_version": 3,
   "name": "Krusty Skool Helper",
+<<<<<<< Updated upstream
   "version": "1.6.2",
   "description": "Paste & send DMs and welcome posts on Skool with one click. Companion to the Crust & Crumb Helper.",
+=======
+  "version": "1.3.0",
+  "description": "Opens the chat and pastes DMs and welcome posts on Skool with one click. Companion to the Crust & Crumb Helper.",
+>>>>>>> Stashed changes
   "permissions": ["clipboardRead", "activeTab", "storage"],
   "host_permissions": ["https://www.skool.com/*"],
   "content_scripts": [

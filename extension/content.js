@@ -1,8 +1,18 @@
+<<<<<<< Updated upstream
 // Krusty Skool Helper — content script v1.6.2
 // Skool's DM composer is a <textarea> with NO Send button.
 // Submit happens by pressing Enter inside the textarea.
 // Also drives the members directory → profile → Message flow when the
 // page URL contains #krusty=autosend|autopaste&member=<name>.
+=======
+// Krusty Skool Helper — content script v1.3
+// Skool's DM composer is a <textarea> with NO Send button.
+// Submit happens by pressing Enter inside the textarea.
+// v1.3: when the Helper opens a profile URL tagged #ccdm, auto-click the
+// profile's Chat button, wait for the composer, and paste the clipboard in.
+// (Skool has no URL that opens a chat directly; the modal only opens by
+// clicking Chat, so the extension does that click.)
+>>>>>>> Stashed changes
 // All steps logged under [Krusty] for screenshot-able debugging.
 
 (function () {
@@ -189,9 +199,57 @@
     log('buttons mounted');
   }
 
+  // ---- v1.3: auto-open chat when the Helper tagged the URL with #ccdm ----
+  function findChatButton() {
+    const cands = [...document.querySelectorAll('button, a, [role="button"]')]
+      .filter((el) => {
+        const t = (el.textContent || '').trim();
+        return (t === 'Chat' || t === 'CHAT') && visible(el);
+      });
+    return cands[0] || null;
+  }
+
+  function waitForChatButton(timeoutMs = 8000) {
+    return new Promise((resolve) => {
+      const existing = findChatButton();
+      if (existing) return resolve(existing);
+      const start = Date.now();
+      const obs2 = new MutationObserver(() => {
+        const btn = findChatButton();
+        if (btn) { obs2.disconnect(); resolve(btn); }
+        else if (Date.now() - start > timeoutMs) { obs2.disconnect(); resolve(null); }
+      });
+      obs2.observe(document.body, { childList: true, subtree: true });
+    });
+  }
+
+  async function autoOpenChatAndPaste() {
+    log('ccdm marker detected — auto-opening chat');
+    flash('Opening chat…');
+    const btn = await waitForChatButton(8000);
+    if (!btn) {
+      warn('no Chat button found on profile');
+      flash('Could not find the Chat button. Click it, then hit Paste.');
+      return;
+    }
+    btn.click();
+    log('Chat button clicked');
+    // Composer mounts async inside the chat modal; give it time, then paste
+    // only. Henry reviews and presses Enter himself.
+    const target = await waitForComposer(8000);
+    if (!target) {
+      warn('composer never appeared after Chat click');
+      flash('Chat did not open. Click Chat, then hit Paste.');
+      return;
+    }
+    await pasteAndOptionallySend(false);
+    flash('Message pasted. Press Enter to send.');
+  }
+
   const obs = new MutationObserver(() => mountButton());
   obs.observe(document.documentElement, { childList: true, subtree: true });
   mountButton();
+<<<<<<< Updated upstream
   log('content script v1.6.2 loaded on', location.href);
 
   // ---------- Auto-flow driven by URL hash ----------
@@ -304,4 +362,13 @@
   window.addEventListener('hashchange', () => { runAutoFlow().catch((e) => warn('auto-flow', e)); });
   // Give the SPA a moment to mount.
   setTimeout(() => { runAutoFlow().catch((e) => warn('auto-flow', e)); }, 800);
+=======
+  log('content script v1.3 loaded on', location.href);
+
+  if (location.hash.includes('ccdm')) {
+    // Clean the marker so refreshes do not re-trigger the flow.
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* ignore */ }
+    autoOpenChatAndPaste().catch((err) => warn('auto chat flow error', err));
+  }
+>>>>>>> Stashed changes
 })();

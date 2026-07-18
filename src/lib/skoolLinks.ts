@@ -24,7 +24,11 @@ export function pickSkoolSlugForCommunities(
 export function getSkoolProfileUrl(username: string | null | undefined): string | null {
   if (!username) return null;
   const handle = username.replace(/^@/, '');
-  return `https://www.skool.com/@${handle}`;
+  // #ccdm tags the tab for the Krusty extension (v1.3+), which auto-clicks
+  // the profile's Chat button and pastes the copied message into the
+  // composer. Skool has no URL that opens a chat directly, so the extension
+  // performs the click. Without the extension the hash is harmless.
+  return `https://www.skool.com/@${handle}#ccdm`;
 }
 
 /**
