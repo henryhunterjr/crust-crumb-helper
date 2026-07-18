@@ -1,9 +1,9 @@
 {
-  "_note": "Confirmed against the live Skool members directory on 2026-06-14. Card matching keys off the styled-component name prefix (the -sc-xxxx hash suffix changes on Skool rebuilds, the prefix is stable). Fields are parsed from each card's visible text in read-roster.mjs, which survives class-hash churn better than per-field selectors. Run `npm run probe` if a read breaks.",
+  "_note": "memberCard re-derived 2026-07-01 after a Skool rebuild dropped the old 'MemberItemWrapper' styled-component name. Skool now ships fully-hashed class names with NO stable semantic prefix, so this selector is a build hash and WILL break again on Skool's next rebuild. To re-derive when a read returns 0 members: sign the roster-agent-profile Chrome into Skool (visible), then run diag2.mjs (finds the class token whose docCount equals members-per-page, ~30) and diag3.mjs (verifies clean name/username/join extraction), and paste the winning token here. profileLink and loggedOutMarker are semantic and stable.",
 
   "loggedOutMarker": "input[type='password'], a[href*='/login']:not([href*='crust-crumb'])",
 
-  "memberCard": "div[class*='MemberItemWrapper']",
+  "memberCard": "div[class*='sc-db9ce526-0']",
 
   "profileLink": "a[href^='/@']",
 
