@@ -1,0 +1,134 @@
+name: AI Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Run unit tests (roster logic, bread authority)
+        run: npm test
+      - name: Typecheck
+        run: npx tsc -p tsconfig.app.json --noEmit
+
+  claude-review:
+    name: claude-review
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+    env:
+      HAS_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+    steps:
+      - name: Note if API key is missing
+        if: ${{ env.HAS_KEY != 'true' }}
+        run: echo "::warning::ANTHROPIC_API_KEY secret is not set on this repo — skipping AI review (this check passes so it never blocks a merge). Add the secret in Settings → Secrets and variables → Actions."
+
+      - uses: actions/checkout@v4
+        if: ${{ env.HAS_KEY == 'true' }}
+        with:
+          fetch-depth: 0
+
+      - name: Claude architecture review
+        if: ${{ env.HAS_KEY == 'true' }}
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: |
+            --model claude-opus-4-8
+            --allowedTools "Read,Grep,Glob,Bash(git diff:*),Bash(git log:*),Bash(npm test:*),Bash(npx vitest:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh api:*)"
+          prompt: |
+            You are the AI code reviewer for the Crust & Crumb Helper — an internal
+            operations tool that automates Henry's Skool community (Crust & Crumb Academy):
+            it drafts and SENDS direct messages / outreach to real community members,
+            scrapes the member roster from Skool via Playwright, captures member intent,
+            and drafts newsletters. Actions in this app reach real people and are
+            irreversible. Review PR #${{ github.event.pull_request.number }} in
+            ${{ github.repository }}.
+
+            Get the diff with: gh pr diff ${{ github.event.pull_request.number }}
+
+            REVIEW FOR (in priority order):
+            1. OUTWARD-FACING SIDE EFFECTS — the single most important category. Any change
+               to the message-send path (src/components/members/BulkDMQueueDialog.tsx,
+               GeneratedDMDialog.tsx, src/hooks/useOutreachMessages.ts, useDMTemplates.ts,
+               DM template rendering) that could: send a message to a real member
+               unintentionally, send to the WRONG recipient, double-send, send without an
+               explicit human confirmation gate, or fire on component mount / in a loop /
+               on re-render. A wrong or duplicate DM to a real member cannot be undone.
+            2. Roster-scraping correctness & fragility — roster-agent/ (read-roster.mjs,
+               selectors.json, diag*.mjs). Skool's DOM changes silently break CSS/text
+               selectors. Flag brittle selector assumptions, missing null/empty guards on
+               scraped data, and silent empty-roster handling that could make the app act
+               on zero or partial member data.
+            3. Business-logic correctness — member matching/dedup, intent-capture accuracy,
+               and DM template variable substitution (a wrong @handle or name interpolated
+               into a message that gets sent to a member).
+            4. Security — Skool credentials and tokens in roster-agent/.env and env files,
+               Supabase RLS assumptions, storing/exposing member PII, secrets committed to
+               source, edge-function input validation (supabase/functions/*).
+            5. Unhandled edge cases — empty roster, failed scrape, network failure,
+               malformed member records, null/undefined on scraped fields, NaN propagation.
+
+            ALWAYS FLAG, regardless of apparent correctness: changes to the message-send
+            confirmation gates; changes to how member PII is stored or transmitted; changes
+            touching the committed .env file (it must STAY committed — this is a Lovable
+            project and the build requires it; removing it breaks production); and changes
+            to the Supabase anon-key usage.
+
+            IGNORE ENTIRELY: formatting, naming, import ordering, style, comment style,
+            anything a linter would catch. Do not mention these even in passing.
+
+            If the diff touches roster-agent selectors or the message-send path, run
+            `npm test` and treat any failure as CRITICAL. If it changes the send path or
+            roster/selector logic without adding or updating a test in src/test/, flag that
+            as a WARNING.
+
+            Report every issue you find, including uncertain ones — do not self-filter for
+            importance; the severity field does that. Assign each finding a severity:
+              - CRITICAL: could send a wrong/unintended/duplicate message to a real member,
+                crash on plausible input, security vulnerability, member-PII exposure, data
+                loss, broken production build, or a failing test
+              - WARNING: everything else worth a human's attention
+
+            POST YOUR REVIEW as inline comments on the changed lines via:
+              gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews \
+                -f event=COMMENT -f body="<summary>" ...with a comments[] array for inline notes
+            (fall back to a single `gh pr comment` with file:line references if the inline
+            API rejects a position). Begin the summary with a one-line verdict and count:
+            "AI Review: N critical, M warnings".
+
+            FINALLY — mandatory — write a machine-readable verdict to `ai-review-verdict.json`
+            in the workspace root, exactly: {"critical": <int>, "warnings": <int>}
+            The workflow gates the merge on that file.
+
+      - name: Gate on critical findings
+        if: ${{ env.HAS_KEY == 'true' }}
+        run: |
+          if [ ! -f ai-review-verdict.json ]; then
+            echo "::warning::No verdict file produced — treating as non-blocking"
+            exit 0
+          fi
+          cat ai-review-verdict.json
+          CRITICAL=$(node -e "console.log(JSON.parse(require('fs').readFileSync('ai-review-verdict.json','utf8')).critical ?? 0)")
+          if [ "$CRITICAL" -gt 0 ]; then
+            echo "::error::AI review found $CRITICAL critical issue(s) — merge blocked. Read the review comments on the PR."
+            exit 1
+          fi
+          echo "AI review passed: no critical issues."

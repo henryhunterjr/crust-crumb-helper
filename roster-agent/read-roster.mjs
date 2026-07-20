@@ -247,13 +247,13 @@ async function readAll(page) {
   // The directory is paged with numbered pages. Navigating by URL (?p=N) is
   // deterministic, which avoids the skipped or duplicated pages that clicking
   // "Next" can cause under headless timing. Page 1 is already loaded.
-  const lastPage = await page.evaluate(() => {
-    const inCard = (e) => !!e.closest("div[class*='MemberItemWrapper']");
+  const lastPage = await page.evaluate((cardSel) => {
+    const inCard = (e) => !!e.closest(cardSel);
     const nums = [...document.querySelectorAll("button")]
       .filter((e) => !inCard(e) && /^\d{1,3}$/.test((e.textContent || "").trim()))
       .map((e) => +e.textContent.trim());
     return nums.length ? Math.max(...nums) : 1;
-  }).catch(() => 1);
+  }, CARD).catch(() => 1);
 
   const total = Math.min(lastPage, cfg.maxPages);
   log(`directory reports ${lastPage} page(s)`);
