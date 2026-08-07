@@ -157,7 +157,10 @@ export function useMembers() {
           .select()
           .single();
         
-        if (updateError) throw updateError;
+        if (updateError) {
+          skipped.push(updates.skool_name);
+          continue;
+        }
         results.push(updated as Member);
       }
       
