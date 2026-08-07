@@ -27,11 +27,22 @@ export function useMembers() {
       // Fetch existing members to check for duplicates (match by name)
       const { data: existingMembers } = await supabase
         .from('members')
-        .select('id, skool_name, communities');
+        .select('id, skool_name, email, communities');
       
       const existingByName = new Map<string, { id: string; communities: string[] | null }>(
         (existingMembers || []).map((m: any) => [m.skool_name.toLowerCase().trim(), { id: m.id, communities: m.communities }])
       );
+
+      const existingByEmail = new Map<string, { id: string; communities: string[] | null }>();
+      for (const m of (existingMembers || []) as any[]) {
+        if (m.email) {
+          existingByEmail.set(String(m.email).toLowerCase().trim(), { id: m.id, communities: m.communities });
+        }
+      }
+
+      // Track ids/emails already handled in this batch so one CSV can't collide with itself
+      const seenIds = new Set<string>();
+      const seenEmails = new Set<string>();
       
       const toInsert: any[] = [];
       const toUpdate: { id: string; updates: any }[] = [];
@@ -73,9 +84,18 @@ export function useMembers() {
           engagement_status: engagementStatus,
         } as any;
         
-        const existing = existingByName.get(row.name.toLowerCase().trim());
+        const rowEmail = row.email ? row.email.toLowerCase().trim() : null;
+        const existing =
+          (rowEmail ? existingByEmail.get(rowEmail) : undefined) ||
+          existingByName.get(row.name.toLowerCase().trim());
+
+        // Skip exact duplicate rows within the same CSV
+        if (rowEmail && seenEmails.has(rowEmail) && !existing) continue;
+        if (existing && seenIds.has(existing.id)) continue;
+        if (rowEmail) seenEmails.add(rowEmail);
         
         if (existing) {
+          seenIds.add(existing.id);
           // Append community tag if not already present
           if (row.community) {
             const current = existing.communities || [];
@@ -96,15 +116,36 @@ export function useMembers() {
       
       const results: Member[] = [];
       
-      // Insert new members
-      if (toInsert.length > 0) {
+      // Insert new members in chunks so one bad row doesn't sink the whole import
+      let insertedCount = 0;
+      const skipped: string[] = [];
+      for (let i = 0; i < toInsert.length; i += 100) {
+        const chunk = toInsert.slice(i, i + 100);
         const { data: inserted, error: insertError } = await supabase
           .from('members')
-          .insert(toInsert)
+          .insert(chunk)
           .select();
-        
-        if (insertError) throw insertError;
-        results.push(...(inserted as Member[]));
+
+        if (!insertError) {
+          results.push(...((inserted || []) as Member[]));
+          insertedCount += chunk.length;
+          continue;
+        }
+
+        // Fall back to row-by-row so we can skip conflicts instead of failing everything
+        for (const single of chunk) {
+          const { data: one, error: oneError } = await supabase
+            .from('members')
+            .insert(single)
+            .select()
+            .single();
+          if (oneError) {
+            skipped.push(single.skool_name);
+          } else {
+            results.push(one as Member);
+            insertedCount++;
+          }
+        }
       }
       
       // Update existing members
@@ -116,14 +157,18 @@ export function useMembers() {
           .select()
           .single();
         
-        if (updateError) throw updateError;
+        if (updateError) {
+          skipped.push(updates.skool_name);
+          continue;
+        }
         results.push(updated as Member);
       }
       
       return { 
         results, 
-        inserted: toInsert.length, 
-        updated: toUpdate.length 
+        inserted: insertedCount, 
+        updated: toUpdate.length,
+        skipped,
       };
     },
     onSuccess: () => {
