@@ -268,7 +268,7 @@ export default function Members() {
     try {
       const result = await importMembers.mutateAsync(rows);
       
-      const { inserted, updated } = result;
+      const { inserted, updated, skipped = [] } = result;
       
       // Auto-tag imported members
       const allMembers = result.results;
@@ -309,6 +309,12 @@ export default function Members() {
       toast.success(
         `Import complete: ${actionParts.join(', ')} members. ${summaryParts.join(', ')}.`
       );
+
+      if (skipped.length > 0) {
+        toast.warning(
+          `${skipped.length} row${skipped.length === 1 ? '' : 's'} skipped (duplicate email or invalid data): ${skipped.slice(0, 5).join(', ')}${skipped.length > 5 ? '…' : ''}`
+        );
+      }
       
       if (withoutGoals > 0) {
         toast.warning(`${withoutGoals} members have no learning goals. Personalized outreach will be limited.`);
