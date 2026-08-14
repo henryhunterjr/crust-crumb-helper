@@ -57,6 +57,8 @@ function referenceImport(row: RosterMemberInput, today: Date) {
     comment_count: commentCount,
     last_active: row.lastActive || null,
     engagement_status: engagementStatus,
+    intent_raw: null,
+    intent_tier: null,
   };
 }
 

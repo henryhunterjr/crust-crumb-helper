@@ -1,13 +1,13 @@
 {
   "manifest_version": 3,
   "name": "Krusty Skool Helper",
-  "version": "1.6.2",
-  "description": "Paste & send DMs and welcome posts on Skool with one click. Companion to the Crust & Crumb Helper.",
+  "version": "2.0.0",
+  "description": "Review and paste Crust & Crumb messages into the verified Skooly or Skool conversation. Sending always stays intentional.",
   "permissions": ["clipboardRead", "activeTab", "storage"],
-  "host_permissions": ["https://www.skool.com/*"],
+  "host_permissions": ["https://www.skool.com/*", "https://skoo.ly/*"],
   "content_scripts": [
     {
-      "matches": ["https://www.skool.com/*"],
+      "matches": ["https://www.skool.com/*", "https://skoo.ly/*"],
       "js": ["content.js"],
       "css": ["styles.css"],
       "run_at": "document_idle"

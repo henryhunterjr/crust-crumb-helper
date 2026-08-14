@@ -45,6 +45,12 @@ export function getSkoolChatUrl(): string {
   return `https://www.skool.com/${SKOOL_COMMUNITY_SLUG}/chat`;
 }
 
+/** Open Skooly's synced DM center for an exact-recipient review handoff. */
+export function getSkoolyDmReviewUrl(memberName: string): string {
+  const q = encodeURIComponent(memberName.trim());
+  return `https://skoo.ly/dashboard/dm#krusty=review&member=${q}`;
+}
+
 /**
  * Copy message to clipboard and open the member's Skool profile
  * so Henry can start a chat from there.
@@ -60,15 +66,15 @@ export async function copyAndOpenSkool(
     // Prefer the members directory route in the correct community — Skool's
     // /@handle pages 404 for many usernames, and the extension can search +
     // click Message reliably from the directory of the right community.
-    const slug = pickSkoolSlugForCommunities(communities);
+    void communities;
     const url = memberName
-      ? getSkoolMembersSearchUrl(memberName, 'send', slug)
+      ? getSkoolyDmReviewUrl(memberName)
       : username
         ? getSkoolProfileUrl(username)
         : getSkoolChatUrl();
     if (url) {
       // No `noopener` — the extension posts progress back via window.opener.
-      window.open(url, '_blank');
+      window.open(url, '_blank', 'noopener');
     }
     return true;
   } catch {

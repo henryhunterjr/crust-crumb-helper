@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { EmailCampaign, EmailSubscriber, useCreateCampaign, useUpdateCampaign } from '@/hooks/useEmailCampaigns';
+import { EmailCampaign, EmailSubscriber, useCreateCampaign } from '@/hooks/useEmailCampaigns';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -34,7 +34,6 @@ export function CampaignList({ campaigns, subscribers, onViewDrafts }: CampaignL
   const [name, setName] = useState('');
   const [type, setType] = useState('recruitment');
   const createCampaign = useCreateCampaign();
-  const updateCampaign = useUpdateCampaign();
 
   const nonMembers = subscribers.filter(s => !s.is_skool_member).length;
   const inactiveWithEmail = subscribers.filter(s => s.is_skool_member).length; // Approximate
@@ -54,12 +53,6 @@ export function CampaignList({ campaigns, subscribers, onViewDrafts }: CampaignL
         setName('');
         toast.success('Campaign created');
       },
-    });
-  };
-
-  const handleMarkSent = (id: string) => {
-    updateCampaign.mutate({ id, status: 'sent', sent_at: new Date().toISOString() }, {
-      onSuccess: () => toast.success('Campaign marked as sent'),
     });
   };
 
@@ -119,11 +112,7 @@ export function CampaignList({ campaigns, subscribers, onViewDrafts }: CampaignL
                       <Button size="sm" variant="outline" onClick={() => onViewDrafts(campaign.id)}>
                         View Drafts
                       </Button>
-                      {campaign.status !== 'sent' && (
-                        <Button size="sm" variant="ghost" onClick={() => handleMarkSent(campaign.id)}>
-                          Mark Sent
-                        </Button>
-                      )}
+                      <span className="text-xs text-muted-foreground self-center">Draft/export only</span>
                     </div>
                   </div>
                 </CardContent>
