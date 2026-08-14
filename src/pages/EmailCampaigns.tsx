@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Upload, RefreshCw, Mail, Users, UserCheck, UserX, HelpCircle, Plus, FileDown, Send, Search } from 'lucide-react';
+import { Upload, RefreshCw, Mail, Users, UserCheck, UserX, Search, AlertTriangle } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
@@ -59,7 +59,7 @@ export default function EmailCampaigns() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold">Email Campaigns</h1>
-            <p className="text-muted-foreground">Import subscribers, cross-reference with Skool, and generate email campaigns</p>
+            <p className="text-muted-foreground">Import subscribers, cross-reference with Skool, and prepare reviewed email drafts</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleCrossReference} disabled={isCrossReferencing || subscribers.length === 0}>
@@ -72,6 +72,13 @@ export default function EmailCampaigns() {
             </Button>
           </div>
         </div>
+
+        <Card className="mb-6 border-amber-500/60 bg-amber-50/50">
+          <CardContent className="py-3 flex gap-3 text-sm">
+            <AlertTriangle className="h-4 w-4 text-amber-700 mt-0.5 shrink-0" />
+            <p><strong>Draft workspace only.</strong> No email delivery provider is connected, so this app cannot send or verify newsletters. Approved drafts can be exported for a real sender.</p>
+          </CardContent>
+        </Card>
 
         {/* Subscriber Overview */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">

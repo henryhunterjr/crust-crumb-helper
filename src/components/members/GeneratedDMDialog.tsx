@@ -135,7 +135,7 @@ export function GeneratedDMDialog({
 
   const getRecipeUrl = (title: string): string | null => {
     const recipe = allRecipes.find(r => r.title === title);
-    return (recipe as any)?.skool_url || recipe?.url || null;
+    return recipe?.skool_url || recipe?.url || null;
   };
 
   const handleInsertLink = (title: string, type: 'resource' | 'recipe') => {
@@ -616,19 +616,19 @@ export function GeneratedDMDialog({
                     localMessage,
                     member?.skool_username,
                     member?.skool_name,
-                    (member as any)?.communities,
+                    member?.communities,
                   );
                   if (success) {
-                    toast.success('Copied! Opening Skool...');
+                    toast.success('Copied! Opening the verified conversation in Skooly...');
                   } else {
                     toast.error('Failed to copy');
                   }
                 }}
                 disabled={isGenerating || !localMessage}
-                aria-label="Copy message and open Skool chat"
+                aria-label="Copy message and open the verified Skooly conversation"
               >
                 <ExternalLink className="h-4 w-4 mr-2" />
-                Copy & Open Skool
+                Review in Skooly
               </Button>
 
               <Button

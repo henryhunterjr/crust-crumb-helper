@@ -31,6 +31,7 @@ import { UrgentActionsPanel } from '@/components/dashboard/UrgentActionsPanel';
 import { WeeklyGoalsWidget } from '@/components/dashboard/WeeklyGoalsWidget';
 import { CommunityHealthScore } from '@/components/dashboard/CommunityHealthScore';
 import { WeeklyReportCard } from '@/components/dashboard/WeeklyReportCard';
+import { DataTrustPanel } from '@/components/dashboard/DataTrustPanel';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -141,6 +142,8 @@ export default function Dashboard() {
             {format(today, 'EEEE, MMMM d, yyyy')}
           </p>
         </div>
+
+        <DataTrustPanel />
 
         {/* Urgent Actions Panel */}
         <UrgentActionsPanel
