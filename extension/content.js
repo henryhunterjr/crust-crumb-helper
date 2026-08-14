@@ -1,4 +1,4 @@
-// Krusty Skool Helper v2.0.0
+// Krusty Skool Helper v2.0.1
 // Exact-recipient, review-before-send handoff for Skoo.ly and Skool.
 // This script intentionally never clicks Send or dispatches Enter.
 
