@@ -546,16 +546,86 @@ export default function Members() {
   const allVisibleSelected = filteredMembers.length > 0 && 
     filteredMembers.every(m => selectedIds.has(m.id));
 
+  // --- Member Compass handlers -------------------------------------------
+  const handleAnalyzeCompass = async (memberId: string) => {
+    setAnalyzingMemberId(memberId);
+    try {
+      const res = await analyze.mutateAsync({ member_id: memberId, force: true });
+      const r = res?.results?.[0];
+      if (r?.status === 'skipped_no_text') {
+        toast.warning('Not enough of their own words to analyze yet.');
+      } else if (r?.status === 'error') {
+        toast.error(r.error || 'Analysis failed');
+      } else {
+        toast.success('Compass insight updated');
+      }
+    } catch (e) {
+      toast.error((e as Error).message || 'Analysis failed');
+    } finally {
+      setAnalyzingMemberId(null);
+    }
+  };
+
+  const handleSaveCompass = async (
+    memberId: string,
+    updates: Partial<MemberCompassProfile>
+  ) => {
+    await updateProfile.mutateAsync({ memberId, updates });
+  };
+
+  // Resumable and idempotent: each pass takes the next unanalyzed batch and
+  // never touches profiles Henry has edited by hand.
+  const handleBackfill = async () => {
+    setIsBackfilling(true);
+    try {
+      let total = 0;
+      for (let pass = 0; pass < 10; pass++) {
+        const res = await analyze.mutateAsync({ backfill: true, limit: 20 });
+        total += res.analyzed;
+        if (res.analyzed === 0 || res.remaining === 0) break;
+      }
+      toast.success(
+        total > 0
+          ? `Backfilled ${total} Compass profile${total === 1 ? '' : 's'}. Run again to continue.`
+          : 'Nothing left to backfill.'
+      );
+    } catch (e) {
+      toast.error((e as Error).message || 'Backfill failed');
+    } finally {
+      setIsBackfilling(false);
+    }
+  };
+
+  // The intelligence panel reports on the currently selected community,
+  // defaulting to Crust & Crumb Academy.
+  const panelCommunity =
+    communityFilter === 'all' ? 'crust-crumb-academy' : communityFilter;
+  const panelMembers = useMemo(
+    () =>
+      members.filter((m) => {
+        const c = (m as any).communities as string[] | null | undefined;
+        if (panelCommunity === 'untagged') return !c || c.length === 0;
+        return Array.isArray(c) && c.includes(panelCommunity);
+      }),
+    [members, panelCommunity]
+  );
+  const panelLabel =
+    panelCommunity === 'from-oven-to-market'
+      ? 'From Oven to Market'
+      : panelCommunity === 'untagged'
+        ? 'Untagged members'
+        : 'Crust & Crumb Academy';
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header />
       
       <main className="container py-6 px-4 flex-1">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col gap-4 mb-6 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Member Engagement</h1>
+            <h1 className="text-2xl font-bold">Member Compass</h1>
             <p className="text-muted-foreground">
-              Track and re-engage your community members
+              What can we help each person do next?
             </p>
           </div>
           <div className="flex gap-2">
