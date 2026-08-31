@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Krusty Skool Helper",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Review and paste Crust & Crumb messages into the verified Skooly or Skool conversation. Sending always stays intentional.",
   "permissions": ["clipboardRead", "activeTab", "storage"],
   "host_permissions": ["https://www.skool.com/*", "https://skoo.ly/*"],
