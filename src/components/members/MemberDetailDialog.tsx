@@ -167,8 +167,21 @@ export function MemberDetailDialog({
               </div>
             </div>
 
+            {/* Member Compass */}
+            {onAnalyzeCompass && onSaveCompass && (
+              <CompassSection
+                memberId={member.id}
+                profile={compassProfile}
+                sources={compassSources}
+                isAnalyzing={isAnalyzingCompass}
+                onAnalyze={() => onAnalyzeCompass(member.id)}
+                onSave={(updates) => onSaveCompass(member.id, updates)}
+              />
+            )}
+
             {/* Tags */}
             <MemberTagEditor memberId={member.id} />
+
 
             {/* Application answer */}
             {member.application_answer && (
