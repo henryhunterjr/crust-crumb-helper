@@ -40,11 +40,11 @@ export function BrowserExtensionDialog({ open, onOpenChange }: Props) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Puzzle className="h-5 w-5" />
-            Krusty Skool Helper — Browser Extension
+            Krusty Skool Helper — v2.1.0
           </DialogTitle>
           <DialogDescription>
-            Adds a floating <b>Paste</b> and <b>Paste &amp; Send</b> button to every skool.com page so
-            you can ship a generated DM in one click instead of copy → switch tabs → paste → click send.
+            Adds a <b>Paste for review</b> button and a <b>Capture thread</b> button to every
+            Skool and Skooly page. It never sends, posts, replies, or likes anything on your behalf.
           </DialogDescription>
         </DialogHeader>
 
@@ -56,23 +56,38 @@ export function BrowserExtensionDialog({ open, onOpenChange }: Props) {
               <li>Open <code className="bg-muted px-1 rounded">chrome://extensions</code> in Chrome (or Edge / Brave / Arc).</li>
               <li>Toggle <b>Developer mode</b> in the top-right corner.</li>
               <li>Click <b>Load unpacked</b> and pick the unzipped <code className="bg-muted px-1 rounded">extension</code> folder.</li>
-              <li>Done. You'll see the orange Krusty button on every Skool page.</li>
+              <li>Done. You'll see the orange Krusty buttons on every Skool page.</li>
             </ol>
           </div>
 
           <div className="bg-muted/50 rounded-md p-3">
-            <h4 className="font-semibold mb-1">How to use</h4>
+            <h4 className="font-semibold mb-1">📋 Sending a DM (review-only)</h4>
             <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
               <li>Generate a DM here, hit <b>Copy &amp; Open Skool</b>.</li>
-              <li>On the member's chat page, click in the message box once.</li>
-              <li>Hit the orange <b>🥖 Paste &amp; Send</b> button bottom-right.</li>
+              <li>Open the exact conversation with that member.</li>
+              <li>Click <b>📋 Paste for review</b>, read it over, then press send yourself.</li>
             </ol>
             <p className="text-xs text-muted-foreground mt-2">
-              Use plain <b>Paste</b> if you want to review before sending. Works for welcome posts too — paste your
-              tagged @-list straight into the community post composer.
+              On Skooly the extension can find the matching conversation for you, but it stops at
+              paste. If it can't match the member exactly, it pastes nothing and tells you why.
+            </p>
+          </div>
+
+          <div className="bg-muted/50 rounded-md p-3">
+            <h4 className="font-semibold mb-1">🧭 Capturing threads for Member Compass</h4>
+            <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+              <li>Open an introductions or discussion thread in Skool.</li>
+              <li>Scroll down so the comments you want are loaded on the page.</li>
+              <li>Click <b>🧭 Capture thread</b> — it copies the thread as JSON.</li>
+              <li>Paste it into <b>Import Introductions</b> on Member Compass and review the matches.</li>
+            </ol>
+            <p className="text-xs text-muted-foreground mt-2">
+              Capture is read-only. Anything it can't confidently match to a member lands in the
+              review queue instead of being merged.
             </p>
           </div>
         </div>
+
 
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
