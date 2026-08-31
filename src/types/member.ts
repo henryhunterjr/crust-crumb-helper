@@ -38,6 +38,6 @@ export interface MemberImportRow {
   community?: string;
 }
 
-export type MemberFilter = 'all' | 'never_engaged' | 'at_risk' | 'inactive' | 'needs_outreach' | 'has_goals' | 'no_goals' | 'joined_this_week' | 'needs_welcome' | 'lead_signals';
+export type MemberFilter = 'all' | 'never_engaged' | 'at_risk' | 'inactive' | 'needs_outreach' | 'has_goals' | 'no_goals' | 'joined_this_week' | 'needs_welcome' | 'lead_signals' | 'needs_henry' | 'compass_no_resource';
 
 export type MemberSortField = 'join_date' | 'last_active' | 'engagement_status';
