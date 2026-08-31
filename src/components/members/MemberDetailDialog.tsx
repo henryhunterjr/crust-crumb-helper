@@ -23,8 +23,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Member, EngagementStatus, MessageStatus } from '@/types/member';
+import { MemberCompassProfile, MemberSource } from '@/types/compass';
 import { MemberMessageHistory } from './MemberMessageHistory';
 import { MemberTagEditor } from './MemberTagEditor';
+import { CompassSection } from './CompassSection';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
