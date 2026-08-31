@@ -171,12 +171,100 @@
     }
   }
 
+  // ---- Member Compass: read-only thread capture -------------------------
+  // Reads the visible post and its comments and copies them as JSON for the
+  // Companion's "Import Introductions" screen. It never posts or edits.
+
+  function usernameFromHref(href) {
+    const match = /\/@([A-Za-z0-9._-]+)/.exec(href || '');
+    return match ? match[1] : null;
+  }
+
+  function commentContainerFor(anchor) {
+    let node = anchor;
+    for (let depth = 0; depth < 6 && node?.parentElement; depth += 1) {
+      node = node.parentElement;
+      const text = (node.innerText || '').trim();
+      if (text.length > 60) return node;
+    }
+    return node;
+  }
+
+  function cleanBody(rawText, authorName) {
+    const skip = /^(like|reply|share|\d+[smhdw]|\d+\s+(second|minute|hour|day|week|month|year)s?\s+ago|·|•)$/i;
+    return (rawText || '')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line && !skip.test(line) && line !== authorName)
+      .join('\n')
+      .trim();
+  }
+
+  function captureThread() {
+    const anchors = Array.from(document.querySelectorAll('a[href*="/@"]')).filter(visible);
+    const seen = new Set();
+    const comments = [];
+
+    for (const anchor of anchors) {
+      const username = usernameFromHref(anchor.getAttribute('href'));
+      if (!username) continue;
+      const author = (anchor.innerText || '').trim().split('\n')[0] || username;
+      const container = commentContainerFor(anchor);
+      if (!container || seen.has(container)) continue;
+      seen.add(container);
+      const text = cleanBody(container.innerText, author);
+      if (text.length < 25) continue;
+      comments.push({
+        author,
+        username,
+        text: text.slice(0, 4000),
+        sourceType: 'thread_comment',
+        externalId: `${location.pathname}#${username}#${text.slice(0, 40)}`,
+      });
+    }
+
+    return {
+      url: location.href,
+      capturedAt: new Date().toISOString(),
+      comments,
+    };
+  }
+
+  async function copyThreadCapture() {
+    const payload = captureThread();
+    if (!payload.comments.length) {
+      flash('No readable comments found. Scroll the thread, then try again.', 'error');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+      flash(
+        `Copied ${payload.comments.length} comment${payload.comments.length === 1 ? '' : 's'}. Paste into Import Introductions.`,
+        'success'
+      );
+    } catch (error) {
+      warn('clipboard write failed', error);
+      flash('Clipboard blocked. Click the page once, then try again.', 'error');
+    }
+  }
+
   function mountButton() {
     if (document.getElementById(BUTTON_ID)) return;
     const wrap = document.createElement('div');
     wrap.id = BUTTON_ID;
-    wrap.innerHTML = '<button data-krusty="paste" title="Paste into the open conversation for review">📋 Paste for review</button>';
-    wrap.addEventListener('click', () => pasteForReview(null).catch((error) => warn('paste failed', error)));
+    wrap.innerHTML =
+      '<button data-krusty="paste" title="Paste into the open conversation for review">📋 Paste for review</button>' +
+      '<button data-krusty="capture" title="Copy this thread as JSON for Member Compass">🧭 Capture thread</button>';
+    wrap.addEventListener('click', (event) => {
+      const action = event.target?.closest?.('button')?.dataset?.krusty;
+      if (action === 'capture') {
+        copyThreadCapture().catch((error) => warn('capture failed', error));
+        return;
+      }
+      if (action === 'paste') {
+        pasteForReview(null).catch((error) => warn('paste failed', error));
+      }
+    });
     document.body.appendChild(wrap);
   }
 
