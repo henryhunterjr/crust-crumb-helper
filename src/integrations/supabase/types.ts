@@ -1078,6 +1078,139 @@ export type Database = {
         }
         Relationships: []
       }
+      member_compass_profiles: {
+        Row: {
+          baking_stage: string
+          bread_interests: string[]
+          created_at: string
+          id: string
+          insight_confidence: string
+          last_analyzed_at: string | null
+          learning_goals: string[]
+          manually_edited: boolean
+          member_id: string
+          member_language: string[]
+          next_best_action: string | null
+          personal_hooks: string[]
+          recommended_resource_title: string | null
+          recommended_resource_type: string | null
+          recommended_resource_url: string | null
+          source_summary: string | null
+          struggles: string[]
+          updated_at: string
+          why_they_bake: string | null
+        }
+        Insert: {
+          baking_stage?: string
+          bread_interests?: string[]
+          created_at?: string
+          id?: string
+          insight_confidence?: string
+          last_analyzed_at?: string | null
+          learning_goals?: string[]
+          manually_edited?: boolean
+          member_id: string
+          member_language?: string[]
+          next_best_action?: string | null
+          personal_hooks?: string[]
+          recommended_resource_title?: string | null
+          recommended_resource_type?: string | null
+          recommended_resource_url?: string | null
+          source_summary?: string | null
+          struggles?: string[]
+          updated_at?: string
+          why_they_bake?: string | null
+        }
+        Update: {
+          baking_stage?: string
+          bread_interests?: string[]
+          created_at?: string
+          id?: string
+          insight_confidence?: string
+          last_analyzed_at?: string | null
+          learning_goals?: string[]
+          manually_edited?: boolean
+          member_id?: string
+          member_language?: string[]
+          next_best_action?: string | null
+          personal_hooks?: string[]
+          recommended_resource_title?: string | null
+          recommended_resource_type?: string | null
+          recommended_resource_url?: string | null
+          source_summary?: string | null
+          struggles?: string[]
+          updated_at?: string
+          why_they_bake?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_compass_profiles_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: true
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      member_sources: {
+        Row: {
+          captured_at: string
+          created_at: string
+          id: string
+          match_confidence: number | null
+          match_note: string | null
+          match_status: string
+          member_id: string | null
+          source_author: string | null
+          source_author_username: string | null
+          source_external_id: string | null
+          source_text: string
+          source_type: string
+          source_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          captured_at?: string
+          created_at?: string
+          id?: string
+          match_confidence?: number | null
+          match_note?: string | null
+          match_status?: string
+          member_id?: string | null
+          source_author?: string | null
+          source_author_username?: string | null
+          source_external_id?: string | null
+          source_text: string
+          source_type?: string
+          source_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          captured_at?: string
+          created_at?: string
+          id?: string
+          match_confidence?: number | null
+          match_note?: string | null
+          match_status?: string
+          member_id?: string | null
+          source_author?: string | null
+          source_author_username?: string | null
+          source_external_id?: string | null
+          source_text?: string
+          source_type?: string
+          source_url?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_sources_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       member_tags: {
         Row: {
           created_at: string

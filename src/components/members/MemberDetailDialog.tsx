@@ -23,8 +23,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Member, EngagementStatus, MessageStatus } from '@/types/member';
+import { MemberCompassProfile, MemberSource } from '@/types/compass';
 import { MemberMessageHistory } from './MemberMessageHistory';
 import { MemberTagEditor } from './MemberTagEditor';
+import { CompassSection } from './CompassSection';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -35,6 +37,12 @@ interface MemberDetailDialogProps {
   member: Member | null;
   onUpdate: (updates: Partial<Member>) => void;
   onMarkResponded: () => void;
+  /** Compass insight block. Optional so the dialog still works without it. */
+  compassProfile?: MemberCompassProfile;
+  compassSources?: MemberSource[];
+  onAnalyzeCompass?: (memberId: string) => Promise<void>;
+  isAnalyzingCompass?: boolean;
+  onSaveCompass?: (memberId: string, updates: Partial<MemberCompassProfile>) => Promise<void>;
 }
 
 const statusConfig: Record<EngagementStatus, { label: string; className: string }> = {
@@ -58,6 +66,11 @@ export function MemberDetailDialog({
   member,
   onUpdate,
   onMarkResponded,
+  compassProfile,
+  compassSources = [],
+  onAnalyzeCompass,
+  isAnalyzingCompass = false,
+  onSaveCompass,
 }: MemberDetailDialogProps) {
   const [notes, setNotes] = useState(member?.notes || '');
   const [status, setStatus] = useState<EngagementStatus>(member?.engagement_status || 'unknown');
@@ -154,8 +167,21 @@ export function MemberDetailDialog({
               </div>
             </div>
 
+            {/* Member Compass */}
+            {onAnalyzeCompass && onSaveCompass && (
+              <CompassSection
+                memberId={member.id}
+                profile={compassProfile}
+                sources={compassSources}
+                isAnalyzing={isAnalyzingCompass}
+                onAnalyze={() => onAnalyzeCompass(member.id)}
+                onSave={(updates) => onSaveCompass(member.id, updates)}
+              />
+            )}
+
             {/* Tags */}
             <MemberTagEditor memberId={member.id} />
+
 
             {/* Application answer */}
             {member.application_answer && (

@@ -17,12 +17,16 @@ interface MemberFilterTabsProps {
     joined_this_week: number;
     needs_welcome: number;
     lead_signals: number;
+    needs_henry: number;
+    compass_no_resource: number;
   };
 }
 
 export function MemberFilterTabs({ activeFilter, onFilterChange, counts }: MemberFilterTabsProps) {
   const filters: { id: MemberFilter; label: string; count: number; isWarning?: boolean }[] = [
     { id: 'all', label: 'All', count: counts.all },
+    { id: 'needs_henry', label: '🧭 Needs Henry', count: counts.needs_henry },
+    { id: 'compass_no_resource', label: 'Goal, no resource', count: counts.compass_no_resource },
     { id: 'lead_signals', label: '🎯 Lead Signals', count: counts.lead_signals },
     { id: 'joined_this_week', label: 'Joined This Week', count: counts.joined_this_week },
     { id: 'needs_welcome', label: 'Needs Welcome', count: counts.needs_welcome, isWarning: counts.needs_welcome > 0 },

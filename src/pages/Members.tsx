@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useDebounce } from '@/hooks/useDebounce';
-import { Upload, Search, ArrowUpDown, UserPlus, RefreshCw, ChevronLeft, ChevronRight, Tags, AtSign, Puzzle } from 'lucide-react';
+import { Upload, Search, ArrowUpDown, UserPlus, RefreshCw, ChevronLeft, ChevronRight, Tags, AtSign, Puzzle, Compass, Inbox, Sparkles, X } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -29,6 +29,11 @@ import { NewMemberDigest } from '@/components/members/NewMemberDigest';
 import { NewMemberWelcomeExportDialog } from '@/components/members/NewMemberWelcomeExportDialog';
 import { BrowserExtensionDialog } from '@/components/members/BrowserExtensionDialog';
 import { TagFilterDropdown } from '@/components/members/TagFilterDropdown';
+import { ImportIntroductionsDialog } from '@/components/members/ImportIntroductionsDialog';
+import { CompassReviewQueueDialog } from '@/components/members/CompassReviewQueueDialog';
+import { CompassIntelligencePanel } from '@/components/members/CompassIntelligencePanel';
+import { useMemberCompass } from '@/hooks/useMemberCompass';
+import { MemberCompassProfile } from '@/types/compass';
 import { useMembers } from '@/hooks/useMembers';
 import { useMemberTags } from '@/hooks/useMemberTags';
 import { Member, MemberFilter, MemberSortField, MemberImportRow, OutreachType } from '@/types/member';
@@ -53,6 +58,22 @@ export default function Members() {
 
   const { saveMessage, updateMessageStatus } = useOutreachMessages();
   const { tagsByMember, tagCounts, autoTagMembers } = useMemberTags();
+  const {
+    profilesByMember,
+    sourcesByMember,
+    reviewQueue,
+    commitSources,
+    resolveSource,
+    analyze,
+    updateProfile,
+  } = useMemberCompass();
+
+  // Member Compass UI state
+  const [introImportOpen, setIntroImportOpen] = useState(false);
+  const [reviewQueueOpen, setReviewQueueOpen] = useState(false);
+  const [analyzingMemberId, setAnalyzingMemberId] = useState<string | null>(null);
+  const [isBackfilling, setIsBackfilling] = useState(false);
+  const [drillDown, setDrillDown] = useState<{ label: string; ids: Set<string> } | null>(null);
 
   // URL params for filter
   const [searchParams, setSearchParams] = useSearchParams();
@@ -158,6 +179,23 @@ export default function Members() {
         );
         break;
       }
+      case 'needs_henry':
+        result = result.filter((m) => {
+          const p = profilesByMember.get(m.id);
+          return !!p?.next_best_action && !m.outreach_sent;
+        });
+        break;
+      case 'compass_no_resource':
+        result = result.filter((m) => {
+          const p = profilesByMember.get(m.id);
+          return !!p && p.learning_goals.length > 0 && !p.recommended_resource_title;
+        });
+        break;
+    }
+
+    // Drill-down from the Compass panel: restrict to the represented members.
+    if (drillDown) {
+      result = result.filter((m) => drillDown.ids.has(m.id));
     }
 
     // Apply tag filters (AND logic)
@@ -177,14 +215,31 @@ export default function Members() {
       });
     }
 
-    // Apply search
+    // Apply search — also searches Compass insight so Henry can find people by
+    // what they actually said (baguettes, fermentation, brand new, family…).
     if (debouncedSearch) {
       const query = debouncedSearch.toLowerCase();
-      result = result.filter(m => 
-        m.skool_name.toLowerCase().includes(query) ||
-        m.email?.toLowerCase().includes(query) ||
-        m.application_answer?.toLowerCase().includes(query)
-      );
+      result = result.filter(m => {
+        if (
+          m.skool_name.toLowerCase().includes(query) ||
+          m.email?.toLowerCase().includes(query) ||
+          m.application_answer?.toLowerCase().includes(query)
+        ) return true;
+        const p = profilesByMember.get(m.id);
+        if (!p) return false;
+        const haystack = [
+          p.baking_stage,
+          p.why_they_bake || '',
+          p.next_best_action || '',
+          p.recommended_resource_title || '',
+          ...p.struggles,
+          ...p.learning_goals,
+          ...p.bread_interests,
+          ...p.personal_hooks,
+          ...p.member_language,
+        ].join(' ').toLowerCase();
+        return haystack.includes(query);
+      });
     }
 
     // Apply sort
@@ -203,12 +258,12 @@ export default function Members() {
     });
 
     return result;
-  }, [members, activeFilter, debouncedSearch, sortField, selectedTagFilters, tagsByMember, communityFilter]);
+  }, [members, activeFilter, debouncedSearch, sortField, selectedTagFilters, tagsByMember, communityFilter, profilesByMember, drillDown]);
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeFilter, debouncedSearch, sortField, selectedTagFilters, communityFilter]);
+  }, [activeFilter, debouncedSearch, sortField, selectedTagFilters, communityFilter, drillDown]);
 
   // Paginate
   const totalPages = Math.max(1, Math.ceil(filteredMembers.length / ITEMS_PER_PAGE));
@@ -261,8 +316,16 @@ export default function Members() {
           (m.application_answer && rx.test(m.application_answer))
         ).length;
       })(),
+      needs_henry: base.filter(m => {
+        const p = profilesByMember.get(m.id);
+        return !!p?.next_best_action && !m.outreach_sent;
+      }).length,
+      compass_no_resource: base.filter(m => {
+        const p = profilesByMember.get(m.id);
+        return !!p && p.learning_goals.length > 0 && !p.recommended_resource_title;
+      }).length,
     };
-  }, [communityScopedMembers]);
+  }, [communityScopedMembers, profilesByMember]);
 
   const handleImport = async (rows: MemberImportRow[]) => {
     try {
@@ -483,19 +546,89 @@ export default function Members() {
   const allVisibleSelected = filteredMembers.length > 0 && 
     filteredMembers.every(m => selectedIds.has(m.id));
 
+  // --- Member Compass handlers -------------------------------------------
+  const handleAnalyzeCompass = async (memberId: string) => {
+    setAnalyzingMemberId(memberId);
+    try {
+      const res = await analyze.mutateAsync({ member_id: memberId, force: true });
+      const r = res?.results?.[0];
+      if (r?.status === 'skipped_no_text') {
+        toast.warning('Not enough of their own words to analyze yet.');
+      } else if (r?.status === 'error') {
+        toast.error(r.error || 'Analysis failed');
+      } else {
+        toast.success('Compass insight updated');
+      }
+    } catch (e) {
+      toast.error((e as Error).message || 'Analysis failed');
+    } finally {
+      setAnalyzingMemberId(null);
+    }
+  };
+
+  const handleSaveCompass = async (
+    memberId: string,
+    updates: Partial<MemberCompassProfile>
+  ) => {
+    await updateProfile.mutateAsync({ memberId, updates });
+  };
+
+  // Resumable and idempotent: each pass takes the next unanalyzed batch and
+  // never touches profiles Henry has edited by hand.
+  const handleBackfill = async () => {
+    setIsBackfilling(true);
+    try {
+      let total = 0;
+      for (let pass = 0; pass < 10; pass++) {
+        const res = await analyze.mutateAsync({ backfill: true, limit: 20 });
+        total += res.analyzed;
+        if (res.analyzed === 0 || res.remaining === 0) break;
+      }
+      toast.success(
+        total > 0
+          ? `Backfilled ${total} Compass profile${total === 1 ? '' : 's'}. Run again to continue.`
+          : 'Nothing left to backfill.'
+      );
+    } catch (e) {
+      toast.error((e as Error).message || 'Backfill failed');
+    } finally {
+      setIsBackfilling(false);
+    }
+  };
+
+  // The intelligence panel reports on the currently selected community,
+  // defaulting to Crust & Crumb Academy.
+  const panelCommunity =
+    communityFilter === 'all' ? 'crust-crumb-academy' : communityFilter;
+  const panelMembers = useMemo(
+    () =>
+      members.filter((m) => {
+        const c = (m as any).communities as string[] | null | undefined;
+        if (panelCommunity === 'untagged') return !c || c.length === 0;
+        return Array.isArray(c) && c.includes(panelCommunity);
+      }),
+    [members, panelCommunity]
+  );
+  const panelLabel =
+    panelCommunity === 'from-oven-to-market'
+      ? 'From Oven to Market'
+      : panelCommunity === 'untagged'
+        ? 'Untagged members'
+        : 'Crust & Crumb Academy';
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header />
       
       <main className="container py-6 px-4 flex-1">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col gap-4 mb-6 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Member Engagement</h1>
+            <h1 className="text-2xl font-bold">Member Compass</h1>
             <p className="text-muted-foreground">
-              Track and re-engage your community members
+              What can we help each person do next?
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button 
               variant="ghost" 
               size="icon"
@@ -549,6 +682,32 @@ export default function Members() {
               <Puzzle className="h-4 w-4 mr-2" />
               Browser Extension
             </Button>
+            <Button variant="outline" onClick={() => setReviewQueueOpen(true)}>
+              <Inbox className="h-4 w-4 mr-2" />
+              Review Queue
+              {reviewQueue.length > 0 && (
+                <span className="ml-2 rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
+                  {reviewQueue.length}
+                </span>
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleBackfill}
+              disabled={isBackfilling}
+              title="Analyze members who already have captured text but no Compass insight yet"
+            >
+              {isBackfilling ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4 mr-2" />
+              )}
+              Backfill Compass
+            </Button>
+            <Button variant="outline" onClick={() => setIntroImportOpen(true)}>
+              <Compass className="h-4 w-4 mr-2" />
+              Import Introductions
+            </Button>
             <Button onClick={() => setImportDialogOpen(true)}>
               <Upload className="h-4 w-4 mr-2" />
               Import Members
@@ -562,6 +721,40 @@ export default function Members() {
         {/* Stats bar */}
         <MemberStatsBar stats={stats} />
 
+        {/* Actionable community intelligence */}
+        <div className="mt-6">
+          <CompassIntelligencePanel
+            members={panelMembers}
+            profilesByMember={profilesByMember}
+            sourcesByMember={sourcesByMember}
+            communityLabel={panelLabel}
+            onOpenMember={handleOpenDetail}
+            onDrillDown={(label, ids) => {
+              setDrillDown({ label, ids: new Set(ids) });
+              setActiveFilter('all');
+              setCurrentPage(1);
+            }}
+          />
+        </div>
+
+        {drillDown && (
+          <div className="mt-4 flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+            <Compass className="h-4 w-4 text-primary" />
+            <span>
+              Showing members from: <strong>{drillDown.label}</strong>
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="ml-auto h-7"
+              onClick={() => setDrillDown(null)}
+            >
+              <X className="h-3.5 w-3.5 mr-1" />
+              Clear
+            </Button>
+          </div>
+        )}
+
         {/* Filters and search */}
         <div className="flex flex-col md:flex-row gap-4 my-6">
           <MemberFilterTabs 
@@ -569,6 +762,7 @@ export default function Members() {
             onFilterChange={setActiveFilter}
             counts={filterCounts}
           />
+          
           
           <div className="flex gap-2 ml-auto">
             <div
@@ -766,6 +960,27 @@ export default function Members() {
           member={detailMember}
           onUpdate={handleUpdateMember}
           onMarkResponded={handleMarkResponded}
+          compassProfile={detailMember ? profilesByMember.get(detailMember.id) : undefined}
+          compassSources={detailMember ? sourcesByMember.get(detailMember.id) ?? [] : []}
+          onAnalyzeCompass={handleAnalyzeCompass}
+          isAnalyzingCompass={!!detailMember && analyzingMemberId === detailMember.id}
+          onSaveCompass={handleSaveCompass}
+        />
+
+        <ImportIntroductionsDialog
+          open={introImportOpen}
+          onOpenChange={setIntroImportOpen}
+          members={members}
+          onCommit={(rows) => commitSources.mutateAsync(rows)}
+          isCommitting={commitSources.isPending}
+        />
+
+        <CompassReviewQueueDialog
+          open={reviewQueueOpen}
+          onOpenChange={setReviewQueueOpen}
+          queue={reviewQueue}
+          members={members}
+          onResolve={(input) => resolveSource.mutateAsync(input)}
         />
 
         <BulkDMQueueDialog
