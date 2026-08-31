@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useDebounce } from '@/hooks/useDebounce';
-import { Upload, Search, ArrowUpDown, UserPlus, RefreshCw, ChevronLeft, ChevronRight, Tags, AtSign, Puzzle } from 'lucide-react';
+import { Upload, Search, ArrowUpDown, UserPlus, RefreshCw, ChevronLeft, ChevronRight, Tags, AtSign, Puzzle, Compass } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -19,6 +19,8 @@ import { MemberStatsBar } from '@/components/members/MemberStatsBar';
 import { MemberFilterTabs } from '@/components/members/MemberFilterTabs';
 import { MemberCard } from '@/components/members/MemberCard';
 import { ImportMembersDialog } from '@/components/members/ImportMembersDialog';
+import { ImportIntroductionsDialog } from '@/components/members/ImportIntroductionsDialog';
+import { MemberCompassDashboard } from '@/components/members/MemberCompassDashboard';
 import { GeneratedDMDialog } from '@/components/members/GeneratedDMDialog';
 import { MemberDetailDialog } from '@/components/members/MemberDetailDialog';
 import { BulkActionsBar } from '@/components/members/BulkActionsBar';
@@ -31,6 +33,8 @@ import { BrowserExtensionDialog } from '@/components/members/BrowserExtensionDia
 import { TagFilterDropdown } from '@/components/members/TagFilterDropdown';
 import { useMembers } from '@/hooks/useMembers';
 import { useMemberTags } from '@/hooks/useMemberTags';
+import { useMemberCompassProfiles } from '@/hooks/useMemberCompass';
+import { profileContains } from '@/lib/memberCompass';
 import { Member, MemberFilter, MemberSortField, MemberImportRow, OutreachType } from '@/types/member';
 import { supabase } from '@/integrations/supabase/client';
 import { useOutreachMessages } from '@/hooks/useOutreachMessages';
@@ -53,12 +57,17 @@ export default function Members() {
 
   const { saveMessage, updateMessageStatus } = useOutreachMessages();
   const { tagsByMember, tagCounts, autoTagMembers } = useMemberTags();
+  const memberIds = useMemo(() => members.map((member) => member.id), [members]);
+  const { data: compassProfiles = [], refetch: refetchCompass } = useMemberCompassProfiles(memberIds);
+  const profileByMember = useMemo(
+    () => new Map(compassProfiles.map((profile) => [profile.member_id, profile])),
+    [compassProfiles]
+  );
 
-  // URL params for filter
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // UI state
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [introDialogOpen, setIntroDialogOpen] = useState(false);
   const [addMemberDialogOpen, setAddMemberDialogOpen] = useState(false);
   const [welcomeExportOpen, setWelcomeExportOpen] = useState(false);
   const [extensionDialogOpen, setExtensionDialogOpen] = useState(false);
@@ -71,19 +80,16 @@ export default function Members() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectedTagFilters, setSelectedTagFilters] = useState<string[]>([]);
   const [isRetagging, setIsRetagging] = useState(false);
-  const [communityFilter, setCommunityFilter] = useState<string>('all');
+  const [communityFilter, setCommunityFilter] = useState<string>('crust-crumb-academy');
 
-  // Handle filter from URL params
   useEffect(() => {
     const filterParam = searchParams.get('filter');
     if (filterParam && ['all', 'never_engaged', 'at_risk', 'inactive', 'needs_outreach', 'has_goals', 'no_goals', 'joined_this_week', 'needs_welcome', 'lead_signals'].includes(filterParam)) {
       setActiveFilter(filterParam as MemberFilter);
-      // Clear the URL param after applying
       setSearchParams({}, { replace: true });
     }
   }, [searchParams, setSearchParams]);
 
-  // DM generation state
   const [dmDialogOpen, setDmDialogOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [generatedDM, setGeneratedDM] = useState('');
@@ -94,22 +100,18 @@ export default function Members() {
   const [customTopic, setCustomTopic] = useState('');
   const [currentMessageId, setCurrentMessageId] = useState<string | null>(null);
 
-  // Member detail state
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [detailMember, setDetailMember] = useState<Member | null>(null);
 
-  // Bulk DM state
   const [bulkDMDialogOpen, setBulkDMDialogOpen] = useState(false);
   const [bulkOutreachType, setBulkOutreachType] = useState<OutreachType>('resource_recommendation');
   const [pickTemplateOpen, setPickTemplateOpen] = useState(false);
   const [activeTemplate, setActiveTemplate] = useState<{ name: string; content: string; type: OutreachType } | null>(null);
   const [templateRecipients, setTemplateRecipients] = useState<Member[] | null>(null);
 
-  // Filter and sort members
   const filteredMembers = useMemo(() => {
     let result = [...members];
 
-    // Apply filter
     const today = new Date();
     switch (activeFilter) {
       case 'joined_this_week':
@@ -160,7 +162,6 @@ export default function Members() {
       }
     }
 
-    // Apply tag filters (AND logic)
     if (selectedTagFilters.length > 0) {
       result = result.filter(m => {
         const memberTags = (tagsByMember[m.id] || []).map(t => t.tag);
@@ -168,7 +169,6 @@ export default function Members() {
       });
     }
 
-    // Apply community filter
     if (communityFilter !== 'all') {
       result = result.filter(m => {
         const c = (m as any).communities as string[] | null | undefined;
@@ -177,47 +177,44 @@ export default function Members() {
       });
     }
 
-    // Apply search
     if (debouncedSearch) {
       const query = debouncedSearch.toLowerCase();
       result = result.filter(m => 
         m.skool_name.toLowerCase().includes(query) ||
         m.email?.toLowerCase().includes(query) ||
-        m.application_answer?.toLowerCase().includes(query)
+        m.application_answer?.toLowerCase().includes(query) ||
+        profileContains(profileByMember.get(m.id), query)
       );
     }
 
-    // Apply sort
     result.sort((a, b) => {
       switch (sortField) {
         case 'join_date':
           return (b.join_date || '').localeCompare(a.join_date || '');
         case 'last_active':
           return (b.last_active || '').localeCompare(a.last_active || '');
-        case 'engagement_status':
+        case 'engagement_status': {
           const statusOrder = { never_engaged: 0, at_risk: 1, inactive: 2, unknown: 3, active: 4 };
           return statusOrder[a.engagement_status] - statusOrder[b.engagement_status];
+        }
         default:
           return 0;
       }
     });
 
     return result;
-  }, [members, activeFilter, debouncedSearch, sortField, selectedTagFilters, tagsByMember, communityFilter]);
+  }, [members, activeFilter, debouncedSearch, sortField, selectedTagFilters, tagsByMember, communityFilter, profileByMember]);
 
-  // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [activeFilter, debouncedSearch, sortField, selectedTagFilters, communityFilter]);
 
-  // Paginate
   const totalPages = Math.max(1, Math.ceil(filteredMembers.length / ITEMS_PER_PAGE));
   const paginatedMembers = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
     return filteredMembers.slice(start, start + ITEMS_PER_PAGE);
   }, [filteredMembers, currentPage]);
-  // Base list scoped to the current community filter — filter tab counts and
-  // the "matches" indicator should react immediately when switching Academy ↔ FOTM.
+
   const communityScopedMembers = useMemo(() => {
     if (communityFilter === 'all') return members;
     return members.filter((m) => {
@@ -226,6 +223,12 @@ export default function Members() {
       return Array.isArray(c) && c.includes(communityFilter);
     });
   }, [members, communityFilter]);
+
+  const communityMemberIds = useMemo(() => new Set(communityScopedMembers.map((member) => member.id)), [communityScopedMembers]);
+  const scopedCompassProfiles = useMemo(
+    () => compassProfiles.filter((profile) => communityMemberIds.has(profile.member_id)),
+    [compassProfiles, communityMemberIds]
+  );
 
   const filterCounts = useMemo(() => {
     const today = new Date();
@@ -267,10 +270,7 @@ export default function Members() {
   const handleImport = async (rows: MemberImportRow[]) => {
     try {
       const result = await importMembers.mutateAsync(rows);
-      
       const { inserted, updated, skipped = [] } = result;
-      
-      // Auto-tag imported members
       const allMembers = result.results;
       try {
         const tagCount = await autoTagMembers(allMembers.map(m => ({
@@ -281,14 +281,11 @@ export default function Members() {
           last_active: m.last_active,
           engagement_status: m.engagement_status,
         })));
-        if (tagCount > 0) {
-          toast.success(`Auto-tagged members with ${tagCount} tags`);
-        }
+        if (tagCount > 0) toast.success(`Auto-tagged members with ${tagCount} tags`);
       } catch (tagErr) {
         console.error('Auto-tagging error:', tagErr);
       }
       
-      // Calculate import summary from results
       const summary = allMembers.reduce((acc, m) => {
         acc[m.engagement_status] = (acc[m.engagement_status] || 0) + 1;
         return acc;
@@ -299,27 +296,16 @@ export default function Members() {
       if (summary.at_risk) summaryParts.push(`${summary.at_risk} at risk`);
       if (summary.inactive) summaryParts.push(`${summary.inactive} inactive`);
 
-      // Check for missing application answers
       const withoutGoals = allMembers.filter(m => !m.application_answer || m.application_answer.trim().length === 0).length;
-      
       const actionParts = [];
       if (inserted > 0) actionParts.push(`${inserted} new`);
       if (updated > 0) actionParts.push(`${updated} updated`);
-      
-      toast.success(
-        `Import complete: ${actionParts.join(', ')} members. ${summaryParts.join(', ')}.`
-      );
+      toast.success(`Import complete: ${actionParts.join(', ')} members. ${summaryParts.join(', ')}.`);
 
       if (skipped.length > 0) {
-        toast.warning(
-          `${skipped.length} row${skipped.length === 1 ? '' : 's'} skipped (duplicate email or invalid data): ${skipped.slice(0, 5).join(', ')}${skipped.length > 5 ? '…' : ''}`
-        );
+        toast.warning(`${skipped.length} row${skipped.length === 1 ? '' : 's'} skipped (duplicate email or invalid data): ${skipped.slice(0, 5).join(', ')}${skipped.length > 5 ? '…' : ''}`);
       }
-      
-      if (withoutGoals > 0) {
-        toast.warning(`${withoutGoals} members have no learning goals. Personalized outreach will be limited.`);
-      }
-      
+      if (withoutGoals > 0) toast.warning(`${withoutGoals} members have no learning goals. Personalized outreach will be limited.`);
       setImportDialogOpen(false);
     } catch (error) {
       console.error('Import error:', error);
@@ -367,7 +353,6 @@ export default function Members() {
       setMatchedResources(data.matched_resources || []);
       setMatchedRecipes(data.matched_recipes || []);
 
-      // Save to outreach log
       try {
         const saved = await saveMessage.mutateAsync({
           member_id: member.id,
@@ -377,8 +362,6 @@ export default function Members() {
           custom_topic: topic || customTopic || null,
         });
         setCurrentMessageId(saved.id);
-
-        // Update member message status
         updateMember.mutate({ 
           id: member.id, 
           updates: { message_status: 'message_generated' } 
@@ -397,39 +380,29 @@ export default function Members() {
   const handleRegenerateDM = (type: OutreachType, topic?: string) => {
     if (selectedMember) {
       setOutreachType(type);
-      if (topic !== undefined) {
-        setCustomTopic(topic);
-      }
+      if (topic !== undefined) setCustomTopic(topic);
       generateDM(selectedMember, type, topic);
     }
   };
 
   const handleMarkSent = (memberId: string) => {
     markOutreachSent.mutate(memberId);
-    if (currentMessageId) {
-      updateMessageStatus.mutate({ id: currentMessageId, status: 'sent' });
-    }
+    if (currentMessageId) updateMessageStatus.mutate({ id: currentMessageId, status: 'sent' });
     toast.success('Marked as sent');
   };
 
   const handleToggleSelect = (memberId: string, selected: boolean) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
-      if (selected) {
-        next.add(memberId);
-      } else {
-        next.delete(memberId);
-      }
+      if (selected) next.add(memberId);
+      else next.delete(memberId);
       return next;
     });
   };
 
   const handleSelectAllVisible = (selected: boolean) => {
-    if (selected) {
-      setSelectedIds(new Set(filteredMembers.map(m => m.id)));
-    } else {
-      setSelectedIds(new Set());
-    }
+    if (selected) setSelectedIds(new Set(filteredMembers.map(m => m.id)));
+    else setSelectedIds(new Set());
   };
 
   const handleOpenDetail = (member: Member) => {
@@ -438,15 +411,11 @@ export default function Members() {
   };
 
   const handleUpdateMember = (updates: Partial<Member>) => {
-    if (detailMember) {
-      updateMember.mutate({ id: detailMember.id, updates });
-    }
+    if (detailMember) updateMember.mutate({ id: detailMember.id, updates });
   };
 
   const handleMarkResponded = () => {
-    if (detailMember) {
-      markOutreachResponded.mutate(detailMember.id);
-    }
+    if (detailMember) markOutreachResponded.mutate(detailMember.id);
   };
 
   const handleBulkGenerateDMs = (type: OutreachType) => {
@@ -480,30 +449,20 @@ export default function Members() {
   };
 
   const selectedMembers = members.filter(m => selectedIds.has(m.id));
-  const allVisibleSelected = filteredMembers.length > 0 && 
-    filteredMembers.every(m => selectedIds.has(m.id));
+  const allVisibleSelected = filteredMembers.length > 0 && filteredMembers.every(m => selectedIds.has(m.id));
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header />
       
       <main className="container py-6 px-4 flex-1">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold">Member Engagement</h1>
-            <p className="text-muted-foreground">
-              Track and re-engage your community members
-            </p>
+            <h1 className="text-2xl font-bold flex items-center gap-2"><Compass className="h-6 w-6 text-primary" />Member Compass</h1>
+            <p className="text-muted-foreground">Know what members need, then help the right person with the right next thing.</p>
           </div>
-          <div className="flex gap-2">
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={() => refetch()}
-              disabled={isFetching}
-              aria-label="Refresh member data"
-              title="Refresh member data"
-            >
+          <div className="flex gap-2 flex-wrap">
+            <Button variant="ghost" size="icon" onClick={() => { refetch(); refetchCompass(); }} disabled={isFetching} aria-label="Refresh member data" title="Refresh member data">
               <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
             </Button>
             <Button 
@@ -530,39 +489,30 @@ export default function Members() {
               }}
               disabled={isRetagging || members.length === 0}
             >
-              {isRetagging ? (
-                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Tags className="h-4 w-4 mr-2" />
-              )}
+              {isRetagging ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Tags className="h-4 w-4 mr-2" />}
               Re-tag All
             </Button>
-            <Button variant="outline" onClick={() => setAddMemberDialogOpen(true)}>
-              <UserPlus className="h-4 w-4 mr-2" />
-              Add Member
-            </Button>
-            <Button variant="outline" onClick={() => setWelcomeExportOpen(true)}>
-              <AtSign className="h-4 w-4 mr-2" />
-              Welcome Post Tags
-            </Button>
-            <Button variant="outline" onClick={() => setExtensionDialogOpen(true)}>
-              <Puzzle className="h-4 w-4 mr-2" />
-              Browser Extension
-            </Button>
-            <Button onClick={() => setImportDialogOpen(true)}>
-              <Upload className="h-4 w-4 mr-2" />
-              Import Members
-            </Button>
+            <Button variant="outline" onClick={() => setAddMemberDialogOpen(true)}><UserPlus className="h-4 w-4 mr-2" />Add Member</Button>
+            <Button variant="outline" onClick={() => setWelcomeExportOpen(true)}><AtSign className="h-4 w-4 mr-2" />Welcome Post Tags</Button>
+            <Button variant="outline" onClick={() => setExtensionDialogOpen(true)}><Puzzle className="h-4 w-4 mr-2" />Browser Extension</Button>
+            <Button variant="outline" onClick={() => setIntroDialogOpen(true)}><Compass className="h-4 w-4 mr-2" />Import Introductions</Button>
+            <Button onClick={() => setImportDialogOpen(true)}><Upload className="h-4 w-4 mr-2" />Import Members</Button>
           </div>
         </div>
 
-        {/* Weekly digest for new members */}
-        <NewMemberDigest members={members} />
+        <MemberCompassDashboard
+          members={communityScopedMembers}
+          profiles={scopedCompassProfiles}
+          onFindMembers={(query) => {
+            setActiveFilter('all');
+            setSearchQuery(query);
+          }}
+          onOpenMember={handleOpenDetail}
+        />
 
-        {/* Stats bar */}
+        <NewMemberDigest members={members} />
         <MemberStatsBar stats={stats} />
 
-        {/* Filters and search */}
         <div className="flex flex-col md:flex-row gap-4 my-6">
           <MemberFilterTabs 
             activeFilter={activeFilter}
@@ -570,18 +520,12 @@ export default function Members() {
             counts={filterCounts}
           />
           
-          <div className="flex gap-2 ml-auto">
-            <div
-              className="flex items-center px-3 rounded-md border bg-muted/40 text-sm font-medium"
-              aria-live="polite"
-              title="Members matching the current filters"
-            >
+          <div className="flex gap-2 ml-auto flex-wrap">
+            <div className="flex items-center px-3 rounded-md border bg-muted/40 text-sm font-medium" aria-live="polite" title="Members matching the current filters">
               {filteredMembers.length} match{filteredMembers.length === 1 ? '' : 'es'}
             </div>
             <Select value={communityFilter} onValueChange={setCommunityFilter}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Community" />
-              </SelectTrigger>
+              <SelectTrigger className="w-[200px]"><SelectValue placeholder="Community" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All communities</SelectItem>
                 <SelectItem value="crust-crumb-academy">Crust & Crumb Academy</SelectItem>
@@ -589,26 +533,18 @@ export default function Members() {
                 <SelectItem value="untagged">Untagged</SelectItem>
               </SelectContent>
             </Select>
-            <TagFilterDropdown
-              tagCounts={tagCounts}
-              selectedTags={selectedTagFilters}
-              onSelectedTagsChange={setSelectedTagFilters}
-            />
+            <TagFilterDropdown tagCounts={tagCounts} selectedTags={selectedTagFilters} onSelectedTagsChange={setSelectedTagFilters} />
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search members..."
+                placeholder="Search members or needs..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 w-[200px]"
+                className="pl-9 w-[220px]"
               />
             </div>
-            
             <Select value={sortField} onValueChange={(v) => setSortField(v as MemberSortField)}>
-              <SelectTrigger className="w-[150px]">
-                <ArrowUpDown className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Sort by" />
-              </SelectTrigger>
+              <SelectTrigger className="w-[150px]"><ArrowUpDown className="h-4 w-4 mr-2" /><SelectValue placeholder="Sort by" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="join_date">Join Date</SelectItem>
                 <SelectItem value="last_active">Last Active</SelectItem>
@@ -618,106 +554,64 @@ export default function Members() {
           </div>
         </div>
 
-        {/* Select all checkbox */}
         {filteredMembers.length > 0 && (
           <div className="flex items-center gap-2 mb-4">
-            <Checkbox
-              checked={allVisibleSelected}
-              onCheckedChange={handleSelectAllVisible}
-            />
-            <span className="text-sm text-muted-foreground">
-              Select all visible ({filteredMembers.length})
-            </span>
+            <Checkbox checked={allVisibleSelected} onCheckedChange={handleSelectAllVisible} />
+            <span className="text-sm text-muted-foreground">Select all visible ({filteredMembers.length})</span>
           </div>
         )}
 
-        {/* Member list */}
         {isLoading ? (
-          <div className="text-center py-12 text-muted-foreground">
-            Loading members...
-          </div>
+          <div className="text-center py-12 text-muted-foreground">Loading members...</div>
         ) : filteredMembers.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-muted-foreground mb-4">
-              {members.length === 0 
-                ? 'No members imported yet. Import a CSV or add a member to get started.'
-                : 'No members match the current filters.'}
-            </p>
+            <p className="text-muted-foreground mb-4">{members.length === 0 ? 'No members imported yet. Import a CSV or add a member to get started.' : 'No members match the current filters.'}</p>
             {members.length === 0 && (
               <div className="flex gap-2 justify-center">
-                <Button variant="outline" onClick={() => setAddMemberDialogOpen(true)}>
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Add Member
-                </Button>
-                <Button onClick={() => setImportDialogOpen(true)}>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Import Members
-                </Button>
+                <Button variant="outline" onClick={() => setAddMemberDialogOpen(true)}><UserPlus className="h-4 w-4 mr-2" />Add Member</Button>
+                <Button onClick={() => setImportDialogOpen(true)}><Upload className="h-4 w-4 mr-2" />Import Members</Button>
               </div>
             )}
           </div>
         ) : (
-        <>
-          <div className="space-y-3">
-            {paginatedMembers.map((member) => (
-              <MemberCard
-                key={member.id}
-                member={member}
-                isSelected={selectedIds.has(member.id)}
-                onSelect={(selected) => handleToggleSelect(member.id, selected)}
-                onGenerateDM={() => generateDM(member)}
-                isGenerating={isGeneratingDM && selectedMember?.id === member.id}
-                onClick={() => handleOpenDetail(member)}
-                onUpdateUsername={async (username) => {
-                  await updateMember.mutateAsync({ id: member.id, updates: { skool_username: username } });
-                  toast.success('Skool username saved');
-                }}
-                onUpdateEngagementStatus={(status) => {
-                  const updates: any = { engagement_status: status };
-                  if (status === 'active') {
-                    updates.last_active = new Date().toISOString().split('T')[0];
-                  }
-                  updateMember.mutate({ id: member.id, updates });
-                }}
-                tags={tagsByMember[member.id] || []}
-              />
-            ))}
-          </div>
-
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-6">
-              <p className="text-sm text-muted-foreground">
-                Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredMembers.length)} of {filteredMembers.length}
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className="h-4 w-4 mr-1" />
-                  Previous
-                </Button>
-                <span className="text-sm text-muted-foreground px-2">
-                  Page {currentPage} of {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
-              </div>
+          <>
+            <div className="space-y-3">
+              {paginatedMembers.map((member) => (
+                <MemberCard
+                  key={member.id}
+                  member={member}
+                  isSelected={selectedIds.has(member.id)}
+                  onSelect={(selected) => handleToggleSelect(member.id, selected)}
+                  onGenerateDM={() => generateDM(member)}
+                  isGenerating={isGeneratingDM && selectedMember?.id === member.id}
+                  onClick={() => handleOpenDetail(member)}
+                  onUpdateUsername={async (username) => {
+                    await updateMember.mutateAsync({ id: member.id, updates: { skool_username: username } });
+                    toast.success('Skool username saved');
+                  }}
+                  onUpdateEngagementStatus={(status) => {
+                    const updates: any = { engagement_status: status };
+                    if (status === 'active') updates.last_active = new Date().toISOString().split('T')[0];
+                    updateMember.mutate({ id: member.id, updates });
+                  }}
+                  tags={tagsByMember[member.id] || []}
+                />
+              ))}
             </div>
-          )}
-        </>
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-6">
+                <p className="text-sm text-muted-foreground">Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredMembers.length)} of {filteredMembers.length}</p>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}><ChevronLeft className="h-4 w-4 mr-1" />Previous</Button>
+                  <span className="text-sm text-muted-foreground px-2">Page {currentPage} of {totalPages}</span>
+                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>Next<ChevronRight className="h-4 w-4 ml-1" /></Button>
+                </div>
+              </div>
+            )}
+          </>
         )}
 
-        {/* Bulk actions bar */}
         <BulkActionsBar
           selectedCount={selectedIds.size}
           onClearSelection={() => setSelectedIds(new Set())}
@@ -729,20 +623,16 @@ export default function Members() {
           onSendTemplate={() => setPickTemplateOpen(true)}
         />
 
-        {/* Dialogs */}
-        <ImportMembersDialog
-          open={importDialogOpen}
-          onOpenChange={setImportDialogOpen}
-          onImport={handleImport}
-          isImporting={importMembers.isPending}
+        <ImportMembersDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} onImport={handleImport} isImporting={importMembers.isPending} />
+
+        <ImportIntroductionsDialog
+          open={introDialogOpen}
+          onOpenChange={setIntroDialogOpen}
+          members={members}
+          onFinished={() => refetchCompass()}
         />
 
-        <AddMemberDialog
-          open={addMemberDialogOpen}
-          onOpenChange={setAddMemberDialogOpen}
-          onAdd={handleAddMember}
-          isAdding={addMember.isPending}
-        />
+        <AddMemberDialog open={addMemberDialogOpen} onOpenChange={setAddMemberDialogOpen} onAdd={handleAddMember} isAdding={addMember.isPending} />
 
         <GeneratedDMDialog
           open={dmDialogOpen}
@@ -799,35 +689,26 @@ export default function Members() {
             communityFilter === 'from-oven-to-market' ||
             activeFilter === 'needs_welcome' ||
             selectedMembers.some(
-              (m) =>
-                Array.isArray((m as any).communities) &&
-                (m as any).communities.includes('from-oven-to-market')
+              (m) => Array.isArray((m as any).communities) && (m as any).communities.includes('from-oven-to-market')
             )
               ? 'FOTM Welcome — Personal'
               : null
           }
           onPick={(tpl) => {
-            // Safety: FOTM welcome template must only go to FOTM members.
-            const isFotmWelcome =
-              tpl.name.trim().toLowerCase() === 'fotm welcome — personal';
+            const isFotmWelcome = tpl.name.trim().toLowerCase() === 'fotm welcome — personal';
             let recipients = selectedMembers;
             if (isFotmWelcome) {
               const eligible = selectedMembers.filter((m) =>
-                Array.isArray((m as any).communities) &&
-                (m as any).communities.includes('from-oven-to-market')
+                Array.isArray((m as any).communities) && (m as any).communities.includes('from-oven-to-market')
               );
               const skipped = selectedMembers.length - eligible.length;
               if (eligible.length === 0) {
-                toast.error(
-                  'None of the selected members are tagged in From Oven to Market. Import the FOTM roster or switch the community filter.'
-                );
+                toast.error('None of the selected members are tagged in From Oven to Market. Import the FOTM roster or switch the community filter.');
                 return;
               }
               if (skipped > 0) {
                 setSelectedIds(new Set(eligible.map((m) => m.id)));
-                toast.warning(
-                  `Removed ${skipped} non-FOTM recipient${skipped === 1 ? '' : 's'}. Sending to ${eligible.length} FOTM member${eligible.length === 1 ? '' : 's'}.`
-                );
+                toast.warning(`Removed ${skipped} non-FOTM recipient${skipped === 1 ? '' : 's'}. Sending to ${eligible.length} FOTM member${eligible.length === 1 ? '' : 's'}.`);
               }
               recipients = eligible;
             }
@@ -838,16 +719,8 @@ export default function Members() {
           }}
         />
 
-        <NewMemberWelcomeExportDialog
-          open={welcomeExportOpen}
-          onOpenChange={setWelcomeExportOpen}
-          members={members}
-        />
-
-        <BrowserExtensionDialog
-          open={extensionDialogOpen}
-          onOpenChange={setExtensionDialogOpen}
-        />
+        <NewMemberWelcomeExportDialog open={welcomeExportOpen} onOpenChange={setWelcomeExportOpen} members={members} />
+        <BrowserExtensionDialog open={extensionDialogOpen} onOpenChange={setExtensionDialogOpen} />
       </main>
 
       <Footer />
