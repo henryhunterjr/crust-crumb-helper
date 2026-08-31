@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useDebounce } from '@/hooks/useDebounce';
-import { Upload, Search, ArrowUpDown, UserPlus, RefreshCw, ChevronLeft, ChevronRight, Tags, AtSign, Puzzle } from 'lucide-react';
+import { Upload, Search, ArrowUpDown, UserPlus, RefreshCw, ChevronLeft, ChevronRight, Tags, AtSign, Puzzle, Compass, Inbox, Sparkles, X } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -628,7 +628,7 @@ export default function Members() {
               What can we help each person do next?
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button 
               variant="ghost" 
               size="icon"
@@ -681,6 +681,32 @@ export default function Members() {
             <Button variant="outline" onClick={() => setExtensionDialogOpen(true)}>
               <Puzzle className="h-4 w-4 mr-2" />
               Browser Extension
+            </Button>
+            <Button variant="outline" onClick={() => setReviewQueueOpen(true)}>
+              <Inbox className="h-4 w-4 mr-2" />
+              Review Queue
+              {reviewQueue.length > 0 && (
+                <span className="ml-2 rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
+                  {reviewQueue.length}
+                </span>
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleBackfill}
+              disabled={isBackfilling}
+              title="Analyze members who already have captured text but no Compass insight yet"
+            >
+              {isBackfilling ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4 mr-2" />
+              )}
+              Backfill Compass
+            </Button>
+            <Button variant="outline" onClick={() => setIntroImportOpen(true)}>
+              <Compass className="h-4 w-4 mr-2" />
+              Import Introductions
             </Button>
             <Button onClick={() => setImportDialogOpen(true)}>
               <Upload className="h-4 w-4 mr-2" />
