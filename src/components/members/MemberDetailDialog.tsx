@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format, parseISO, differenceInDays } from 'date-fns';
-import { Calendar, Clock, FileText, MessageSquare, Send, CheckCircle, Save, Link2, History, Mail, Lightbulb } from 'lucide-react';
+import { Calendar, Clock, FileText, MessageSquare, Save, Link2, History, Mail, Lightbulb } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -25,6 +25,7 @@ import {
 import { Member, EngagementStatus, MessageStatus } from '@/types/member';
 import { MemberMessageHistory } from './MemberMessageHistory';
 import { MemberTagEditor } from './MemberTagEditor';
+import { MemberCompassSection } from './MemberCompassSection';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -64,7 +65,6 @@ export function MemberDetailDialog({
   const [skoolUsername, setSkoolUsername] = useState(member?.skool_username || '');
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Check if member is also on email list
   const { data: emailSubscriber } = useQuery({
     queryKey: ['email-subscriber-match', member?.id],
     enabled: !!member?.id,
@@ -113,7 +113,7 @@ export function MemberDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 flex-wrap">
             {member.skool_name}
@@ -128,7 +128,6 @@ export function MemberDetailDialog({
 
         <ScrollArea className="flex-1 pr-4">
           <div className="space-y-4 mt-4">
-            {/* Member info */}
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Calendar className="h-4 w-4" />
@@ -154,10 +153,8 @@ export function MemberDetailDialog({
               </div>
             </div>
 
-            {/* Tags */}
             <MemberTagEditor memberId={member.id} />
 
-            {/* Application answer */}
             {member.application_answer && (
               <div>
                 <Label className="text-xs text-muted-foreground">Goal when joining</Label>
@@ -167,7 +164,8 @@ export function MemberDetailDialog({
               </div>
             )}
 
-            {/* Email if available */}
+            <MemberCompassSection member={member} />
+
             {member.email && (
               <div>
                 <Label className="text-xs text-muted-foreground">Email</Label>
@@ -175,7 +173,6 @@ export function MemberDetailDialog({
               </div>
             )}
 
-            {/* Email list indicator */}
             {emailSubscriber && (
               <div className="bg-primary/5 border border-primary/20 rounded-md p-3">
                 <div className="flex items-center gap-2 mb-1">
@@ -196,7 +193,6 @@ export function MemberDetailDialog({
               </div>
             )}
 
-            {/* Skool Username */}
             <div>
               <Label htmlFor="skoolUsername" className="flex items-center gap-1">
                 <Link2 className="h-3 w-3" />
@@ -214,7 +210,6 @@ export function MemberDetailDialog({
               </p>
             </div>
 
-            {/* Outreach status */}
             <div className="flex items-center justify-between p-3 bg-muted/50 rounded-md">
               <div>
                 <Label className="text-sm font-medium">Outreach Status</Label>
@@ -237,7 +232,6 @@ export function MemberDetailDialog({
               </div>
             </div>
 
-            {/* Message History */}
             <div>
               <Label className="flex items-center gap-1.5 mb-2">
                 <History className="h-3.5 w-3.5" />
@@ -246,7 +240,6 @@ export function MemberDetailDialog({
               <MemberMessageHistory memberId={member.id} />
             </div>
 
-            {/* Status selector */}
             <div>
               <Label htmlFor="status">Engagement Status</Label>
               <Select value={status} onValueChange={handleStatusChange}>
@@ -263,7 +256,6 @@ export function MemberDetailDialog({
               </Select>
             </div>
 
-            {/* Notes */}
             <div>
               <Label htmlFor="notes">Notes</Label>
               <Textarea
