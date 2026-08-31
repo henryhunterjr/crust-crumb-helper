@@ -258,12 +258,12 @@ export default function Members() {
     });
 
     return result;
-  }, [members, activeFilter, debouncedSearch, sortField, selectedTagFilters, tagsByMember, communityFilter]);
+  }, [members, activeFilter, debouncedSearch, sortField, selectedTagFilters, tagsByMember, communityFilter, profilesByMember, drillDown]);
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeFilter, debouncedSearch, sortField, selectedTagFilters, communityFilter]);
+  }, [activeFilter, debouncedSearch, sortField, selectedTagFilters, communityFilter, drillDown]);
 
   // Paginate
   const totalPages = Math.max(1, Math.ceil(filteredMembers.length / ITEMS_PER_PAGE));
