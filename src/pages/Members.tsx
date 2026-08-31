@@ -721,6 +721,38 @@ export default function Members() {
         {/* Stats bar */}
         <MemberStatsBar stats={stats} />
 
+        {/* Actionable community intelligence */}
+        <div className="mt-6">
+          <CompassIntelligencePanel
+            members={panelMembers}
+            profilesByMember={profilesByMember}
+            communityLabel={panelLabel}
+            onDrillDown={(label, ids) => {
+              setDrillDown({ label, ids: new Set(ids) });
+              setActiveFilter('all');
+              setCurrentPage(1);
+            }}
+          />
+        </div>
+
+        {drillDown && (
+          <div className="mt-4 flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+            <Compass className="h-4 w-4 text-primary" />
+            <span>
+              Showing members from: <strong>{drillDown.label}</strong>
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="ml-auto h-7"
+              onClick={() => setDrillDown(null)}
+            >
+              <X className="h-3.5 w-3.5 mr-1" />
+              Clear
+            </Button>
+          </div>
+        )}
+
         {/* Filters and search */}
         <div className="flex flex-col md:flex-row gap-4 my-6">
           <MemberFilterTabs 
@@ -728,6 +760,7 @@ export default function Members() {
             onFilterChange={setActiveFilter}
             counts={filterCounts}
           />
+          
           
           <div className="flex gap-2 ml-auto">
             <div
