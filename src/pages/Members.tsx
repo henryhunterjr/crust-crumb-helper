@@ -726,7 +726,9 @@ export default function Members() {
           <CompassIntelligencePanel
             members={panelMembers}
             profilesByMember={profilesByMember}
+            sourcesByMember={sourcesByMember}
             communityLabel={panelLabel}
+            onOpenMember={handleOpenDetail}
             onDrillDown={(label, ids) => {
               setDrillDown({ label, ids: new Set(ids) });
               setActiveFilter('all');
@@ -958,6 +960,27 @@ export default function Members() {
           member={detailMember}
           onUpdate={handleUpdateMember}
           onMarkResponded={handleMarkResponded}
+          compassProfile={detailMember ? profilesByMember.get(detailMember.id) : undefined}
+          compassSources={detailMember ? sourcesByMember.get(detailMember.id) ?? [] : []}
+          onAnalyzeCompass={handleAnalyzeCompass}
+          isAnalyzingCompass={!!detailMember && analyzingMemberId === detailMember.id}
+          onSaveCompass={handleSaveCompass}
+        />
+
+        <ImportIntroductionsDialog
+          open={introImportOpen}
+          onOpenChange={setIntroImportOpen}
+          members={members}
+          onCommit={(rows) => commitSources.mutateAsync(rows)}
+          isCommitting={commitSources.isPending}
+        />
+
+        <CompassReviewQueueDialog
+          open={reviewQueueOpen}
+          onOpenChange={setReviewQueueOpen}
+          queue={reviewQueue}
+          members={members}
+          onResolve={(input) => resolveSource.mutateAsync(input)}
         />
 
         <BulkDMQueueDialog
