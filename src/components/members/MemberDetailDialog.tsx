@@ -66,6 +66,11 @@ export function MemberDetailDialog({
   member,
   onUpdate,
   onMarkResponded,
+  compassProfile,
+  compassSources = [],
+  onAnalyzeCompass,
+  isAnalyzingCompass = false,
+  onSaveCompass,
 }: MemberDetailDialogProps) {
   const [notes, setNotes] = useState(member?.notes || '');
   const [status, setStatus] = useState<EngagementStatus>(member?.engagement_status || 'unknown');
