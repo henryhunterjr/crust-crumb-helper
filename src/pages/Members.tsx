@@ -29,6 +29,11 @@ import { NewMemberDigest } from '@/components/members/NewMemberDigest';
 import { NewMemberWelcomeExportDialog } from '@/components/members/NewMemberWelcomeExportDialog';
 import { BrowserExtensionDialog } from '@/components/members/BrowserExtensionDialog';
 import { TagFilterDropdown } from '@/components/members/TagFilterDropdown';
+import { ImportIntroductionsDialog } from '@/components/members/ImportIntroductionsDialog';
+import { CompassReviewQueueDialog } from '@/components/members/CompassReviewQueueDialog';
+import { CompassIntelligencePanel } from '@/components/members/CompassIntelligencePanel';
+import { useMemberCompass } from '@/hooks/useMemberCompass';
+import { MemberCompassProfile } from '@/types/compass';
 import { useMembers } from '@/hooks/useMembers';
 import { useMemberTags } from '@/hooks/useMemberTags';
 import { Member, MemberFilter, MemberSortField, MemberImportRow, OutreachType } from '@/types/member';
@@ -53,6 +58,22 @@ export default function Members() {
 
   const { saveMessage, updateMessageStatus } = useOutreachMessages();
   const { tagsByMember, tagCounts, autoTagMembers } = useMemberTags();
+  const {
+    profilesByMember,
+    sourcesByMember,
+    reviewQueue,
+    commitSources,
+    resolveSource,
+    analyze,
+    updateProfile,
+  } = useMemberCompass();
+
+  // Member Compass UI state
+  const [introImportOpen, setIntroImportOpen] = useState(false);
+  const [reviewQueueOpen, setReviewQueueOpen] = useState(false);
+  const [analyzingMemberId, setAnalyzingMemberId] = useState<string | null>(null);
+  const [isBackfilling, setIsBackfilling] = useState(false);
+  const [drillDown, setDrillDown] = useState<{ label: string; ids: Set<string> } | null>(null);
 
   // URL params for filter
   const [searchParams, setSearchParams] = useSearchParams();
@@ -158,6 +179,23 @@ export default function Members() {
         );
         break;
       }
+      case 'needs_henry':
+        result = result.filter((m) => {
+          const p = profilesByMember.get(m.id);
+          return !!p?.next_best_action && !m.outreach_sent;
+        });
+        break;
+      case 'compass_no_resource':
+        result = result.filter((m) => {
+          const p = profilesByMember.get(m.id);
+          return !!p && p.learning_goals.length > 0 && !p.recommended_resource_title;
+        });
+        break;
+    }
+
+    // Drill-down from the Compass panel: restrict to the represented members.
+    if (drillDown) {
+      result = result.filter((m) => drillDown.ids.has(m.id));
     }
 
     // Apply tag filters (AND logic)
