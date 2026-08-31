@@ -47,3 +47,9 @@ verify_jwt = false
 
 [functions.ingest-skooly-webhook]
 verify_jwt = false
+
+# Client-invoked by a signed-in admin. Keep JWT verification ON; the function
+# also re-checks the admin role in code before reading any member data.
+[functions.analyze-member-compass]
+verify_jwt = true
+
