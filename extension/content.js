@@ -1,5 +1,6 @@
-// Krusty Skool Helper v2.0.0
-// Exact-recipient, review-before-send handoff for Skoo.ly and Skool.
+// Krusty Skool Helper v2.1.0
+// Exact-recipient, review-before-send handoff for Skoo.ly and Skool,
+// plus read-only thread capture for Member Compass.
 // This script intentionally never clicks Send or dispatches Enter.
 
 (function () {
