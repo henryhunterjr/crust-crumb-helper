@@ -215,14 +215,31 @@ export default function Members() {
       });
     }
 
-    // Apply search
+    // Apply search — also searches Compass insight so Henry can find people by
+    // what they actually said (baguettes, fermentation, brand new, family…).
     if (debouncedSearch) {
       const query = debouncedSearch.toLowerCase();
-      result = result.filter(m => 
-        m.skool_name.toLowerCase().includes(query) ||
-        m.email?.toLowerCase().includes(query) ||
-        m.application_answer?.toLowerCase().includes(query)
-      );
+      result = result.filter(m => {
+        if (
+          m.skool_name.toLowerCase().includes(query) ||
+          m.email?.toLowerCase().includes(query) ||
+          m.application_answer?.toLowerCase().includes(query)
+        ) return true;
+        const p = profilesByMember.get(m.id);
+        if (!p) return false;
+        const haystack = [
+          p.baking_stage,
+          p.why_they_bake || '',
+          p.next_best_action || '',
+          p.recommended_resource_title || '',
+          ...p.struggles,
+          ...p.learning_goals,
+          ...p.bread_interests,
+          ...p.personal_hooks,
+          ...p.member_language,
+        ].join(' ').toLowerCase();
+        return haystack.includes(query);
+      });
     }
 
     // Apply sort
@@ -299,8 +316,16 @@ export default function Members() {
           (m.application_answer && rx.test(m.application_answer))
         ).length;
       })(),
+      needs_henry: base.filter(m => {
+        const p = profilesByMember.get(m.id);
+        return !!p?.next_best_action && !m.outreach_sent;
+      }).length,
+      compass_no_resource: base.filter(m => {
+        const p = profilesByMember.get(m.id);
+        return !!p && p.learning_goals.length > 0 && !p.recommended_resource_title;
+      }).length,
     };
-  }, [communityScopedMembers]);
+  }, [communityScopedMembers, profilesByMember]);
 
   const handleImport = async (rows: MemberImportRow[]) => {
     try {
