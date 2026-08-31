@@ -35,6 +35,12 @@ interface MemberDetailDialogProps {
   member: Member | null;
   onUpdate: (updates: Partial<Member>) => void;
   onMarkResponded: () => void;
+  /** Compass insight block. Optional so the dialog still works without it. */
+  compassProfile?: MemberCompassProfile;
+  compassSources?: MemberSource[];
+  onAnalyzeCompass?: (memberId: string) => Promise<void>;
+  isAnalyzingCompass?: boolean;
+  onSaveCompass?: (memberId: string, updates: Partial<MemberCompassProfile>) => Promise<void>;
 }
 
 const statusConfig: Record<EngagementStatus, { label: string; className: string }> = {
