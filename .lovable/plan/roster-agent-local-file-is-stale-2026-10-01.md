@@ -2,9 +2,9 @@
 
 ## What I verified
 
-The `read-roster.mjs` in this project reads `COMMUNITY_SLUG` at line 56, infers the community from `SKOOL_MEMBERS_URL` when the variable is missing, and stamps `community` on every member and on the upload payload. The copy inside the `roster-agent-latest.zip` download is byte-for-byte identical to the project file (same checksum).
+The `read-roster.mjs` in this project reads `COMMUNITY_SLUG` at line 56, stamps `community` on every member object, and includes it in the POST payload. The copy inside the `roster-agent-latest.zip` download is byte-for-byte identical to the project file (same checksum).
 
-The file you're looking at on your PC (dated 2026-06-15) is the old version. It was never replaced. Every symptom you've reported — no `COMMUNITY_SLUG` in cfg, missing run-both scripts, segments at zero — traces back to this one thing: the new files have not landed in your local `roster-agent/` folder.
+The file you're quoting on your PC (dated 2026-06-15) is the old version. Its `post()` sends no community because that code was added after June 15. Every symptom you've reported — no `COMMUNITY_SLUG` in cfg, no community in the payload, missing run-both scripts, segments at zero — traces back to one thing: the new files have not landed in your local `roster-agent/` folder.
 
 ## The fix (your side, about 2 minutes)
 
