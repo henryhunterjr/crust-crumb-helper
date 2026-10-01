@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { lovable } from '@/integrations/lovable/index';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -8,29 +8,42 @@ import logo from '@/assets/logo.png';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+function safeNext(value: string | null): string {
+  if (!value) return '/';
+  if (!value.startsWith('/') || value.startsWith('//')) return '/';
+  return value;
+}
+
 export default function Login() {
   const { user, isAdmin, loading, signOut } = useAuth();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const next = safeNext(params.get('next'));
 
   useEffect(() => {
     if (loading) return;
     if (user && isAdmin) {
-      navigate('/', { replace: true });
+      navigate(next, { replace: true });
     } else if (user && !isAdmin) {
       toast.error('That account does not have admin access to this console.');
       void signOut();
     }
-  }, [loading, user, isAdmin, navigate, signOut]);
+  }, [loading, user, isAdmin, navigate, signOut, next]);
 
   const handleGoogleSignIn = async () => {
+    const returnTo =
+      next === '/'
+        ? window.location.origin
+        : `${window.location.origin}/login?next=${encodeURIComponent(next)}`;
     const { error } = await lovable.auth.signInWithOAuth('google', {
-      redirect_uri: window.location.origin,
+      redirect_uri: returnTo,
     });
     if (error) {
       toast.error('Sign-in failed. Please try again.');
       console.error('OAuth error:', error);
     }
   };
+
 
   if (loading) {
     return (

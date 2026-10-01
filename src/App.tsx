@@ -17,6 +17,7 @@ import EmailCampaigns from "./pages/EmailCampaigns";
 import Campaigns from "./pages/Campaigns";
 import Analytics from "./pages/Analytics";
 import Login from "./pages/Login";
+import OAuthConsent from "./pages/OAuthConsent";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
           <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/responses" element={<ProtectedRoute><Responses /></ProtectedRoute>} />
           <Route path="/generate" element={<ProtectedRoute><Generate /></ProtectedRoute>} />

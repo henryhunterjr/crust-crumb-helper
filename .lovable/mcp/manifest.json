@@ -1,0 +1,167 @@
+{
+  "version": 1,
+  "sdk_version": "3.0.4",
+  "path": "/functions/v1/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://anponqqhjugwflakydsf.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "crust-crumb-companion",
+      "version": "0.1.0",
+      "title": "Crust & Crumb Companion"
+    },
+    "tools": [
+      {
+        "name": "community_overview",
+        "title": "Community overview",
+        "description": "Summary counts of the member base: total members, members per community, and how many still need outreach.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_members",
+        "title": "List members",
+        "description": "List community members with optional filters for community slug, engagement status, intent tier, or whether outreach was already sent.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "community": {
+              "type": "string",
+              "description": "Community slug, e.g. crust-crumb-academy or from-oven-to-market."
+            },
+            "engagement_status": {
+              "type": "string",
+              "description": "Engagement status filter, e.g. active, inactive."
+            },
+            "intent_tier": {
+              "type": "string",
+              "description": "Intent tier filter, e.g. prospect."
+            },
+            "outreach_sent": {
+              "type": "boolean",
+              "description": "Filter on whether outreach has already been sent."
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "description": "Max rows to return (default 25)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "search_members",
+        "title": "Search members",
+        "description": "Search members by name, Skool username, or email.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "minLength": 2,
+              "description": "Text to match against name, username, or email."
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "description": "Max rows to return (default 10)."
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_member_compass",
+        "title": "Get member profile and compass",
+        "description": "Get one member's record plus their Member Compass insights (baking stage, struggles, goals, next best action).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "member_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Member id."
+            },
+            "email": {
+              "type": "string",
+              "description": "Member email."
+            },
+            "username": {
+              "type": "string",
+              "description": "Skool username."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_outreach_templates",
+        "title": "List outreach templates",
+        "description": "List the saved DM and email outreach templates, with their body text and merge tags.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "channel": {
+              "type": "string",
+              "description": "Filter by channel, e.g. dm or email."
+            },
+            "active_only": {
+              "type": "boolean",
+              "description": "Only return active templates (default true)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
