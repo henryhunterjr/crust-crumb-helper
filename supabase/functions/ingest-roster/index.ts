@@ -225,7 +225,10 @@ serve(async (req) => {
           roster_last_seen_at: nowIso,
         })
         .eq("id", id);
-      if (error) throw error;
+      if (error) {
+        skippedRows.push({ who: id, op: "update", error: errMsg(error) });
+        continue;
+      }
       updated++;
     }
 
@@ -239,28 +242,32 @@ serve(async (req) => {
       missingFlagged = plan.missingIds.length;
     }
 
+    const isPartial = skippedRows.length > 0;
+    if (isPartial) console.error("ingest-roster skipped rows:", JSON.stringify(skippedRows.slice(0, 20)));
     const summary = {
       total_seen: rows.length,
       inserted,
       updated,
       missing_flagged: missingFlagged,
-      skipped: plan.skipped,
-      status: "completed" as const,
-      error: null as string | null,
+      skipped: plan.skipped + skippedRows.length,
+      status: isPartial ? "partial" : "completed",
+      error: isPartial
+        ? skippedRows.slice(0, 20).map((s) => `${s.op} ${s.who}: ${s.error}`).join(" | ").slice(0, 4000)
+        : null,
     };
     const runId = await logRun(payload, summary);
 
     return jsonResponse({
-      status: "completed",
       runId: payload.runId ?? runId,
       fullRoster,
       community,
       ...summary,
+      skippedRows: skippedRows.slice(0, 50),
       newMembers: inserted,
       missingMembers: missingFlagged,
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = errMsg(err);
     console.error("ingest-roster error:", message);
     await logRun(payload, {
       total_seen: rows.length,
@@ -274,6 +281,19 @@ serve(async (req) => {
     return jsonResponse({ error: "Roster sync failed", detail: message }, 500);
   }
 });
+
+// Database errors are plain objects, not Error instances. Never let them
+// collapse into "[object Object]".
+function errMsg(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (err && typeof err === "object") {
+    const e = err as { message?: string; details?: string; hint?: string; code?: string };
+    const parts = [e.message, e.details, e.hint, e.code ? `code ${e.code}` : null].filter(Boolean);
+    if (parts.length) return parts.join(" / ");
+    try { return JSON.stringify(err); } catch { /* fall through */ }
+  }
+  return String(err);
+}
 
 // Page through every member row, since a single select is capped at ~1000.
 async function fetchAllExisting(): Promise<ExistingMember[]> {
