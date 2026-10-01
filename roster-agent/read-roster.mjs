@@ -231,6 +231,7 @@ function normalize(raw) {
     lastActive: toIsoDate(raw.activeText),
     // posts/comments are not shown on the directory; left undefined on purpose
     // so the server's partial update never zeroes a real count.
+    community: cfg.community,
   };
 }
 
@@ -319,14 +320,25 @@ async function post(members, capturedAt) {
     fullRoster: cfg.fullRoster,
     members,
   };
-  const res = await fetch(cfg.ingestUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.apiKey}` },
-    body: JSON.stringify(payload),
-  });
+  log(`POST -> ${cfg.ingestUrl} community=${cfg.community} members=${members.length}`);
+  let res;
+  try {
+    res = await fetch(cfg.ingestUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.apiKey}` },
+      body: JSON.stringify(payload),
+    });
+  } catch (e) {
+    fail(`POST FAILED network error reaching ${cfg.ingestUrl}`, e.message);
+  }
   const text = await res.text();
-  if (!res.ok) fail(`ingest-roster returned ${res.status}`, text);
-  log("ingest-roster OK:", text);
+  if (!res.ok) {
+    const hint = res.status === 401 || res.status === 403
+      ? " (INGEST_API_KEY in .env does not match the backend key)"
+      : "";
+    fail(`POST FAILED ${res.status}${hint}`, text);
+  }
+  log(`POST OK ${res.status}:`, text);
 }
 
 // ---- main ----------------------------------------------------------------

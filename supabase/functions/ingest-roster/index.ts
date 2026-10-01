@@ -102,9 +102,16 @@ serve(async (req) => {
   const now = new Date();
   const nowIso = now.toISOString();
   const fullRoster = payload.fullRoster === true;
-  const community = typeof payload.community === "string"
-    ? payload.community.trim().toLowerCase()
-    : null;
+  // Payload-level community wins; otherwise fall back to a per-member
+  // `community` stamp (older/alternate agents put it on each row).
+  const perMember = (rows as Array<{ community?: unknown }>)
+    .map((r) => (typeof r.community === "string" ? r.community : null))
+    .find((c) => !!c);
+  const rawCommunity = typeof payload.community === "string"
+    ? payload.community
+    : perMember ?? null;
+  const community = rawCommunity ? rawCommunity.trim().toLowerCase() : null;
+  if (community && !payload.community) payload.community = community;
   const isFotm = community === "from-oven-to-market";
   const FOUNDING_CUTOFF = "2026-07-06";
 
