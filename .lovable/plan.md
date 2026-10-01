@@ -1,27 +1,26 @@
-# Roster Agent: Local Files Are Stale
+# Two Open Items: Security Fixes + Roster Files
 
-## What I verified
+## Item 1: Fix the 38 selected security findings (my side)
 
-The `read-roster.mjs` in this project reads `COMMUNITY_SLUG` at line 56, stamps `community` on every member object, and includes it in the POST payload. The deployed `ingest-roster` function accepts a per-member `community` stamp as a fallback when the payload omits it, and it now records real error messages instead of "[object Object]". The copy inside the `roster-agent-latest.zip` download is byte-for-byte identical to the project file (same checksum).
+You selected 38 findings: 37 "permissive policy" findings (policies that allow anyone to read or change a table) and 1 "RLS disabled" finding (the `interest_resources` table).
 
-The files you're quoting on your PC (both dated 2026-06-15) are the old versions. Every symptom you've reported — no `COMMUNITY_SLUG` in cfg, no community in the payload, an outdated ingest function, missing run-both scripts, segments at zero — traces back to one thing: the new files have not landed in your local `roster-agent/` folder.
+Plan:
+1. Load the scan results and match each selected internal_id to its table.
+2. For each permissive policy: replace it with an admin-scoped policy (`has_role(auth.uid(), 'admin')` for the `authenticated` role) and revoke `anon` access where the table is admin-only. Tables with a legitimate public read need (library content like recipes, videos, resources) keep a read-only public policy but lose public write access.
+3. Enable RLS on `interest_resources` with a public read-only policy and admin-only writes.
+4. Apply all changes in one migration, then mark each of the 38 findings as fixed with the manage_security_finding tool.
+5. Verify the app still loads its data (members, library, calendar) after the lockdown.
 
-## The fix (your side, about 2 minutes)
+## Item 2: Roster agent local files (your side, unchanged)
 
-1. Download `roster-agent-latest.zip` from Files (delivered in my earlier message).
-2. Extract it **into** your local `roster-agent/` folder. When Windows asks, choose **"Replace the files in the destination"**. This is the step that matters — if you extract to a new folder or skip the replace prompt, the old June 15 files stay in place.
-3. Confirm the replace worked: open `read-roster.mjs` and search for `COMMUNITY_SLUG`. You should find it around line 56. Or check the file's modified date — it should read today, not June 15.
-4. Confirm `run-both.bat` and `run-both.ps1` now appear in the folder.
-5. Edit `.env` (CCA) to include `COMMUNITY_SLUG=crust-crumb-academy` and `.env.fotm` to include `COMMUNITY_SLUG=from-oven-to-market`. Both need the current `INGEST_API_KEY`.
-6. Double-click `run-both.bat`, then paste the last ~30 lines of `roster-run.log` here.
+The payload type you pasted is from the June 15 file again. The fix is still the same:
 
-## My side after your run
-
-1. Verify the run landed in the backend and community counts updated.
-2. Confirm segments populate at the next nightly refresh.
-3. Publish the app.
+1. Download `roster-agent-latest.zip` from Files.
+2. Extract it **into** your local `roster-agent/` folder and choose **"Replace the files in the destination"**.
+3. Confirm `read-roster.mjs` mentions `COMMUNITY_SLUG` around line 56.
+4. Set `COMMUNITY_SLUG` in `.env` (CCA) and `.env.fotm` (FOTM), run `run-both.bat`, paste the last ~30 lines of `roster-run.log` here.
 
 ## Out of scope
 
+- No other security findings touched beyond the 38 you selected.
 - Morning Brief stays external.
-- The 36 open security findings remain a separate decision.
