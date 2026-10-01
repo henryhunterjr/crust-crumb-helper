@@ -128,6 +128,7 @@ serve(async (req) => {
     let inserted = 0;
     let updated = 0;
     let missingFlagged = 0;
+    const skippedRows: Array<{ who: string; op: string; error: string }> = [];
 
     // Inserts — new joiners. Mirror the CSV importer's row, stamped on_roster.
     if (plan.toInsert.length > 0) {
@@ -144,12 +145,29 @@ serve(async (req) => {
         }
         return row;
       });
-      const { data, error } = await supabase
-        .from("members")
-        .insert(insertRows)
-        .select("id");
-      if (error) throw error;
-      inserted = data?.length ?? 0;
+      // Chunked inserts; a failed chunk retries row by row so one bad row
+      // can't sink the whole run.
+      for (let i = 0; i < insertRows.length; i += 100) {
+        const chunk = insertRows.slice(i, i + 100);
+        const { data, error } = await supabase
+          .from("members")
+          .insert(chunk)
+          .select("id");
+        if (!error) {
+          inserted += data?.length ?? 0;
+          continue;
+        }
+        for (const r of chunk) {
+          const { error: rowErr } = await supabase.from("members").insert(r);
+          if (rowErr) {
+            skippedRows.push({
+              who: String(r.skool_username ?? r.skool_name ?? "?"),
+              op: "insert",
+              error: errMsg(rowErr),
+            });
+          } else inserted++;
+        }
+      }
     }
 
     // Updates — partial, never wipes fields the read could not see.
